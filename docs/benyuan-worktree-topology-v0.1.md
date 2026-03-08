@@ -153,3 +153,18 @@ The analysis registry now supports a provider-ready hybrid path:
 - `BENYUAN_ANALYSIS_ENGINE=hybrid`
 
 When no external provider is configured, the hybrid engine falls back to the deterministic engine instead of interrupting the product flow.
+
+## Runtime Observability
+
+The analysis runtime is now queryable via:
+- `GET /api/analysis/runtime?mode=lite|deep`
+- optional override: `engine=hybrid|deterministic`
+
+This makes it easier to inspect whether the app is currently running deterministic analysis, hybrid mode, or deterministic fallback when no provider is configured.
+
+## Prompt/Input Shaping Layer
+
+Provider-facing prompt shaping now has its own seam:
+- `src/lib/analysis/prompt-shaping.ts`
+
+This keeps provider payload assembly separate from the deterministic engine and makes future OpenAI / Anthropic integration much easier to swap or version.

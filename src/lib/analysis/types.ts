@@ -46,3 +46,24 @@ export type AnalysisProvider = {
   reason?: string;
   enhance(input: AnalysisInput, baseline: AnalysisEngineResult): Promise<AnalysisProviderEnhancement | null>;
 };
+
+
+export type AnalysisPromptPayload = {
+  system: string;
+  user: string;
+  metadata: {
+    mode: Mode;
+    sessionId: string;
+    questionCount: number;
+    openReflectionQuestionIds: string[];
+  };
+};
+
+export type AnalysisPromptShapingResult = {
+  payload: AnalysisPromptPayload;
+  summary: {
+    answeredCount: number;
+    openReflectionCount: number;
+    topSignals: string[];
+  };
+};

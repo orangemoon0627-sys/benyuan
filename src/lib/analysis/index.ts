@@ -5,3 +5,4 @@ export * from "@/lib/analysis/registry";
 export * from "@/lib/analysis/input";
 export * from "@/lib/analysis/provider";
 export * from "@/lib/analysis/hybrid-engine";
+export * from "@/lib/analysis/prompt-shaping";

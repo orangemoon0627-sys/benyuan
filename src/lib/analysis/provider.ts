@@ -1,3 +1,4 @@
+import { buildAnalysisPromptPayload } from "@/lib/analysis/prompt-shaping";
 import type { AnalysisEngineResult, AnalysisInput, AnalysisProvider, AnalysisProviderEnhancement } from "@/lib/analysis/types";
 
 function createUnavailableEnhancement(): Promise<AnalysisProviderEnhancement | null> {
@@ -19,7 +20,9 @@ export const openAIAnalysisProvider: AnalysisProvider = {
   kind: "openai",
   available: Boolean(process.env.OPENAI_API_KEY),
   reason: process.env.OPENAI_API_KEY ? undefined : "OPENAI_API_KEY is not configured.",
-  async enhance(_input: AnalysisInput, _baseline: AnalysisEngineResult) {
+  async enhance(input: AnalysisInput, _baseline: AnalysisEngineResult) {
+    const prompt = buildAnalysisPromptPayload(input);
+    void prompt;
     return null;
   },
 };
@@ -30,7 +33,9 @@ export const anthropicAnalysisProvider: AnalysisProvider = {
   kind: "anthropic",
   available: Boolean(process.env.ANTHROPIC_API_KEY),
   reason: process.env.ANTHROPIC_API_KEY ? undefined : "ANTHROPIC_API_KEY is not configured.",
-  async enhance(_input: AnalysisInput, _baseline: AnalysisEngineResult) {
+  async enhance(input: AnalysisInput, _baseline: AnalysisEngineResult) {
+    const prompt = buildAnalysisPromptPayload(input);
+    void prompt;
     return null;
   },
 };
