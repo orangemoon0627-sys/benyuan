@@ -51,7 +51,9 @@ export default function RuntimeLabPage() {
                   <p>fallback active：{runtime.fallbackActive ? "yes" : "no"}</p>
                   <p>provider available：{runtime.providerAvailable ? "yes" : "no"}</p>
                   <p>provider reason：{runtime.providerReason ?? "configured"}</p>
+                  <p>prompt template：{runtime.selectedPromptTemplateKey}</p>
                   <p>env flags：OpenAI={runtime.openAIKeyConfigured ? "on" : "off"} · Anthropic={runtime.anthropicKeyConfigured ? "on" : "off"}</p>
+                  <p>models：{runtime.openAIModel} · {runtime.anthropicModel}</p>
                 </div>
               </ReportCard>
             );
@@ -65,6 +67,7 @@ export default function RuntimeLabPage() {
               <p>mode：{promptPreview.payload.metadata.mode}</p>
               <p>question count：{promptPreview.payload.metadata.questionCount}</p>
               <p>open reflections：{promptPreview.summary.openReflectionCount}</p>
+              <p>template：{promptPreview.template.id} / {promptPreview.template.version}</p>
             </div>
             <div>
               <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">top signals</p>

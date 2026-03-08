@@ -7,3 +7,5 @@ export * from "@/lib/analysis/provider";
 export * from "@/lib/analysis/hybrid-engine";
 export * from "@/lib/analysis/prompt-shaping";
 export * from "@/lib/analysis/config";
+export * from "@/lib/analysis/prompt-templates";
+export * from "@/lib/analysis/report-merge";

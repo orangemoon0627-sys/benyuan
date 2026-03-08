@@ -36,6 +36,11 @@ export type AnalysisEngine = {
 
 export type AnalysisProviderEnhancement = {
   report?: Partial<ReportPayload>;
+  metadata?: {
+    providerId: string;
+    promptTemplateId?: string;
+    promptTemplateVersion?: string;
+  };
 };
 
 export type AnalysisProvider = {
@@ -52,6 +57,8 @@ export type AnalysisPromptPayload = {
   system: string;
   user: string;
   metadata: {
+    templateId: string;
+    templateVersion: string;
     mode: Mode;
     sessionId: string;
     questionCount: number;
@@ -60,6 +67,11 @@ export type AnalysisPromptPayload = {
 };
 
 export type AnalysisPromptShapingResult = {
+  template: {
+    id: string;
+    version: string;
+    label: string;
+  };
   payload: AnalysisPromptPayload;
   summary: {
     answeredCount: number;

@@ -36,8 +36,11 @@ export function getAnalysisRuntimeStatus(mode: Mode, options?: { engine?: string
     providerReason: provider.reason,
     fallbackActive,
     selectedProviderKey: config.selectedProviderKey,
+    selectedPromptTemplateKey: config.selectedPromptTemplateKey,
     openAIKeyConfigured: config.openAIKeyConfigured,
     anthropicKeyConfigured: config.anthropicKeyConfigured,
+    openAIModel: config.openAIModel,
+    anthropicModel: config.anthropicModel,
     effectiveRuntime: fallbackActive ? "deterministic_fallback" : engine.kind === "llm" ? "hybrid_provider" : "deterministic",
   };
 }

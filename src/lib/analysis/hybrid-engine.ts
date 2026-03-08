@@ -1,4 +1,5 @@
 import { deterministicAnalysisEngine } from "@/lib/analysis/deterministic-engine";
+import { mergeAnalysisProviderEnhancement } from "@/lib/analysis/report-merge";
 import { resolveAnalysisProvider } from "@/lib/analysis/provider";
 import type { AnalysisEngine } from "@/lib/analysis/types";
 
@@ -16,16 +17,6 @@ export const hybridAnalysisEngine: AnalysisEngine = {
     }
 
     const enhancement = await provider.enhance(input, baseline);
-    if (!enhancement?.report) {
-      return baseline;
-    }
-
-    return {
-      ...baseline,
-      report: {
-        ...baseline.report,
-        ...enhancement.report,
-      },
-    };
+    return mergeAnalysisProviderEnhancement(baseline, enhancement);
   },
 };

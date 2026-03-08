@@ -1,3 +1,5 @@
+import { readAnalysisRuntimeConfig } from "@/lib/analysis/config";
+import { resolveAnalysisPromptTemplate } from "@/lib/analysis/prompt-templates";
 import type { AnalysisInput, AnalysisPromptShapingResult } from "@/lib/analysis/types";
 
 function stringifyAnswer(value: string | string[] | number) {
@@ -6,6 +8,8 @@ function stringifyAnswer(value: string | string[] | number) {
 }
 
 export function buildAnalysisPromptPayload(input: AnalysisInput): AnalysisPromptShapingResult {
+  const runtimeConfig = readAnalysisRuntimeConfig(input.session.mode);
+  const template = resolveAnalysisPromptTemplate(runtimeConfig.selectedPromptTemplateKey);
   const answered = input.session.answers.filter((answer) => {
     if (typeof answer.value === "string") return answer.value.trim().length > 0;
     if (Array.isArray(answer.value)) return answer.value.length > 0;
@@ -19,9 +23,16 @@ export function buildAnalysisPromptPayload(input: AnalysisInput): AnalysisPrompt
     .length;
 
   return {
+    template: {
+      id: template.id,
+      version: template.version,
+      label: template.label,
+    },
     payload: {
-      system:
-        "You are the Benyuan analysis layer. Preserve nuance, avoid rigid labels, and only deepen the deterministic baseline when evidence is sufficient.",
+      system: `${template.system}
+
+Guidance:
+- ${template.guidance.join("\n- ")}`,
       user: JSON.stringify(
         {
           mode: input.session.mode,
@@ -40,6 +51,8 @@ export function buildAnalysisPromptPayload(input: AnalysisInput): AnalysisPrompt
         2,
       ),
       metadata: {
+        templateId: template.id,
+        templateVersion: template.version,
         mode: input.session.mode,
         sessionId: input.session.sessionId,
         questionCount: input.questionSet.length,

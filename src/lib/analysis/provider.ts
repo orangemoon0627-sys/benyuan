@@ -23,8 +23,13 @@ export const openAIAnalysisProvider: AnalysisProvider = {
   reason: process.env.OPENAI_API_KEY ? undefined : "OPENAI_API_KEY is not configured.",
   async enhance(input: AnalysisInput, _baseline: AnalysisEngineResult) {
     const prompt = buildAnalysisPromptPayload(input);
-    void prompt;
-    return null;
+    return {
+      metadata: {
+        providerId: "provider.openai.stub",
+        promptTemplateId: prompt.template.id,
+        promptTemplateVersion: prompt.template.version,
+      },
+    };
   },
 };
 
@@ -36,8 +41,13 @@ export const anthropicAnalysisProvider: AnalysisProvider = {
   reason: process.env.ANTHROPIC_API_KEY ? undefined : "ANTHROPIC_API_KEY is not configured.",
   async enhance(input: AnalysisInput, _baseline: AnalysisEngineResult) {
     const prompt = buildAnalysisPromptPayload(input);
-    void prompt;
-    return null;
+    return {
+      metadata: {
+        providerId: "provider.anthropic.stub",
+        promptTemplateId: prompt.template.id,
+        promptTemplateVersion: prompt.template.version,
+      },
+    };
   },
 };
 

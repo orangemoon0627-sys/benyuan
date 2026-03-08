@@ -183,3 +183,42 @@ Provider and engine selection now resolve through:
 - `src/lib/analysis/config.ts`
 
 This centralizes runtime selection instead of reading scattered environment variables directly in multiple files.
+
+
+## Prompt Template Versioning
+
+Provider-facing prompts now resolve through a versioned template registry:
+- `src/lib/analysis/prompt-templates.ts`
+- current key: `core`
+- current template version: `prompt-template.v1`
+
+This gives us a stable place to evolve prompt instructions without coupling those changes to the deterministic engine or UI pacing layer.
+
+## Provider Merge Boundary
+
+Hybrid analysis now merges provider enhancements through a dedicated seam:
+- `src/lib/analysis/report-merge.ts`
+
+That means future provider output can selectively enhance narrative fields while preserving baseline safety flags, recommendations, and deterministic fallbacks.
+
+## Runtime Model Observability
+
+The runtime inspection surfaces now expose prompt/model metadata as part of the analysis contract:
+- selected prompt template key
+- configured OpenAI model
+- configured Anthropic model
+- prompt preview template id/version
+
+This is visible in:
+- `GET /api/analysis/runtime`
+- `/lab/runtime`
+
+## Latest Validation Snapshot
+
+Validated on 2026-03-08 with:
+- `npm run lint`
+- `npm run build`
+- `npm run smoke:runtime:page`
+- `npm run smoke:runtime:hybrid`
+- `BENYUAN_BASE_URL=http://localhost:3000 npm run smoke:flow:all`
+- `BENYUAN_BASE_URL=http://localhost:3000 BENYUAN_ANALYSIS_ENGINE=hybrid npm run smoke:flow:deep`
