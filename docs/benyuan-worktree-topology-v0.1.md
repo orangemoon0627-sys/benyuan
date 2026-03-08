@@ -292,10 +292,11 @@ That makes future client work safer for:
 
 ## Project Roadmap Console
 
-There is now a dedicated internal roadmap surface for structured progress visibility:
-- `/lab/roadmap`
-- `/api/internal/project-status`
-- data source: `src/lib/project-roadmap.ts`
+There is now a dedicated standalone roadmap surface for structured progress visibility:
+- `/Users/fanhao/Documents/Playground-ops`
+- `/Users/fanhao/Documents/Playground-ops/data/project-status.json`
+- source data in `src/lib/project-roadmap.ts`
+- sync script: `scripts/sync-project-console.mjs`
 
 This gives a web-visible control panel for:
 - current focus and next objective

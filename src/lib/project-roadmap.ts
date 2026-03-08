@@ -45,8 +45,8 @@ export type ProjectBoardData = {
 
 export const projectRoadmapBoard: ProjectBoardData = {
   snapshotDate: "2026-03-08",
-  currentFocus: "把测试端 client contract 与内部项目看板做成可视化控制台",
-  currentObjective: "让题库版本、测试节奏、分析边界、项目推进状态都可以在 web 内部面板直接查看",
+  currentFocus: "把测试端 client contract 与独立项目控制台做成可复用驾驶舱",
+  currentObjective: "让题库版本、测试节奏、分析边界、项目推进状态都能在独立控制台里查看",
   nextObjective: "把多版本 schema 对比、phase diff 和 iOS 复用 contract 再往前推一层",
   lanes: [
     {
@@ -134,7 +134,7 @@ export const projectRoadmapBoard: ProjectBoardData = {
     {
       id: "visibility",
       title: "Visibility & Ops",
-      description: "lab 页面、回归验证、看板、文档同步",
+      description: "lab 页面、回归验证、独立控制台、文档同步",
       progress: 78,
       status: "in_progress",
       steps: [
@@ -150,7 +150,7 @@ export const projectRoadmapBoard: ProjectBoardData = {
           id: "project-board",
           title: "结构化项目看板",
           purpose: "让你随时看到动作、目的、框架进度和下一步",
-          action: "新增 web 控制台和 JSON 数据源",
+          action: "新增独立本地控制台和 JSON 状态数据同步",
           status: "in_progress",
           owners: ["ops", "frontend"],
         },
@@ -195,8 +195,8 @@ export const projectRoadmapBoard: ProjectBoardData = {
       title: "QA & Observability",
       progress: 82,
       status: "review_ready",
-      scope: "golden samples, smoke scripts, audit workflow, project board",
-      artifacts: ["scripts/smoke-flow.mjs", "src/lib/golden-*", "/lab/golden", "/lab/roadmap"],
+      scope: "golden samples, smoke scripts, audit workflow, standalone project console",
+      artifacts: ["scripts/smoke-flow.mjs", "src/lib/golden-*", "/lab/golden", "/Users/fanhao/Documents/Playground-ops"],
     },
   ],
   worktrees: [

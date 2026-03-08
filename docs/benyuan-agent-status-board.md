@@ -97,8 +97,8 @@ If you keep working with me in this same conversation, I can keep this board upd
 - Schema version exposure in `/api/test/schema` and `src/lib/assessment-schema.ts`
 - Session-bound assessment version persistence in `src/lib/types.ts`, `src/app/api/test/submit/route.ts`, and `src/lib/analysis/input.ts`
 - Extracted test pacing/review contract in `src/lib/assessment-client-contract.ts`
-- Web project roadmap console in `/lab/roadmap`
-- JSON project status feed in `/api/internal/project-status`
+- Standalone project roadmap console in `/Users/fanhao/Documents/Playground-ops`
+- Synced JSON project status feed in `/Users/fanhao/Documents/Playground-ops/data/project-status.json`
 - Mode-driven assessment registry with `lite` / `deep` skeleton in `src/features/assessment/registry.ts`
 - Queryable test schema by mode in `src/app/api/test/schema/route.ts`
 - Question-type registry in `src/features/assessment/question-types.ts`
