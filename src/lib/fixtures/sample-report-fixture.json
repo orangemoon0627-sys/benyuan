@@ -1,0 +1,5 @@
+{
+  "fixtureId": "report_fixture_001",
+  "purpose": "UI rendering and prompt regression sample",
+  "source": "sampleReport in src/lib/fixtures/report.ts"
+}
