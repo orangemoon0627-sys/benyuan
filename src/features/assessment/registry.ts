@@ -1,7 +1,7 @@
 import type { Mode, Answer } from "@/lib/types";
 import { assessmentModuleLabels, lifeStageOptions, moodKeywordOptions } from "./catalog";
 import { findFirstIncompleteQuestionIndex, getAssessmentTotalSteps } from "./flow";
-import { fullLiteQuestionSet } from "./question-bank";
+import { fullDeepQuestionSet, fullLiteQuestionSet } from "./question-bank";
 import type { AssessmentDefinition, AssessmentFormState, AssessmentValidationConfig } from "./types";
 
 export type AssessmentValidationResult =
@@ -31,7 +31,7 @@ function createAssessmentDefinition(config: {
   title: string;
   description: string;
   storageKey: string;
-  questions?: typeof fullLiteQuestionSet;
+  questions?: AssessmentDefinition["questions"];
   initialState?: AssessmentFormState;
   validation?: AssessmentValidationConfig;
   phases: AssessmentDefinition["phases"];
@@ -71,14 +71,23 @@ const liteAssessmentDefinition = createAssessmentDefinition({
 const deepAssessmentDefinition = createAssessmentDefinition({
   mode: "deep",
   title: "Deep Ritual",
-  description: "为后续深度版保留的扩展骨架，当前先复用 Lite 题库与校验规则。",
+  description: "独立于 Lite 的深描探索流，补入认知、关系、欲望与灵性结构。",
   storageKey: "benyuan-deep-test-draft-v1",
+  questions: fullDeepQuestionSet,
+  validation: {
+    requireAtLeastOneOpenReflection: true,
+    openReflectionQuestionIds: ["D015", "D016"],
+  },
   phases: [
     { id: "entry", label: "进入状态", description: "建立初始生命坐标与情绪背景。", moduleIds: ["entry_state"] },
+    { id: "cognition", label: "认知地貌", description: "观察你如何辨认模式、处理矛盾与观看自己的思考。", moduleIds: ["cognitive_topology"] },
     { id: "emotion", label: "情感气候", description: "追踪情绪模式与触发点。", moduleIds: ["emotional_weather"] },
+    { id: "desire", label: "欲望拓扑", description: "摸到你真正想守住什么，也看见更深的不安。", moduleIds: ["desire_topology"] },
+    { id: "relation", label: "关系语法", description: "理解你如何允许他人靠近，以及你如何保护边界。", moduleIds: ["relational_grammar"] },
     { id: "aesthetic", label: "审美语法", description: "提取审美、象征与共鸣线索。", moduleIds: ["aesthetic_fingerprint"] },
     { id: "temporal", label: "时间哲学", description: "组织生命叙事与变化方向。", moduleIds: ["temporal_philosophy"] },
-    { id: "reflection", label: "开放反思", description: "为未来自传、关系、创作输入预留接口。", moduleIds: ["open_reflection"] },
+    { id: "spiritual", label: "灵性向度", description: "记录你如何理解意义、连接与超越。", moduleIds: ["spiritual_dimension"] },
+    { id: "reflection", label: "开放反思", description: "把无法量化的部分留给文字和图像化回忆。", moduleIds: ["open_reflection"] },
   ],
 });
 

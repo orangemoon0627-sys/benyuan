@@ -95,6 +95,8 @@ This will make it much easier to:
 
 The immediate benefit is that future image/audio/ranking questions can be introduced as kernel-level changes first, then enabled gradually per client.
 
+The schema contract now also exposes `phases`, so future web / iOS / mini-program clients can consume pacing structure directly instead of inferring it from question order.
+
 ## Analysis Engine Boundary
 
 The analysis pipeline now resolves through an engine abstraction:
@@ -111,7 +113,7 @@ Assessment is now mode-driven instead of being hardcoded to a single questionnai
 
 Current registry behavior:
 - `lite` mode: active MVP path
-- `deep` mode: structural placeholder that currently reuses the Lite bank, but already has its own storage key and phase definition
+- `deep` mode: independent question bank with its own phases, validation targets, and storage key
 
 This gives us a clean place to later introduce:
 - different question sets per mode

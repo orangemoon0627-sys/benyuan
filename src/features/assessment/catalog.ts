@@ -1,8 +1,12 @@
 export const assessmentModuleLabels: Record<string, string> = {
   entry_state: "进入状态",
   emotional_weather: "情感气候",
+  cognitive_topology: "认知地貌",
   aesthetic_fingerprint: "审美语法",
+  desire_topology: "欲望拓扑",
+  relational_grammar: "关系语法",
   temporal_philosophy: "时间哲学",
+  spiritual_dimension: "灵性向度",
   open_reflection: "开放反思",
 };
 

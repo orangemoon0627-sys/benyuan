@@ -16,6 +16,23 @@ export type AssessmentQuestionTypeMeta = {
   validate(question: QuestionDef, value: AssessmentAnswerValue | undefined): boolean;
 };
 
+function isEffectivelyEmptyValue(value: AssessmentAnswerValue | undefined) {
+  if (value === undefined) return true;
+  if (typeof value === "string") return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  return false;
+}
+
+function wrapOptionalValidation(validate: (question: QuestionDef, value: AssessmentAnswerValue | undefined) => boolean) {
+  return (question: QuestionDef, value: AssessmentAnswerValue | undefined) => {
+    if (question.optional && isEffectivelyEmptyValue(value)) {
+      return true;
+    }
+
+    return validate(question, value);
+  };
+}
+
 function validateSingleChoice(value: AssessmentAnswerValue | undefined) {
   return typeof value === "string" && value.length > 0;
 }
@@ -47,7 +64,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "implemented",
     defaultPresentation: "text_options",
     defaultValue: () => "",
-    validate: (_, value) => validateSingleChoice(value),
+    validate: wrapOptionalValidation((_, value) => validateSingleChoice(value)),
   },
   multi: {
     answerType: "multi",
@@ -56,7 +73,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "implemented",
     defaultPresentation: "text_options",
     defaultValue: () => [],
-    validate: validateMultiChoice,
+    validate: wrapOptionalValidation(validateMultiChoice),
   },
   scale: {
     answerType: "scale",
@@ -65,7 +82,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "implemented",
     defaultPresentation: "scale_steps",
     defaultValue: (question) => question.scaleMin ?? 1,
-    validate: (_, value) => validateScale(value),
+    validate: wrapOptionalValidation((_, value) => validateScale(value)),
   },
   text: {
     answerType: "text",
@@ -74,7 +91,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "implemented",
     defaultPresentation: "long_text",
     defaultValue: () => "",
-    validate: validateText,
+    validate: wrapOptionalValidation(validateText),
   },
   rank: {
     answerType: "rank",
@@ -83,7 +100,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "planned",
     defaultPresentation: "ranked_cards",
     defaultValue: () => [],
-    validate: validateRank,
+    validate: wrapOptionalValidation(validateRank),
   },
   image_single: {
     answerType: "image_single",
@@ -92,7 +109,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "planned",
     defaultPresentation: "image_grid",
     defaultValue: () => "",
-    validate: (_, value) => validateSingleChoice(value),
+    validate: wrapOptionalValidation((_, value) => validateSingleChoice(value)),
   },
   image_multi: {
     answerType: "image_multi",
@@ -101,7 +118,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "planned",
     defaultPresentation: "image_grid",
     defaultValue: () => [],
-    validate: validateMultiChoice,
+    validate: wrapOptionalValidation(validateMultiChoice),
   },
   audio_single: {
     answerType: "audio_single",
@@ -110,7 +127,7 @@ export const assessmentQuestionTypeRegistry: Record<QuestionAnswerType, Assessme
     webImplementation: "planned",
     defaultPresentation: "audio_scene",
     defaultValue: () => "",
-    validate: (_, value) => validateSingleChoice(value),
+    validate: wrapOptionalValidation((_, value) => validateSingleChoice(value)),
   },
 };
 

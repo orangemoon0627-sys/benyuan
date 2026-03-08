@@ -6,9 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, History, RotateCcw, Sparkles } from "lucide-react";
 import {
-  assessmentModuleLabels,
   defaultAssessmentMode,
-  fullLiteQuestionSet,
   getAssessmentDefinition,
   getAssessmentModuleLabel,
   getAssessmentQuestionTypeMeta,
@@ -18,8 +16,6 @@ import {
   hasDraftableAssessmentProgress,
   resolveAssessmentMode,
   isAssessmentQuestionAnswered,
-  lifeStageOptions,
-  moodKeywordOptions,
   type AssessmentAnswerValue,
   type AssessmentFormState as FormState,
   type AssessmentStepContext as StepContext,
@@ -83,8 +79,20 @@ function getRitualLine(context: StepContext) {
     return "你已经走完整条问题河道，现在只差最后一次回望。";
   }
 
+  if (context.question.moduleId === "cognitive_topology") {
+    return "这一段在看你如何处理复杂、矛盾与不确定，而不是判断聪明与否。";
+  }
+
   if (context.question.moduleId === "emotional_weather") {
     return "这一段更像在辨认情绪天气，而不是做性格判断。";
+  }
+
+  if (context.question.moduleId === "desire_topology") {
+    return "这一段会更靠近你真正想守住的东西，以及你最深的不安。";
+  }
+
+  if (context.question.moduleId === "relational_grammar") {
+    return "这一段在看你如何允许靠近、如何退后，以及边界如何形成。";
   }
 
   if (context.question.moduleId === "aesthetic_fingerprint") {
@@ -93,6 +101,10 @@ function getRitualLine(context: StepContext) {
 
   if (context.question.moduleId === "temporal_philosophy") {
     return "这一段在观察你如何与过去、当下和未来相处。";
+  }
+
+  if (context.question.moduleId === "spiritual_dimension") {
+    return "这一段不在判断你信什么，而在看你如何理解意义、连接与超越。";
   }
 
   if (context.question.moduleId === "open_reflection") {
@@ -116,6 +128,30 @@ function getCompanionNote(context: StepContext) {
       eyebrow: "handoff note",
       title: "提交前，不必再追求完美",
       body: "如果有些题你仍犹豫，也没关系。这里需要的不是最正确的你，而是此刻最接近真实的你。",
+    };
+  }
+
+  if (context.mode === "question" && context.question.moduleId === "cognitive_topology") {
+    return {
+      eyebrow: "cognitive cue",
+      title: "这里记录的是你的思考地形，不是标准答案",
+      body: "有些人先找结构，有些人先捕捉直觉。系统关心的是你怎样抵达理解，而不是你像不像某种模板。",
+    };
+  }
+
+  if (context.mode === "question" && context.question.moduleId === "desire_topology") {
+    return {
+      eyebrow: "desire cue",
+      title: "这部分更私密，可以慢一点",
+      body: "关于匮乏、理想与恐惧的题，不需要答得漂亮，只需要比平时更接近真实一点。",
+    };
+  }
+
+  if (context.mode === "question" && context.question.moduleId === "relational_grammar") {
+    return {
+      eyebrow: "relation cue",
+      title: "关系并不只关乎别人，也关乎你如何保护自己",
+      body: "你在靠近时如何退后、在独处时如何安顿，都会构成你独特的关系语法。",
     };
   }
 
@@ -463,7 +499,7 @@ function TestPageClient() {
               value={state.lifeStage}
               onChange={(event) => setState((current) => ({ ...current, lifeStage: event.target.value }))}
             >
-              {lifeStageOptions.map((option) => (
+              {assessmentDefinition.lifeStageOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -474,7 +510,7 @@ function TestPageClient() {
           <div className="space-y-3 text-sm text-stone-300">
             <span className="tracking-[0.22em] text-stone-500 uppercase">近期心境关键词</span>
             <div className="flex flex-wrap gap-3">
-              {moodKeywordOptions.map((keyword) => {
+              {assessmentDefinition.moodKeywordOptions.map((keyword) => {
                 const active = state.moodKeywords.includes(keyword);
                 return (
                   <button
@@ -529,7 +565,7 @@ function TestPageClient() {
             <div className="rounded-[26px] bg-black/16 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
               <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">完成情况</p>
               <div className="mt-4 space-y-3 text-sm leading-7 text-stone-300/78">
-                <p>生命阶段：{lifeStageOptions.find((item) => item.value === state.lifeStage)?.label ?? state.lifeStage}</p>
+                <p>生命阶段：{assessmentDefinition.lifeStageOptions.find((item) => item.value === state.lifeStage)?.label ?? state.lifeStage}</p>
                 <p>心境关键词：{state.moodKeywords.join(" · ")}</p>
                 <p>已回答题目：{answeredCount} / {assessmentDefinition.questions.length}</p>
                 <p>开放反思：{openTextCount} / 2</p>
@@ -654,7 +690,7 @@ function TestPageClient() {
             <motion.div className="h-full bg-[linear-gradient(90deg,rgba(216,232,255,0.84),rgba(167,193,228,0.72))]" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }} />
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {Object.entries(assessmentModuleLabels).map(([key, label]) => {
+            {Object.entries(assessmentDefinition.moduleLabels).map(([key, label]) => {
               const active = context.mode === "question" ? context.question.moduleId === key : context.mode === "entry" ? key === "entry_state" : key === "open_reflection";
               return (
                 <span

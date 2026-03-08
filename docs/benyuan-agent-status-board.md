@@ -30,7 +30,7 @@ If you keep working with me in this same conversation, I can keep this board upd
 | Assessment Designer Agent | Question bank, scoring, confidence | `done` | Question bank v0.1 + scoring mapping v0.1 implemented in code | Expand from 3 dimensions to evidence traces |
 | Psychoanalysis Prompt Agent | Prompt pack, archetype, tensions | `review_ready` | Prompt pack v0.1 completed + rule-based narrative variation pass reflected in code output | Decide whether prompt-native generation replaces the current controlled branch system |
 | Safety and Ethics Agent | Risk taxonomy, rewrite policy | `review_ready` | Safety policy v0.1 completed + higher-risk report wording tightened | Keep local-resource fallback copy current |
-| Experience and Engineering Agent | API, queue, rendering, storage | `review_ready` | Real feature mapping, dynamic report generation, evidence trace UI, dual-mode immersive/evidence report reading surface, atmospheric single-question test flow, cinematic processing transition, reviewer audit page/API, refreshed share-card visual system, selectable baseline versioning, candidate freeze generator, real v0.2 baseline fixture, contextual safety copy, file persistence, autosave, explicit draft controls, fresh-load-only draft recovery notice, end-to-end browser QA, share/save actions, worktree split, assessment registry, mode-driven core, question-type registry + schema serialization | Compare v0.2 against future prompt-native iteration |
+| Experience and Engineering Agent | API, queue, rendering, storage | `review_ready` | Real feature mapping, dynamic report generation, evidence trace UI, dual-mode immersive/evidence report reading surface, atmospheric single-question test flow, cinematic processing transition, reviewer audit page/API, refreshed share-card visual system, selectable baseline versioning, candidate freeze generator, real v0.2 baseline fixture, contextual safety copy, file persistence, autosave, explicit draft controls, fresh-load-only draft recovery notice, end-to-end browser QA, share/save actions, worktree split, assessment registry, mode-driven core, question-type registry + schema serialization, independent deep-mode questionnaire contract | Compare v0.2 against future prompt-native iteration |
 | Evaluation Agent | Golden set, rubric, regression loop | `review_ready` | Review rubric + golden set + sample review records + weekly summary + canonical regression fixtures/page + audit diff workflow + frozen baselines v0.1/v0.2 + baseline history panel + freeze checklist | Prepare comparison notes for the next baseline delta |
 
 ## Milestone Tracker
@@ -89,7 +89,8 @@ If you keep working with me in this same conversation, I can keep this board upd
 - Mode-driven assessment registry with `lite` / `deep` skeleton in `src/features/assessment/registry.ts`
 - Queryable test schema by mode in `src/app/api/test/schema/route.ts`
 - Question-type registry in `src/features/assessment/question-types.ts`
-- Client-ready schema serialization for normalized options / presentation in `src/app/api/test/schema/route.ts`
+- Independent `deep` question bank and phase graph in `src/features/assessment/question-bank.ts` and `src/features/assessment/registry.ts`
+- Client-ready schema serialization for normalized options / presentation / phases in `src/app/api/test/schema/route.ts`
 - End-to-end browser QA pass for `/test`, `/processing/[sessionId]`, and `/report/[sessionId]`
 - Atmospheric questionnaire framing upgrades in `src/app/test/page.tsx`
 - Cinematic processing-state refinement in `src/app/processing/[sessionId]/page.tsx`
