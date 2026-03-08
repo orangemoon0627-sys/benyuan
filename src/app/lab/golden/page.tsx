@@ -22,13 +22,19 @@ export default function GoldenLabPage() {
               <p className="text-[11px] tracking-[0.46em] text-stone-300/65 uppercase">internal / golden regression</p>
               <h1 className="mt-5 text-4xl leading-[1.08] text-stone-50 md:text-6xl">黄金样本回归面板</h1>
               <p className="mt-5 max-w-3xl text-base leading-8 text-stone-300/82 md:text-lg">
-                这里保存 6 组 MVP 阶段的标准样本，用于持续检查 feature mapping、report 生成、safety flags 和 archetype 是否偏离预期。
+                这里保存 8 组当前阶段的标准样本，用于持续检查 feature mapping、report 生成、safety flags 和 archetype 是否偏离预期。
               </p>
             </div>
+            <div className="flex flex-wrap gap-3">
+            <Link href="/lab/runtime" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm tracking-[0.18em] text-stone-200 uppercase shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+              runtime 面板
+              <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+            </Link>
             <Link href="/lab/golden/audit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm tracking-[0.18em] text-stone-200 uppercase shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
               审阅差异面板
               <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
             </Link>
+          </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-3 text-sm uppercase tracking-[0.2em]">
             <span className="rounded-full bg-emerald-400/10 px-4 py-3 text-emerald-200 shadow-[0_0_0_1px_rgba(74,222,128,0.18)]">pass {goldenAuditSummary.passed}</span>

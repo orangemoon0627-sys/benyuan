@@ -1,4 +1,5 @@
 import type { Mode } from "@/lib/types";
+import { readAnalysisRuntimeConfig } from "@/lib/analysis/config";
 import { deterministicAnalysisEngine } from "@/lib/analysis/deterministic-engine";
 import { hybridAnalysisEngine } from "@/lib/analysis/hybrid-engine";
 import { resolveAnalysisProvider } from "@/lib/analysis/provider";
@@ -8,28 +9,19 @@ const analysisEngineRegistry = {
   hybrid: hybridAnalysisEngine,
 };
 
-const modeEngineDefaults: Record<Mode, keyof typeof analysisEngineRegistry> = {
-  lite: "deterministic",
-  deep: "deterministic",
-};
-
 export function getSelectedAnalysisEngineKey(mode: Mode, override?: string | null) {
-  const requested = (override ?? process.env.BENYUAN_ANALYSIS_ENGINE ?? "").toLowerCase();
-  if (requested === "hybrid" || requested === "deterministic") {
-    return requested;
-  }
-
-  return modeEngineDefaults[mode] ?? "deterministic";
+  return readAnalysisRuntimeConfig(mode, { engine: override }).selectedEngineKey;
 }
 
 export function resolveAnalysisEngine(mode: Mode, override?: string | null) {
   return analysisEngineRegistry[getSelectedAnalysisEngineKey(mode, override)] ?? deterministicAnalysisEngine;
 }
 
-export function getAnalysisRuntimeStatus(mode: Mode, options?: { engine?: string | null }) {
-  const selectedEngineKey = getSelectedAnalysisEngineKey(mode, options?.engine);
-  const engine = resolveAnalysisEngine(mode, options?.engine);
-  const provider = resolveAnalysisProvider();
+export function getAnalysisRuntimeStatus(mode: Mode, options?: { engine?: string | null; provider?: string | null }) {
+  const config = readAnalysisRuntimeConfig(mode, options);
+  const selectedEngineKey = config.selectedEngineKey;
+  const engine = resolveAnalysisEngine(mode, config.selectedEngineKey);
+  const provider = resolveAnalysisProvider({ provider: config.selectedProviderKey });
   const fallbackActive = selectedEngineKey === "hybrid" && !provider.available;
 
   return {
@@ -43,6 +35,9 @@ export function getAnalysisRuntimeStatus(mode: Mode, options?: { engine?: string
     providerAvailable: provider.available,
     providerReason: provider.reason,
     fallbackActive,
+    selectedProviderKey: config.selectedProviderKey,
+    openAIKeyConfigured: config.openAIKeyConfigured,
+    anthropicKeyConfigured: config.anthropicKeyConfigured,
     effectiveRuntime: fallbackActive ? "deterministic_fallback" : engine.kind === "llm" ? "hybrid_provider" : "deterministic",
   };
 }

@@ -168,3 +168,18 @@ Provider-facing prompt shaping now has its own seam:
 - `src/lib/analysis/prompt-shaping.ts`
 
 This keeps provider payload assembly separate from the deterministic engine and makes future OpenAI / Anthropic integration much easier to swap or version.
+
+## Runtime Lab Surface
+
+There is now a visual internal surface for analysis runtime inspection:
+- `/lab/runtime`
+- linked from `/lab/golden`
+
+This page shows engine/provider status, fallback state, env-key presence, and a prompt-shaping preview based on a deep-mode regression sample.
+
+## Analysis Config Contract
+
+Provider and engine selection now resolve through:
+- `src/lib/analysis/config.ts`
+
+This centralizes runtime selection instead of reading scattered environment variables directly in multiple files.

@@ -1,3 +1,4 @@
+import { readAnalysisRuntimeConfig } from "@/lib/analysis/config";
 import { buildAnalysisPromptPayload } from "@/lib/analysis/prompt-shaping";
 import type { AnalysisEngineResult, AnalysisInput, AnalysisProvider, AnalysisProviderEnhancement } from "@/lib/analysis/types";
 
@@ -46,7 +47,7 @@ const providerRegistry: Record<string, AnalysisProvider> = {
   anthropic: anthropicAnalysisProvider,
 };
 
-export function resolveAnalysisProvider() {
-  const providerKey = (process.env.BENYUAN_LLM_PROVIDER ?? "disabled").toLowerCase();
-  return providerRegistry[providerKey] ?? disabledAnalysisProvider;
+export function resolveAnalysisProvider(options?: { provider?: string | null }) {
+  const config = readAnalysisRuntimeConfig("lite", { provider: options?.provider });
+  return providerRegistry[config.selectedProviderKey] ?? disabledAnalysisProvider;
 }

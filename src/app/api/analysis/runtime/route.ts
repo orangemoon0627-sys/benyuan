@@ -8,9 +8,10 @@ export async function GET(request: Request) {
   const mode: Mode = requestedMode === "deep" ? "deep" : "lite";
 
   const requestedEngine = searchParams.get("engine");
+  const requestedProvider = searchParams.get("provider");
 
   return NextResponse.json({
     status: "ok",
-    runtime: getAnalysisRuntimeStatus(mode, { engine: requestedEngine }),
+    runtime: getAnalysisRuntimeStatus(mode, { engine: requestedEngine, provider: requestedProvider }),
   });
 }

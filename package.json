@@ -11,7 +11,8 @@
     "smoke:flow:deep": "BENYUAN_MODE=deep node --experimental-strip-types scripts/smoke-flow.mjs",
     "smoke:flow:all": "npm run smoke:flow && npm run smoke:flow:deep",
     "smoke:flow:hybrid": "BENYUAN_ANALYSIS_ENGINE=hybrid node --experimental-strip-types scripts/smoke-flow.mjs",
-    "smoke:runtime:hybrid": "node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL??'http://localhost:3000'; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); const data=await res.json(); if(!data.runtime.fallbackActive) throw new Error('expected fallback'); console.log(JSON.stringify(data.runtime));\""
+    "smoke:runtime:hybrid": "node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL??'http://localhost:3000'; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); const data=await res.json(); if(!data.runtime.fallbackActive) throw new Error('expected fallback'); console.log(JSON.stringify(data.runtime));\"",
+    "smoke:runtime:page": "node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL??'http://localhost:3000'; const res=await fetch(base + '/lab/runtime'); if(!res.ok) throw new Error('runtime page not reachable'); console.log('runtime-page:ok');\""
   },
   "dependencies": {
     "framer-motion": "^12.35.1",
