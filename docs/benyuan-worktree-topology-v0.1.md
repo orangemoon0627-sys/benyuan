@@ -223,6 +223,7 @@ Validated on 2026-03-08 with:
 - `BENYUAN_BASE_URL=http://localhost:3000 npm run smoke:flow:all`
 - `BENYUAN_BASE_URL=http://localhost:3000 BENYUAN_ANALYSIS_ENGINE=hybrid npm run smoke:flow:deep`
 - `node --input-type=module -e "fetch versioned /api/test/schema"`
+- `node --input-type=module -e "fetch /api/internal/schema-matrix"`
 
 
 ## Live Provider Adapter Boundary
@@ -304,3 +305,19 @@ This gives a web-visible control panel for:
 - framework-layer progress bars
 - worktree responsibility split
 - current validation loop
+
+
+## Schema Matrix Lab
+
+Assessment structure now has a dedicated internal inspection surface:
+- `/lab/schema`
+- `/api/internal/schema-matrix`
+
+This surface is for quickly checking:
+- mode / version combinations
+- total step counts
+- phase-to-module distribution
+- question ID coverage
+- default-version status
+
+It gives us a much faster review path before introducing `lite.v2` / `deep.v2` or changing phase layouts.

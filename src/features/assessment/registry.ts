@@ -151,6 +151,33 @@ export function getAssessmentDefinition(mode: Mode = defaultAssessmentMode, vers
   return assessmentRegistry[mode]?.[resolvedVersion] ?? assessmentRegistry[defaultAssessmentMode][defaultAssessmentVersions[defaultAssessmentMode]];
 }
 
+
+
+export function listAssessmentDefinitionSnapshots() {
+  return (Object.keys(assessmentRegistry) as Mode[]).flatMap((mode) =>
+    Object.values(assessmentRegistry[mode] ?? {}).map((definition) => ({
+      mode: definition.mode,
+      version: definition.version,
+      title: definition.title,
+      description: definition.description,
+      storageKey: definition.storageKey,
+      totalSteps: definition.totalSteps,
+      questionCount: definition.questions.length,
+      openReflectionQuestionIds: definition.validation.openReflectionQuestionIds,
+      modules: [...new Set(definition.questions.map((question) => question.moduleId))],
+      phases: definition.phases.map((phase) => ({
+        id: phase.id,
+        label: phase.label,
+        description: phase.description,
+        moduleIds: phase.moduleIds,
+        questionCount: definition.questions.filter((question) => phase.moduleIds.includes(question.moduleId)).length,
+      })),
+      questionIds: definition.questions.map((question) => question.questionId),
+      isDefaultVersion: defaultAssessmentVersions[mode] === definition.version,
+    })),
+  );
+}
+
 export function validateAssessmentSubmission(mode: Mode, answers: Answer[], version?: string | null): AssessmentValidationResult {
   const definition = getAssessmentDefinition(mode, version);
   const answerMap = new Map(answers.map((answer) => [answer.questionId, answer]));

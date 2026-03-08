@@ -30,7 +30,11 @@ export default function GoldenLabPage() {
               runtime 面板
               <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
             </Link>
-            <Link href="/lab/golden/audit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm tracking-[0.18em] text-stone-200 uppercase shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+            <Link href="/lab/schema" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm tracking-[0.18em] text-stone-200 uppercase shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                schema 面板
+                <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+              </Link>
+              <Link href="/lab/golden/audit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm tracking-[0.18em] text-stone-200 uppercase shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
               审阅差异面板
               <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
             </Link>
