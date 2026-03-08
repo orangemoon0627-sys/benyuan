@@ -12,6 +12,7 @@ import {
   hasDraftableAssessmentSchemaProgress,
   isAssessmentSchemaQuestionAnswered,
   resolveAssessmentSchemaMode,
+  resolveAssessmentSchemaVersion,
   type AssessmentSchemaAnswerValue as AssessmentAnswerValue,
   type AssessmentSchemaDefinition,
   type AssessmentSchemaFormState as FormState,
@@ -28,6 +29,7 @@ type DraftPayload = {
 const emptyAssessmentDefinition: AssessmentSchemaDefinition = {
   status: "ok",
   mode: "lite",
+  version: "lite.v1",
   title: "Loading",
   description: "",
   storageKey: "",
@@ -43,6 +45,7 @@ const emptyAssessmentDefinition: AssessmentSchemaDefinition = {
     requireAtLeastOneOpenReflection: false,
     openReflectionQuestionIds: [],
   },
+  availableVersions: [],
   availableModes: [],
 };
 
@@ -215,6 +218,7 @@ function TestPageClient() {
   const [draftReady, setDraftReady] = useState(false);
   const [schemaReady, setSchemaReady] = useState(false);
   const assessmentMode = resolveAssessmentSchemaMode(searchParams.get("mode"));
+  const assessmentVersion = resolveAssessmentSchemaVersion(searchParams.get("version"));
   const [loadedAssessmentDefinition, setLoadedAssessmentDefinition] = useState<AssessmentSchemaDefinition | null>(null);
   const assessmentDefinition = loadedAssessmentDefinition ?? emptyAssessmentDefinition;
   const [draftAvailableOnLoad, setDraftAvailableOnLoad] = useState(false);
@@ -234,7 +238,9 @@ function TestPageClient() {
       setCurrentStep(0);
 
       try {
-        const response = await fetch(`/api/test/schema?mode=${assessmentMode}`, { cache: "no-store" });
+        const schemaQuery = new URLSearchParams({ mode: assessmentMode });
+        if (assessmentVersion) schemaQuery.set("version", assessmentVersion);
+        const response = await fetch(`/api/test/schema?${schemaQuery.toString()}`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error("schema_load_failed");
         }
@@ -260,7 +266,7 @@ function TestPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [assessmentMode]);
+  }, [assessmentMode, assessmentVersion]);
 
   const context = getAssessmentSchemaStepContext(assessmentDefinition, currentStep);
   const progress = ((currentStep + 1) / assessmentDefinition.totalSteps) * 100;
@@ -431,6 +437,7 @@ function TestPageClient() {
 
     const payload = {
       mode: assessmentDefinition.mode,
+      version: assessmentDefinition.version,
       basicInfo: {
         lifeStage: state.lifeStage,
         moodKeywords: state.moodKeywords,

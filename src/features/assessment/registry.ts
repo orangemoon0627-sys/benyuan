@@ -1,8 +1,8 @@
 import type { Mode, Answer } from "@/lib/types";
 import { assessmentModuleLabels, lifeStageOptions, moodKeywordOptions } from "./catalog";
-import { findFirstIncompleteQuestionIndex, getAssessmentTotalSteps } from "./flow";
+import { findFirstIncompleteQuestionIndex } from "./flow";
 import { fullDeepQuestionSet, fullLiteQuestionSet } from "./question-bank";
-import type { AssessmentDefinition, AssessmentFormState, AssessmentValidationConfig } from "./types";
+import type { AssessmentDefinition, AssessmentFormState, AssessmentValidationConfig, AssessmentVersionDescriptor } from "./types";
 
 export type AssessmentValidationResult =
   | { ok: true }
@@ -28,6 +28,7 @@ const defaultValidation: AssessmentValidationConfig = {
 
 function createAssessmentDefinition(config: {
   mode: Mode;
+  version: string;
   title: string;
   description: string;
   storageKey: string;
@@ -36,16 +37,18 @@ function createAssessmentDefinition(config: {
   validation?: AssessmentValidationConfig;
   phases: AssessmentDefinition["phases"];
 }) {
+  const questions = config.questions ?? fullLiteQuestionSet;
   const definition: AssessmentDefinition = {
     mode: config.mode,
+    version: config.version,
     title: config.title,
     description: config.description,
     storageKey: config.storageKey,
     moduleLabels: assessmentModuleLabels,
     lifeStageOptions,
     moodKeywordOptions,
-    questions: config.questions ?? fullLiteQuestionSet,
-    totalSteps: (config.questions ?? fullLiteQuestionSet).length + 2,
+    questions,
+    totalSteps: questions.length + 2,
     phases: config.phases,
     initialState: config.initialState ?? baseInitialState,
     validation: config.validation ?? defaultValidation,
@@ -54,8 +57,9 @@ function createAssessmentDefinition(config: {
   return definition;
 }
 
-const liteAssessmentDefinition = createAssessmentDefinition({
+const liteAssessmentDefinitionV1 = createAssessmentDefinition({
   mode: "lite",
+  version: "lite.v1",
   title: "Lite Ritual",
   description: "适合当前 MVP 的单题推进式自我探索流程。",
   storageKey: "benyuan-lite-test-draft-v1",
@@ -68,8 +72,9 @@ const liteAssessmentDefinition = createAssessmentDefinition({
   ],
 });
 
-const deepAssessmentDefinition = createAssessmentDefinition({
+const deepAssessmentDefinitionV1 = createAssessmentDefinition({
   mode: "deep",
+  version: "deep.v1",
   title: "Deep Ritual",
   description: "独立于 Lite 的深描探索流，补入认知、关系、欲望与灵性结构。",
   storageKey: "benyuan-deep-test-draft-v1",
@@ -91,9 +96,18 @@ const deepAssessmentDefinition = createAssessmentDefinition({
   ],
 });
 
-const assessmentRegistry: Record<Mode, AssessmentDefinition> = {
-  lite: liteAssessmentDefinition,
-  deep: deepAssessmentDefinition,
+const assessmentRegistry: Record<Mode, Record<string, AssessmentDefinition>> = {
+  lite: {
+    [liteAssessmentDefinitionV1.version]: liteAssessmentDefinitionV1,
+  },
+  deep: {
+    [deepAssessmentDefinitionV1.version]: deepAssessmentDefinitionV1,
+  },
+};
+
+const defaultAssessmentVersions: Record<Mode, string> = {
+  lite: liteAssessmentDefinitionV1.version,
+  deep: deepAssessmentDefinitionV1.version,
 };
 
 export const defaultAssessmentMode: Mode = "lite";
@@ -106,22 +120,46 @@ export function resolveAssessmentMode(value: string | null | undefined) {
   return isAssessmentMode(value) ? value : defaultAssessmentMode;
 }
 
-export function listAssessmentDefinitions() {
-  return Object.values(assessmentRegistry);
+export function listAssessmentVersions(mode: Mode): AssessmentVersionDescriptor[] {
+  return Object.values(assessmentRegistry[mode] ?? {}).map((definition) => ({
+    mode: definition.mode,
+    version: definition.version,
+    title: definition.title,
+    description: definition.description,
+    totalSteps: definition.totalSteps,
+    storageKey: definition.storageKey,
+    phases: definition.phases,
+    isDefault: defaultAssessmentVersions[mode] === definition.version,
+  }));
 }
 
-export function getAssessmentDefinition(mode: Mode = defaultAssessmentMode) {
-  return assessmentRegistry[mode] ?? assessmentRegistry[defaultAssessmentMode];
+export function resolveAssessmentVersion(mode: Mode, value: string | null | undefined) {
+  const requested = value ?? defaultAssessmentVersions[mode];
+  return assessmentRegistry[mode]?.[requested]?.version ?? defaultAssessmentVersions[mode];
 }
 
-export function validateAssessmentSubmission(mode: Mode, answers: Answer[]): AssessmentValidationResult {
-  const definition = getAssessmentDefinition(mode);
+export function listAssessmentDefinitions(mode?: Mode) {
+  if (mode) {
+    return Object.values(assessmentRegistry[mode] ?? {});
+  }
+
+  return (Object.keys(assessmentRegistry) as Mode[]).map((item) => getAssessmentDefinition(item));
+}
+
+export function getAssessmentDefinition(mode: Mode = defaultAssessmentMode, version?: string | null) {
+  const resolvedVersion = resolveAssessmentVersion(mode, version);
+  return assessmentRegistry[mode]?.[resolvedVersion] ?? assessmentRegistry[defaultAssessmentMode][defaultAssessmentVersions[defaultAssessmentMode]];
+}
+
+export function validateAssessmentSubmission(mode: Mode, answers: Answer[], version?: string | null): AssessmentValidationResult {
+  const definition = getAssessmentDefinition(mode, version);
   const answerMap = new Map(answers.map((answer) => [answer.questionId, answer]));
   const answersRecord = Object.fromEntries(answers.map((answer) => [answer.questionId, answer.value])) as AssessmentFormState["answers"];
+  const requiredQuestions = definition.questions.filter((question) => !question.optional);
   const firstIncompleteQuestionIndex = findFirstIncompleteQuestionIndex(
     {
       ...definition,
-      questions: definition.questions.filter((question) => !question.optional),
+      questions: requiredQuestions,
     },
     answersRecord,
   );
@@ -132,7 +170,7 @@ export function validateAssessmentSubmission(mode: Mode, answers: Answer[]): Ass
   });
 
   if (firstIncompleteQuestionIndex >= 0 || (definition.validation.requireAtLeastOneOpenReflection && !openReflectionAnswered)) {
-    const firstIncompleteQuestion = firstIncompleteQuestionIndex >= 0 ? definition.questions.filter((question) => !question.optional)[firstIncompleteQuestionIndex] : null;
+    const firstIncompleteQuestion = firstIncompleteQuestionIndex >= 0 ? requiredQuestions[firstIncompleteQuestionIndex] : null;
 
     return {
       ok: false,

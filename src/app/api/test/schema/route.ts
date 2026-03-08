@@ -4,6 +4,7 @@ import {
   getAssessmentDefinition,
   listAssessmentDefinitions,
   listAssessmentQuestionTypes,
+  listAssessmentVersions,
   serializeAssessmentQuestion,
 } from "@/features/assessment";
 import type { Mode } from "@/lib/types";
@@ -11,21 +12,26 @@ import type { Mode } from "@/lib/types";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const requestedMode = (searchParams.get("mode") as Mode | null) ?? defaultAssessmentMode;
-  const definition = getAssessmentDefinition(requestedMode);
+  const requestedVersion = searchParams.get("version");
+  const definition = getAssessmentDefinition(requestedMode, requestedVersion);
 
   return NextResponse.json({
     status: "ok",
     mode: definition.mode,
+    version: definition.version,
     title: definition.title,
     description: definition.description,
     storageKey: definition.storageKey,
     initialState: definition.initialState,
+    availableVersions: listAssessmentVersions(definition.mode),
     availableModes: listAssessmentDefinitions().map((item) => ({
       mode: item.mode,
+      activeVersion: item.version,
       title: item.title,
       description: item.description,
       totalSteps: item.totalSteps,
       phases: item.phases,
+      versions: listAssessmentVersions(item.mode),
     })),
     totalSteps: definition.totalSteps,
     phases: definition.phases,

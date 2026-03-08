@@ -222,6 +222,7 @@ Validated on 2026-03-08 with:
 - `npm run smoke:runtime:hybrid`
 - `BENYUAN_BASE_URL=http://localhost:3000 npm run smoke:flow:all`
 - `BENYUAN_BASE_URL=http://localhost:3000 BENYUAN_ANALYSIS_ENGINE=hybrid npm run smoke:flow:deep`
+- `node --input-type=module -e "fetch versioned /api/test/schema"`
 
 
 ## Live Provider Adapter Boundary
@@ -252,3 +253,22 @@ This makes later edits safer:
 - change question wording without touching mapping logic
 - change mapping logic without rewriting question presentation
 - expand question types while preserving the analysis feature space
+
+
+## Versioned Assessment Schema
+
+Assessment structure is now version-addressable inside each mode:
+- `src/features/assessment/registry.ts`
+- `src/lib/assessment-schema.ts`
+- `/api/test/schema?mode=...&version=...`
+
+Current behavior:
+- each mode resolves a default version (`lite.v1`, `deep.v1`)
+- schema payload now exposes `version`, `availableVersions`, and per-mode active versions
+- submit payload can carry the selected assessment version
+- persisted sessions now keep `assessmentVersion`, so later analysis uses the exact matched questionnaire definition
+
+This gives us a safer upgrade path for future iterations:
+- ship `lite.v2` without breaking `lite.v1` sessions
+- compare report changes across questionnaire revisions
+- let future iOS or other clients pin to a specific assessment contract version

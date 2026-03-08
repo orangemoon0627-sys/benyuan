@@ -55,9 +55,21 @@ export type AssessmentSchemaFormState = {
   answers: Record<string, AssessmentSchemaAnswerValue>;
 };
 
+export type AssessmentSchemaVersionDescriptor = {
+  mode: Mode;
+  version: string;
+  title: string;
+  description: string;
+  totalSteps: number;
+  storageKey: string;
+  phases: AssessmentSchemaPhase[];
+  isDefault: boolean;
+};
+
 export type AssessmentSchemaDefinition = {
   status: "ok";
   mode: Mode;
+  version: string;
   title: string;
   description: string;
   storageKey: string;
@@ -73,12 +85,15 @@ export type AssessmentSchemaDefinition = {
     requireAtLeastOneOpenReflection: boolean;
     openReflectionQuestionIds: string[];
   };
+  availableVersions: AssessmentSchemaVersionDescriptor[];
   availableModes: Array<{
     mode: Mode;
+    activeVersion: string;
     title: string;
     description: string;
     totalSteps: number;
     phases: AssessmentSchemaPhase[];
+    versions: AssessmentSchemaVersionDescriptor[];
   }>;
 };
 
@@ -89,6 +104,10 @@ export type AssessmentSchemaStepContext =
 
 export function resolveAssessmentSchemaMode(value: string | null | undefined): Mode {
   return value === "deep" ? "deep" : "lite";
+}
+
+export function resolveAssessmentSchemaVersion(value: string | null | undefined) {
+  return value?.trim() ? value : null;
 }
 
 export function getAssessmentSchemaStepContext(definition: Pick<AssessmentSchemaDefinition, "questions" | "totalSteps">, step: number): AssessmentSchemaStepContext {

@@ -17,7 +17,7 @@ function toAnalysisQuestionContract(question: ReturnType<typeof getAssessmentDef
 }
 
 export function buildAnalysisInput(session: TestSession): AnalysisInput {
-  const definition = getAssessmentDefinition(session.mode);
+  const definition = getAssessmentDefinition(session.mode, session.assessmentVersion);
   const questionSet = definition.questions.map((question) => toAnalysisQuestionContract(question));
 
   return {

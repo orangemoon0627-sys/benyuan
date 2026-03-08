@@ -62,8 +62,20 @@ export type AssessmentValidationConfig = {
   openReflectionQuestionIds: string[];
 };
 
+export type AssessmentVersionDescriptor = {
+  mode: Mode;
+  version: string;
+  title: string;
+  description: string;
+  totalSteps: number;
+  storageKey: string;
+  phases: AssessmentPhase[];
+  isDefault: boolean;
+};
+
 export type AssessmentDefinition = {
   mode: Mode;
+  version: string;
   title: string;
   description: string;
   storageKey: string;

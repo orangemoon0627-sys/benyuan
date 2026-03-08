@@ -35,6 +35,7 @@ export interface Answer {
 export interface TestSession {
   sessionId: string;
   mode: Mode;
+  assessmentVersion: string;
   basicInfo: BasicInfo;
   answers: Answer[];
   createdAt: string;
