@@ -32,3 +32,17 @@ export type AnalysisEngine = {
   supportedModes: Mode[];
   run(input: AnalysisInput): Promise<AnalysisEngineResult>;
 };
+
+
+export type AnalysisProviderEnhancement = {
+  report?: Partial<ReportPayload>;
+};
+
+export type AnalysisProvider = {
+  id: string;
+  label: string;
+  kind: "disabled" | "openai" | "anthropic" | "custom";
+  available: boolean;
+  reason?: string;
+  enhance(input: AnalysisInput, baseline: AnalysisEngineResult): Promise<AnalysisProviderEnhancement | null>;
+};

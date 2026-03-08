@@ -144,3 +144,12 @@ The deterministic analysis pipeline no longer reads assessment registry data ad 
 - `src/lib/analysis/deterministic-engine.ts`
 
 This creates a cleaner seam for future AI providers: `store.ts` can hand the same `AnalysisInput` contract to deterministic and LLM engines without changing API routes or persistence flow.
+
+## Provider-Ready Fallback Path
+
+The analysis registry now supports a provider-ready hybrid path:
+- `src/lib/analysis/provider.ts`
+- `src/lib/analysis/hybrid-engine.ts`
+- `BENYUAN_ANALYSIS_ENGINE=hybrid`
+
+When no external provider is configured, the hybrid engine falls back to the deterministic engine instead of interrupting the product flow.

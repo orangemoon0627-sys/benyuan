@@ -184,11 +184,58 @@ const OPTION_MAPPINGS: Record<string, QuestionOptionMap> = {
     "如果变化有意义，我会接受它": { temporal_change_openness: 0.8, temporal_meaning_density: 0.3 },
     "我更想先理解变化在夺走什么": { temporal_meaning_density: 0.6 },
   },
+  D001: {
+    "旧秩序正在松动": { temporal_past_weight: 0.4, temporal_change_openness: 0.3 },
+    "新方向已经发亮但还没成形": { temporal_future_pull: 0.6, temporal_change_openness: 0.3 },
+    "关系结构在悄悄改写": { emotional_depth: 0.3, temporal_change_openness: 0.3 },
+    "我在重新学习如何安顿自己": { temporal_present_depth: 0.4, emotional_transformation: 0.2 },
+    "一切看似平稳，但内里在慢慢位移": { emotional_depth: 0.3, temporal_meaning_density: 0.3 },
+  },
+  D005: {
+    "身体先变重，语言变慢": { emotional_depth: 0.6 },
+    "脑子突然非常清醒，像被冷光照住": { aesthetic_literary_existential: 0.4, emotional_depth: 0.2 },
+    "会想立刻逃开或切断感受": { emotional_rhythm_stable: 0.2 },
+    "我反而更想靠近它，弄懂它": { emotional_depth: 0.6, emotional_transformation: 0.4 },
+    "像被潮水推远，与周围暂时失去同步": { emotional_rhythm_tidal: 0.6, emotional_depth: 0.2 },
+  },
+  D010: {
+    镜子: { temporal_meaning_density: 0.3 },
+    废墟: { aesthetic_literary_existential: 0.4, temporal_past_weight: 0.2 },
+    "门缝里的光": { temporal_future_pull: 0.4, aesthetic_literary_tenderness: 0.2 },
+    海岸线: { temporal_future_pull: 0.2, temporal_present_depth: 0.2 },
+    长廊: { temporal_narrative_coherence: 0.3 },
+    回声: { aesthetic_music_nocturnal: 0.4 },
+    密林: { aesthetic_visual_surreal: 0.5 },
+    "未寄出的信": { aesthetic_literary_tenderness: 0.4, temporal_past_weight: 0.2 },
+  },
+  D011: {
+    "愿意直面黑暗，但不故作夸张": { aesthetic_literary_existential: 0.6, emotional_depth: 0.2 },
+    "看似克制，却留下很深回响": { aesthetic_visual_minimal: 0.4, aesthetic_literary_tenderness: 0.4 },
+    "能把孤独写得很辽阔": { aesthetic_literary_existential: 0.4, aesthetic_music_nocturnal: 0.2 },
+    "能把混乱组织成某种秩序": { aesthetic_visual_minimal: 0.6 },
+    "没有给答案，却给了陪伴感": { aesthetic_literary_tenderness: 0.6 },
+  },
+  D012: {
+    "过去常常把我拉回去": { temporal_past_weight: 1 },
+    "我在练习把自己留在此刻": { temporal_present_depth: 1 },
+    "未来像一束很远但稳定的光": { temporal_future_pull: 1 },
+    "三者经常同时发声，很难分主次": { temporal_narrative_coherence: 0.5, temporal_meaning_density: 0.2 },
+    "我更像站在时间边缘看它们流动": { temporal_meaning_density: 0.7 },
+  },
+  D014: {
+    "它像一种被现实磨薄但仍未熄灭的火": { temporal_meaning_density: 0.5, emotional_depth: 0.2 },
+    "它来自与人、自然或作品的深层连接": { aesthetic_literary_tenderness: 0.3, temporal_meaning_density: 0.4 },
+    "它更像需要自己一点点建造": { temporal_change_openness: 0.3, temporal_meaning_density: 0.5 },
+    "我还没有稳定答案，但会持续追问": { aesthetic_literary_existential: 0.3, temporal_meaning_density: 0.5 },
+    "它只在极少数高峰时刻短暂出现": { temporal_present_depth: 0.3, temporal_meaning_density: 0.3 },
+  },
 };
 
 const SCALE_MAPPINGS: Record<string, FeatureKey> = {
   Q007: "emotional_granularity",
   Q021: "temporal_narrative_coherence",
+  D004: "emotional_granularity",
+  D013: "temporal_narrative_coherence",
 };
 
 const TRAUMA_REGEX = /创伤|虐待|暴力|阴影|崩溃|噩梦|窒息|抛弃|遗弃|羞辱|伤害|失控/u;

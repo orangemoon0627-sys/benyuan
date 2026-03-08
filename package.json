@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "smoke:flow": "node --experimental-strip-types scripts/smoke-flow.mjs",
     "smoke:flow:deep": "BENYUAN_MODE=deep node --experimental-strip-types scripts/smoke-flow.mjs",
-    "smoke:flow:all": "npm run smoke:flow && npm run smoke:flow:deep"
+    "smoke:flow:all": "npm run smoke:flow && npm run smoke:flow:deep",
+    "smoke:flow:hybrid": "BENYUAN_ANALYSIS_ENGINE=hybrid node --experimental-strip-types scripts/smoke-flow.mjs"
   },
   "dependencies": {
     "framer-motion": "^12.35.1",

@@ -1,5 +1,5 @@
-import { fullLiteQuestionSet, getDefaultAnswerValue } from "@/features/assessment";
-import type { Answer, BasicInfo, ConfidenceBand, SafetyFlag, TestSession } from "@/lib/types";
+import { getAssessmentDefinition, getDefaultAnswerValue } from "@/features/assessment";
+import type { Answer, BasicInfo, ConfidenceBand, Mode, SafetyFlag, TestSession } from "@/lib/types";
 
 type AnswerValue = string | string[] | number;
 
@@ -15,6 +15,7 @@ export type GoldenAuditExpectation = {
 
 export type GoldenSampleDefinition = {
   sampleId: string;
+  mode?: Mode;
   title: string;
   summary: string;
   expectation: string;
@@ -23,8 +24,9 @@ export type GoldenSampleDefinition = {
   answers: Record<string, AnswerValue>;
 };
 
-function buildAnswers(answerMap: Record<string, AnswerValue>): Answer[] {
-  return fullLiteQuestionSet.map((question) => ({
+function buildAnswers(mode: Mode, answerMap: Record<string, AnswerValue>): Answer[] {
+  const questionSet = getAssessmentDefinition(mode).questions;
+  return questionSet.map((question) => ({
     questionId: question.questionId,
     moduleId: question.moduleId,
     answerType: question.answerType,
@@ -35,11 +37,12 @@ function buildAnswers(answerMap: Record<string, AnswerValue>): Answer[] {
 }
 
 function buildSession(definition: GoldenSampleDefinition): TestSession {
+  const mode = definition.mode ?? "lite";
   return {
     sessionId: definition.sampleId,
-    mode: "lite",
+    mode,
     basicInfo: definition.basicInfo,
-    answers: buildAnswers(definition.answers),
+    answers: buildAnswers(mode, definition.answers),
     createdAt: "2026-03-08T00:00:00.000Z",
   };
 }
@@ -299,6 +302,73 @@ export const goldenSampleDefinitions: GoldenSampleDefinition[] = [
       Q024: "别急着把自己从虚无里拖出来，先保证吃饭、睡觉、见人，让问题不要一个人吞掉你。",
     },
   },
+  {
+    sampleId: "sample_07_deep_contracted",
+    mode: "deep",
+    title: "深描边界型",
+    summary: "deep 模式下的边界、意义与关系张力样本",
+    expectation: "应稳定穿过 deep schema / submit / analysis / report 链路，且不触发自伤风险。",
+    audit: {
+      forbiddenSafetyFlags: ["self_harm_risk"],
+      overviewAnyOf: ["你", "时间", "感受"],
+    },
+    basicInfo: {
+      lifeStage: "turning_point",
+      moodKeywords: ["迷茫", "希望"],
+    },
+    answers: {
+      D001: ["旧秩序正在松动", "新方向已经发亮但还没成形"],
+      D002: "先把所有线索摊开，再寻找结构",
+      D003: "允许两者并存，继续观察",
+      D004: 4,
+      D005: "我反而更想靠近它，弄懂它",
+      D006: "不被误解的真实",
+      D007: "我会不会一直活成别人期待的样子",
+      D008: "表面自然，内里非常谨慎",
+      D009: "被允许复杂，而不被催着解释",
+      D010: ["门缝里的光", "海岸线", "回声"],
+      D011: "看似克制，却留下很深回响",
+      D012: "未来像一束很远但稳定的光",
+      D013: 4,
+      D014: "它更像需要自己一点点建造",
+      D015: "我最近总会回到一个长廊尽头有微光的梦。它不恐怖，只是让我反复确认：我是不是已经走出了旧的自己。",
+      D016: "雾里的校对者。因为我一直在辨认什么是真正属于我的语言，什么只是被继承下来的回声。",
+    },
+  },
+  {
+    sampleId: "sample_08_deep_sparse",
+    mode: "deep",
+    title: "深描低信息型",
+    summary: "deep 模式下的低信息收敛样本",
+    expectation: "应保守输出，不夸大结论。",
+    audit: {
+      forbiddenSafetyFlags: ["self_harm_risk"],
+      overviewAnyOf: ["迷茫", "时间", "线"],
+    },
+    basicInfo: {
+      lifeStage: "exploration",
+      moodKeywords: ["迷茫"],
+    },
+    answers: {
+      D001: ["我在重新学习如何安顿自己", "一切看似平稳，但内里在慢慢位移"],
+      D002: "先退后一步，看自己为什么会被它卷进去",
+      D003: "会因此陷入长时间反复推演",
+      D004: 2,
+      D005: "像被潮水推远，与周围暂时失去同步",
+      D006: "可以慢慢长出来的安全感",
+      D007: "我会不会终究只是被替代",
+      D008: "会很珍惜，也会害怕被看穿",
+      D009: "被稳定地回应，而不是偶尔热烈",
+      D010: ["镜子", "回声"],
+      D011: "没有给答案，却给了陪伴感",
+      D012: "三者经常同时发声，很难分主次",
+      D013: 2,
+      D014: "我还没有稳定答案，但会持续追问",
+      D015: "",
+      D016: "先把这段路走过去。",
+    },
+  },
+
 ];
 
 export const goldenSampleSessions = goldenSampleDefinitions.map(buildSession);
