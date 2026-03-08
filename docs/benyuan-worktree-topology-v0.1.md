@@ -95,7 +95,7 @@ This will make it much easier to:
 
 The immediate benefit is that future image/audio/ranking questions can be introduced as kernel-level changes first, then enabled gradually per client.
 
-The schema contract now also exposes `phases`, so future web / iOS / mini-program clients can consume pacing structure directly instead of inferring it from question order.
+The schema contract now also exposes `phases`, `initialState`, and `storageKey`, so future web / iOS / mini-program clients can consume pacing structure directly instead of inferring it from question order.
 
 ## Analysis Engine Boundary
 
@@ -120,3 +120,18 @@ This gives us a clean place to later introduce:
 - different validation rules per mode
 - different pacing / phase structures per mode
 - different analysis-engine routing per mode
+
+## Frontend Contract Boundary
+
+The `/test` page now consumes `/api/test/schema` as its primary source of truth through:
+- `src/lib/assessment-schema.ts`
+- `src/app/test/page.tsx`
+
+This means frontend pacing, draft handling, question rendering, and review gating are now driven by the HTTP schema contract rather than direct imports from the assessment registry.
+
+## Smoke Coverage
+
+The smoke pipeline now validates both modes:
+- `npm run smoke:flow` → lite
+- `npm run smoke:flow:deep` → deep
+- `npm run smoke:flow:all` → both

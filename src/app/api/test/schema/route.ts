@@ -16,6 +16,10 @@ export async function GET(request: Request) {
   return NextResponse.json({
     status: "ok",
     mode: definition.mode,
+    title: definition.title,
+    description: definition.description,
+    storageKey: definition.storageKey,
+    initialState: definition.initialState,
     availableModes: listAssessmentDefinitions().map((item) => ({
       mode: item.mode,
       title: item.title,

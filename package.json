@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "smoke:flow": "node --experimental-strip-types scripts/smoke-flow.mjs"
+    "smoke:flow": "node --experimental-strip-types scripts/smoke-flow.mjs",
+    "smoke:flow:deep": "BENYUAN_MODE=deep node --experimental-strip-types scripts/smoke-flow.mjs",
+    "smoke:flow:all": "npm run smoke:flow && npm run smoke:flow:deep"
   },
   "dependencies": {
     "framer-motion": "^12.35.1",

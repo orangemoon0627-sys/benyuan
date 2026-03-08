@@ -6,26 +6,44 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, History, RotateCcw, Sparkles } from "lucide-react";
 import {
-  defaultAssessmentMode,
-  getAssessmentDefinition,
-  getAssessmentModuleLabel,
-  getAssessmentQuestionTypeMeta,
-  getAssessmentStepContext,
-  getDefaultAnswerValue,
-  getQuestionOptions,
-  hasDraftableAssessmentProgress,
-  resolveAssessmentMode,
-  isAssessmentQuestionAnswered,
-  type AssessmentAnswerValue,
-  type AssessmentFormState as FormState,
-  type AssessmentStepContext as StepContext,
-  type QuestionDef,
-} from "@/features/assessment";
+  getAssessmentSchemaModuleLabel,
+  getAssessmentSchemaStepContext,
+  getSchemaDefaultAnswerValue,
+  hasDraftableAssessmentSchemaProgress,
+  isAssessmentSchemaQuestionAnswered,
+  resolveAssessmentSchemaMode,
+  type AssessmentSchemaAnswerValue as AssessmentAnswerValue,
+  type AssessmentSchemaDefinition,
+  type AssessmentSchemaFormState as FormState,
+  type AssessmentSchemaQuestion as QuestionDef,
+  type AssessmentSchemaStepContext as StepContext,
+} from "@/lib/assessment-schema";
 
 type DraftPayload = {
   currentStep: number;
   state: FormState;
   savedAt: string;
+};
+
+const emptyAssessmentDefinition: AssessmentSchemaDefinition = {
+  status: "ok",
+  mode: "lite",
+  title: "Loading",
+  description: "",
+  storageKey: "",
+  initialState: { lifeStage: "", moodKeywords: [], answers: {} },
+  totalSteps: 2,
+  phases: [],
+  moduleLabels: {},
+  lifeStageOptions: [],
+  moodKeywordOptions: [],
+  questionTypes: [],
+  questions: [],
+  validation: {
+    requireAtLeastOneOpenReflection: false,
+    openReflectionQuestionIds: [],
+  },
+  availableModes: [],
 };
 
 
@@ -191,26 +209,71 @@ function TestPageClient() {
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
-  const assessmentMode = resolveAssessmentMode(searchParams.get("mode") ?? defaultAssessmentMode);
-  const assessmentDefinition = useMemo(() => getAssessmentDefinition(assessmentMode), [assessmentMode]);
+  const [schemaReady, setSchemaReady] = useState(false);
+  const assessmentMode = resolveAssessmentSchemaMode(searchParams.get("mode"));
+  const [loadedAssessmentDefinition, setLoadedAssessmentDefinition] = useState<AssessmentSchemaDefinition | null>(null);
+  const assessmentDefinition = loadedAssessmentDefinition ?? emptyAssessmentDefinition;
   const [draftAvailableOnLoad, setDraftAvailableOnLoad] = useState(false);
   const [draftMeta, setDraftMeta] = useState<{ currentStep: number; savedAt: string } | null>(null);
-  const [state, setState] = useState<FormState>(assessmentDefinition.initialState);
+  const [state, setState] = useState<FormState>(emptyAssessmentDefinition.initialState);
 
-  const context = getAssessmentStepContext(assessmentDefinition, currentStep);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSchema() {
+      setSchemaReady(false);
+      setSchemaError(null);
+      setDraftReady(false);
+      setDraftAvailableOnLoad(false);
+      setDraftMeta(null);
+      setDraftRestored(false);
+      setCurrentStep(0);
+
+      try {
+        const response = await fetch(`/api/test/schema?mode=${assessmentMode}`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("schema_load_failed");
+        }
+
+        const payload = (await response.json()) as AssessmentSchemaDefinition;
+        if (cancelled) return;
+        setLoadedAssessmentDefinition(payload);
+        setState(payload.initialState);
+      } catch {
+        if (cancelled) return;
+        setLoadedAssessmentDefinition(null);
+        setState(emptyAssessmentDefinition.initialState);
+        setSchemaError("测评结构加载失败，请稍后刷新再试。");
+      } finally {
+        if (!cancelled) {
+          setSchemaReady(true);
+        }
+      }
+    }
+
+    void loadSchema();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentMode]);
+
+  const context = getAssessmentSchemaStepContext(assessmentDefinition, currentStep);
   const progress = ((currentStep + 1) / assessmentDefinition.totalSteps) * 100;
-  const openTextCount = ["Q023", "Q024"].reduce((count, key) => {
+  const openTextCount = assessmentDefinition.validation.openReflectionQuestionIds.reduce((count, key) => {
     const value = state.answers[key];
     return typeof value === "string" && value.trim().length > 0 ? count + 1 : count;
   }, 0);
 
-  const requiredQuestionsAnswered = assessmentDefinition.questions.every((question) => isAssessmentQuestionAnswered(question, state.answers));
-  const reviewReady = requiredQuestionsAnswered && openTextCount >= 1 && state.moodKeywords.length > 0 && Boolean(state.lifeStage);
+  const requiredQuestionsAnswered = assessmentDefinition.questions.every((question) => isAssessmentSchemaQuestionAnswered(question, state.answers));
+  const requiredOpenReflectionCount = assessmentDefinition.validation.requireAtLeastOneOpenReflection ? 1 : 0;
+  const reviewReady = requiredQuestionsAnswered && openTextCount >= requiredOpenReflectionCount && state.moodKeywords.length > 0 && Boolean(state.lifeStage);
   const firstIncompleteStep = useMemo(() => {
-    const missingRequiredIndex = assessmentDefinition.questions.findIndex((question) => !isAssessmentQuestionAnswered(question, state.answers));
+    const missingRequiredIndex = assessmentDefinition.questions.findIndex((question) => !isAssessmentSchemaQuestionAnswered(question, state.answers));
 
     if (missingRequiredIndex >= 0) {
       return missingRequiredIndex + 1;
@@ -230,7 +293,7 @@ function TestPageClient() {
     }
 
     const targetQuestion = assessmentDefinition.questions[firstIncompleteStep - 1];
-    return `${getAssessmentModuleLabel(assessmentDefinition, targetQuestion.moduleId)} · 问题 ${firstIncompleteStep} / ${assessmentDefinition.questions.length}`;
+    return `${getAssessmentSchemaModuleLabel(assessmentDefinition, targetQuestion.moduleId)} · 问题 ${firstIncompleteStep} / ${assessmentDefinition.questions.length}`;
   }, [assessmentDefinition, firstIncompleteStep]);
 
   const canProceed = useMemo(() => {
@@ -242,13 +305,18 @@ function TestPageClient() {
       return reviewReady;
     }
 
-    return isAssessmentQuestionAnswered(context.question, state.answers);
+    return isAssessmentSchemaQuestionAnswered(context.question, state.answers);
   }, [context, reviewReady, state.answers, state.lifeStage, state.moodKeywords]);
 
   const currentModuleLabel =
-    context.mode === "question" ? getAssessmentModuleLabel(assessmentDefinition, context.question.moduleId) : context.mode === "entry" ? "进入状态" : "提交前回望";
+    context.mode === "question" ? getAssessmentSchemaModuleLabel(assessmentDefinition, context.question.moduleId) : context.mode === "entry" ? "进入状态" : "提交前回望";
 
   useEffect(() => {
+    if (!assessmentDefinition.storageKey) {
+      setDraftReady(true);
+      return;
+    }
+
     try {
       const raw = window.localStorage.getItem(assessmentDefinition.storageKey);
       if (!raw) {
@@ -275,8 +343,10 @@ function TestPageClient() {
   useEffect(() => {
     if (!draftReady) return;
 
-    if (!hasDraftableAssessmentProgress(assessmentDefinition, currentStep, state)) {
-      window.localStorage.removeItem(assessmentDefinition.storageKey);
+    if (!assessmentDefinition.storageKey || !hasDraftableAssessmentSchemaProgress(assessmentDefinition, currentStep, state)) {
+      if (assessmentDefinition.storageKey) {
+        window.localStorage.removeItem(assessmentDefinition.storageKey);
+      }
       setDraftMeta(null);
       return;
     }
@@ -299,7 +369,7 @@ function TestPageClient() {
     setState((current) => {
       const currentValues = Array.isArray(current.answers[question.questionId]) ? (current.answers[question.questionId] as string[]) : [];
       const hasOption = currentValues.includes(option);
-      const maximum = question.maxSelections ?? getQuestionOptions(question).length ?? 99;
+      const maximum = question.maxSelections ?? question.options?.length ?? 99;
       const next = hasOption ? currentValues.filter((item) => item !== option) : [...currentValues, option].slice(0, maximum);
 
       return {
@@ -329,7 +399,9 @@ function TestPageClient() {
   }
 
   function clearDraft() {
-    window.localStorage.removeItem(assessmentDefinition.storageKey);
+    if (assessmentDefinition.storageKey) {
+      window.localStorage.removeItem(assessmentDefinition.storageKey);
+    }
     setState(assessmentDefinition.initialState);
     setCurrentStep(0);
     setDraftMeta(null);
@@ -354,7 +426,7 @@ function TestPageClient() {
       questionId: question.questionId,
       moduleId: question.moduleId,
       answerType: question.answerType,
-      value: state.answers[question.questionId] ?? getDefaultAnswerValue(question),
+      value: state.answers[question.questionId] ?? getSchemaDefaultAnswerValue(question),
     }));
 
     const payload = {
@@ -378,7 +450,9 @@ function TestPageClient() {
       }
 
       const data = (await response.json()) as { next: string };
-      window.localStorage.removeItem(assessmentDefinition.storageKey);
+      if (assessmentDefinition.storageKey) {
+        window.localStorage.removeItem(assessmentDefinition.storageKey);
+      }
       setDraftMeta(null);
       router.push(data.next);
     } catch {
@@ -390,7 +464,7 @@ function TestPageClient() {
   function renderQuestion(question: QuestionDef) {
     const currentValue = state.answers[question.questionId];
 
-    const questionTypeMeta = getAssessmentQuestionTypeMeta(question.answerType);
+    const questionTypeMeta = question.typeMeta;
 
     if (questionTypeMeta.webImplementation === "planned") {
       return (
@@ -406,7 +480,7 @@ function TestPageClient() {
     if (question.answerType === "single") {
       return (
         <div className="space-y-3">
-          {getQuestionOptions(question).map((option) => (
+          {(question.options ?? []).map((option) => (
             <OptionButton key={option.id} active={currentValue === option.label} pressed={currentValue === option.label} onClick={() => setAnswer(question.questionId, option.label)}>
               {option.label}
             </OptionButton>
@@ -420,14 +494,14 @@ function TestPageClient() {
       return (
         <div>
           <div className="grid gap-3 md:grid-cols-2">
-            {getQuestionOptions(question).map((option) => (
+            {(question.options ?? []).map((option) => (
               <OptionButton key={option.id} active={values.includes(option.label)} pressed={values.includes(option.label)} onClick={() => toggleMulti(question, option.label)}>
                 {option.label}
               </OptionButton>
             ))}
           </div>
           <p className="mt-5 text-sm leading-7 text-stone-500">
-            至少选择 {question.minSelections ?? 1} 项，最多 {question.maxSelections ?? getQuestionOptions(question).length ?? 1} 项。
+            至少选择 {question.minSelections ?? 1} 项，最多 {question.maxSelections ?? question.options?.length ?? 1} 项。
           </p>
         </div>
       );
@@ -484,6 +558,24 @@ function TestPageClient() {
   }
 
   function renderStepBody() {
+    if (!schemaReady && !schemaError) {
+      return (
+        <div className="rounded-[28px] bg-[linear-gradient(135deg,rgba(191,222,255,0.08),rgba(255,255,255,0.03))] p-6 shadow-[0_0_0_1px_rgba(191,222,255,0.12)]">
+          <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">schema loading</p>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-300/82">正在从 `/api/test/schema` 读取这次测评的题目、phase 与校验规则。后续无论你改题型还是改模块，页面都会优先跟 contract 对齐。</p>
+        </div>
+      );
+    }
+
+    if (schemaError) {
+      return (
+        <div className="rounded-[28px] bg-[rgba(255,244,214,0.05)] p-6 shadow-[0_0_0_1px_rgba(245,208,120,0.14)]">
+          <p className="text-[11px] tracking-[0.32em] text-amber-200/70 uppercase">schema unavailable</p>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-300/82">{schemaError}</p>
+        </div>
+      );
+    }
+
     if (context.mode === "entry") {
       return (
         <div className="space-y-6">
@@ -568,15 +660,15 @@ function TestPageClient() {
                 <p>生命阶段：{assessmentDefinition.lifeStageOptions.find((item) => item.value === state.lifeStage)?.label ?? state.lifeStage}</p>
                 <p>心境关键词：{state.moodKeywords.join(" · ")}</p>
                 <p>已回答题目：{answeredCount} / {assessmentDefinition.questions.length}</p>
-                <p>开放反思：{openTextCount} / 2</p>
+                <p>开放反思：{openTextCount} / {Math.max(assessmentDefinition.validation.openReflectionQuestionIds.length, requiredOpenReflectionCount)}</p>
               </div>
             </div>
             <div className="rounded-[26px] bg-black/16 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
               <p className="text-[11px] tracking-[0.32em] text-stone-500 uppercase">提交前提醒</p>
               <div className="mt-4 space-y-3 text-sm leading-7 text-stone-300/78">
                 <p>接下来会进入异步分析流程，生成一份更像阅读而不是评分的结果。</p>
-                <p>至少回答两道开放题中的一道，结果会更接近你。</p>
-                {!reviewReady ? <p className="text-amber-200/85">当前还有未完成的必答题，或开放反思尚未留下任何内容。</p> : <p className="text-stone-200/88">你已经可以把它交给雾里了。</p>}
+                <p>至少回答开放反思中的 {requiredOpenReflectionCount} 道，结果会更接近你。</p>
+                {!reviewReady ? <p className="text-amber-200/85">当前还有未完成的必答题，或开放反思尚未达到最低数量。</p> : <p className="text-stone-200/88">你已经可以把它交给雾里了。</p>}
               </div>
               {!reviewReady && firstIncompleteStep !== null ? (
                 <div className="mt-5 space-y-3">
@@ -600,28 +692,48 @@ function TestPageClient() {
     return renderQuestion(context.question);
   }
 
-  const title =
-    context.mode === "entry"
-      ? "先给它几个最基础的坐标。"
-      : context.mode === "review"
-        ? "最后看一眼，再把它交给雾里。"
-        : context.question.prompt;
+  const heroHeadline = !schemaReady && !schemaError
+    ? "正在读取这次的进入方式。"
+    : schemaError
+      ? "这次入口暂时起雾了。"
+      : context.mode === "entry"
+        ? "进入你的内在荒野。"
+        : context.mode === "review"
+          ? "把线索交给雾里。"
+          : "不要急着回答，先让问题落在身上。";
 
-  const description =
-    context.mode === "entry"
-      ? "这一页不求准确，只求给接下来的阅读一个足够温柔的入口。"
-      : context.mode === "review"
-        ? "接下来会进入异步分析流程，生成一份更像阅读而不是评分的结果。"
-        : getAssessmentQuestionTypeMeta(context.question.answerType).family === "choice" && getAssessmentQuestionTypeMeta(context.question.answerType).cardinality === "multi"
-          ? "这不是测你像谁，而是让它看见你反复停留的地方。"
-          : context.question.answerType === "scale"
-            ? "不必追求绝对答案，只要给出眼下最接近的一格。"
-            : getAssessmentQuestionTypeMeta(context.question.answerType).family === "text"
-              ? "不用写很多，写一句不会轻易消失的话就够了。"
-              : "选最让你停下来的那一个，而不是最合理的那一个。";
+  const title = !schemaReady && !schemaError
+    ? "正在校准这次进入方式。"
+    : schemaError
+      ? "这次入口暂时起雾了。"
+      : context.mode === "entry"
+        ? "先给它几个最基础的坐标。"
+        : context.mode === "review"
+          ? "最后看一眼，再把它交给雾里。"
+          : context.question.prompt;
 
-  const ritualLine = getRitualLine(context);
-  const companionNote = getCompanionNote(context);
+  const description = !schemaReady && !schemaError
+    ? "系统正在加载这次测评的结构与节奏，稍等片刻。"
+    : schemaError
+      ? schemaError
+      : context.mode === "entry"
+        ? "这一页不求准确，只求给接下来的阅读一个足够温柔的入口。"
+        : context.mode === "review"
+          ? "接下来会进入异步分析流程，生成一份更像阅读而不是评分的结果。"
+          : context.question.typeMeta.family === "choice" && context.question.typeMeta.cardinality === "multi"
+            ? "这不是测你像谁，而是让它看见你反复停留的地方。"
+            : context.question.answerType === "scale"
+              ? "不必追求绝对答案，只要给出眼下最接近的一格。"
+              : context.question.typeMeta.family === "text"
+                ? "不用写很多，写一句不会轻易消失的话就够了。"
+                : "选最让你停下来的那一个，而不是最合理的那一个。";
+
+  const ritualLine = !schemaReady && !schemaError ? "正在从内核读取这次问题序列。" : getRitualLine(context);
+  const companionNote = !schemaReady && !schemaError
+    ? { eyebrow: "schema loading", title: "前端现在直接读取测评 schema", body: "这意味着题库、phase、校验与展示节奏都由后端 contract 驱动，后续改题时前端不需要再同步改源码。" }
+    : schemaError
+      ? { eyebrow: "schema error", title: "结构暂时未能抵达页面", body: "你可以稍后刷新再试；这不会影响已经存在的报告与后端测评定义。" }
+      : getCompanionNote(context);
 
   return (
     <main className="relative overflow-hidden bg-[#08080a] px-6 pb-20 pt-10 text-stone-100 md:pb-24 md:pt-14">
@@ -644,7 +756,7 @@ function TestPageClient() {
           </div>
           <div className="mt-5 grid gap-5 md:grid-cols-[0.64fr_0.36fr] md:items-end">
             <div>
-              <h2 className="max-w-2xl text-4xl leading-[1.06] text-stone-100 md:text-[3.45rem]">{context.mode === "entry" ? "进入你的内在荒野。" : context.mode === "review" ? "把线索交给雾里。" : "不要急着回答，先让问题落在身上。"}</h2>
+              <h2 className="max-w-2xl text-4xl leading-[1.06] text-stone-100 md:text-[3.45rem]">{heroHeadline}</h2>
               <p className="mt-4 max-w-2xl text-base leading-8 text-stone-300/76 md:text-lg">{ritualLine}</p>
             </div>
             <div className="rounded-[24px] bg-white/[0.03] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
@@ -741,7 +853,7 @@ function TestPageClient() {
               {context.mode === "review" ? (
                 <button
                   type="button"
-                  disabled={!reviewReady || submitting}
+                  disabled={!reviewReady || submitting || !schemaReady || Boolean(schemaError)}
                   onClick={handleSubmit}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,rgba(239,246,255,0.96),rgba(192,220,249,0.92))] px-7 py-3 text-sm tracking-[0.2em] text-[#0b0d14] uppercase transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -751,7 +863,7 @@ function TestPageClient() {
               ) : (
                 <button
                   type="button"
-                  disabled={!canProceed || submitting}
+                  disabled={!canProceed || submitting || !schemaReady || Boolean(schemaError)}
                   onClick={goNext}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,rgba(239,246,255,0.96),rgba(192,220,249,0.92))] px-7 py-3 text-sm tracking-[0.2em] text-[#0b0d14] uppercase transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"
                 >

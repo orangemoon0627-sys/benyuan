@@ -4,10 +4,10 @@ import process from 'node:process';
 const baseUrl = (process.env.BENYUAN_BASE_URL ?? 'http://localhost:3001').replace(/\/$/, '');
 const pollDelayMs = Number(process.env.BENYUAN_POLL_MS ?? 250);
 const pollLimit = Number(process.env.BENYUAN_POLL_LIMIT ?? 30);
+const assessmentMode = process.env.BENYUAN_MODE === 'deep' ? 'deep' : 'lite';
 
-async function loadQuestionSet() {
-  const schema = await requestJson('/api/test/schema?mode=lite');
-  return schema.questions;
+async function loadSchema() {
+  return requestJson(`/api/test/schema?mode=${assessmentMode}`);
 }
 
 function getOptionLabel(option) {
@@ -88,12 +88,15 @@ async function wait(ms) {
 }
 
 async function main() {
-  console.log(`smoke:start base=${baseUrl}`);
-  const questions = await loadQuestionSet();
-  const answers = buildAnswers(questions);
+  console.log(`smoke:start base=${baseUrl} mode=${assessmentMode}`);
+  const schema = await loadSchema();
+  assert(schema.mode === assessmentMode, `schema mode mismatch: expected ${assessmentMode}`);
+  assert(Array.isArray(schema.questions) && schema.questions.length > 0, 'schema missing questions');
+  assert(Array.isArray(schema.phases) && schema.phases.length > 0, 'schema missing phases');
+  const answers = buildAnswers(schema.questions);
 
   const submitPayload = {
-    mode: 'lite',
+    mode: assessmentMode,
     basicInfo: {
       lifeStage: 'turning_point',
       moodKeywords: ['迷茫', '希望'],
@@ -108,7 +111,7 @@ async function main() {
   });
 
   assert(submit.sessionId && submit.next, 'submit response missing sessionId/next');
-  console.log(`smoke:submit ok session=${submit.sessionId}`);
+  console.log(`smoke:submit ok mode=${assessmentMode} session=${submit.sessionId}`);
 
   const analysis = await requestJson('/api/analysis', {
     method: 'POST',
@@ -148,7 +151,7 @@ async function main() {
     console.log(`smoke:card ok variant=${variant}`);
   }
 
-  console.log('smoke:pass');
+  console.log(`smoke:pass mode=${assessmentMode}`);
 }
 
 main().catch((error) => {
