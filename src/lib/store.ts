@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { sampleReport } from "@/lib/fixtures/report";
-import { resolveAnalysisEngine } from "@/lib/analysis";
+import { buildAnalysisInput, resolveAnalysisEngine } from "@/lib/analysis";
 import type { AnalysisJob, FeatureVector, ReportPayload, TestSession } from "@/lib/types";
 
 type PersistedStore = {
@@ -66,7 +66,7 @@ export async function getSession(sessionId: string) {
 export async function createFeatureVector(session: TestSession) {
   const store = await readStore();
   const engine = resolveAnalysisEngine(session.mode);
-  const { featureVector } = await engine.run(session);
+  const { featureVector } = await engine.run(buildAnalysisInput(session));
 
   store.featureVectors[session.sessionId] = featureVector;
   await writeStore(store);
@@ -128,7 +128,7 @@ export async function runAnalysis(jobId: string) {
     const nextJob = nextStore.jobs[jobId];
     if (!nextJob) return;
 
-    const { featureVector, report } = await engine.run(session);
+    const { featureVector, report } = await engine.run(buildAnalysisInput(session));
     nextJob.status = "done";
     nextJob.finishedAt = new Date().toISOString();
     nextStore.jobs[jobId] = nextJob;

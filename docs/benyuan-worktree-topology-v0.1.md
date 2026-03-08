@@ -135,3 +135,12 @@ The smoke pipeline now validates both modes:
 - `npm run smoke:flow` → lite
 - `npm run smoke:flow:deep` → deep
 - `npm run smoke:flow:all` → both
+
+## Analysis Contract Boundary
+
+The deterministic analysis pipeline no longer reads assessment registry data ad hoc inside the engine. It now resolves through an explicit analysis input layer:
+- `src/lib/analysis/types.ts`
+- `src/lib/analysis/input.ts`
+- `src/lib/analysis/deterministic-engine.ts`
+
+This creates a cleaner seam for future AI providers: `store.ts` can hand the same `AnalysisInput` contract to deterministic and LLM engines without changing API routes or persistence flow.

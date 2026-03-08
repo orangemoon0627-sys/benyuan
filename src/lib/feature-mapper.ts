@@ -1,4 +1,4 @@
-import { fullLiteQuestionSet } from "@/features/assessment";
+import type { AnalysisInput } from "@/lib/analysis/types";
 import type { Answer, ConfidenceBand, FeatureVector, TestSession } from "@/lib/types";
 
 const FEATURE_GROUPS = {
@@ -215,9 +215,9 @@ function addScores(target: FeatureScores, source: PartialFeatureScores, factor =
   });
 }
 
-function normalizeScale(answer: Answer, questionId: string) {
+function normalizeScale(answer: Answer, questionMap: AnalysisInput["questionMap"], questionId: string) {
   const value = typeof answer.value === "number" ? answer.value : Number(answer.value);
-  const question = fullLiteQuestionSet.find((item) => item.questionId === questionId);
+  const question = questionMap.get(questionId);
   const min = question?.scaleMin ?? 1;
   const max = question?.scaleMax ?? 5;
   if (Number.isNaN(value) || max === min) return 0;
@@ -233,8 +233,9 @@ function getTextAnswer(session: TestSession, questionId: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function getAnsweredRequiredCount(session: TestSession) {
-  const requiredQuestions = fullLiteQuestionSet.filter((question) => !question.optional);
+function getAnsweredRequiredCount(input: AnalysisInput) {
+  const requiredQuestions = input.questionSet.filter((question) => !question.optional);
+  const { session } = input;
   const answered = requiredQuestions.filter((question) => {
     const answer = findAnswer(session, question.questionId);
     if (!answer) return false;
@@ -253,9 +254,10 @@ function getAnsweredRequiredCount(session: TestSession) {
   return { answered, total: requiredQuestions.length };
 }
 
-function scoreTextSignals(session: TestSession, rawScores: FeatureScores) {
-  const q023 = getTextAnswer(session, "Q023");
-  const q024 = getTextAnswer(session, "Q024");
+function scoreTextSignals(input: AnalysisInput, rawScores: FeatureScores) {
+  const [firstOpenTextId, secondOpenTextId] = input.openReflectionQuestionIds;
+  const q023 = firstOpenTextId ? getTextAnswer(input.session, firstOpenTextId) : "";
+  const q024 = secondOpenTextId ? getTextAnswer(input.session, secondOpenTextId) : "";
   const textLengths = [q023.length, q024.length];
   let confidenceBonus = 0;
 
@@ -303,10 +305,10 @@ function scoreTextSignals(session: TestSession, rawScores: FeatureScores) {
   return { confidenceBonus, textRichness };
 }
 
-function getFeatureMaximums() {
+function getFeatureMaximums(questionSet: AnalysisInput["questionSet"]) {
   const maximums = createEmptyScores();
 
-  for (const question of fullLiteQuestionSet) {
+  for (const question of questionSet) {
     if (question.answerType === "single") {
       const entries = Object.values(OPTION_MAPPINGS[question.questionId] ?? {});
       FEATURE_KEYS.forEach((feature) => {
@@ -351,13 +353,11 @@ function getFeatureMaximums() {
   return maximums;
 }
 
-const FEATURE_MAXIMUMS = getFeatureMaximums();
-
-function getClarityScore(session: TestSession) {
+function getClarityScore(input: AnalysisInput) {
+  const { session, questionMap } = input;
   const multiAnswers = session.answers.filter((answer) => Array.isArray(answer.value));
   if (multiAnswers.length === 0) return 0.85;
 
-  const questionMap = new Map(fullLiteQuestionSet.map((question) => [question.questionId, question]));
   const ratios = multiAnswers.map((answer) => {
     const question = questionMap.get(answer.questionId);
     if (!question || !Array.isArray(answer.value)) return 1;
@@ -394,7 +394,8 @@ function getConfidenceBand(score: number): ConfidenceBand {
   return "high";
 }
 
-export function buildFeatureVector(session: TestSession): FeatureVector {
+export function buildFeatureVector(input: AnalysisInput): FeatureVector {
+  const { session, questionMap } = input;
   const rawScores = createEmptyScores();
 
   for (const answer of session.answers) {
@@ -413,26 +414,27 @@ export function buildFeatureVector(session: TestSession): FeatureVector {
 
     if (answer.answerType === "scale") {
       const feature = SCALE_MAPPINGS[answer.questionId];
-      rawScores[feature] += normalizeScale(answer, answer.questionId);
+      rawScores[feature] += normalizeScale(answer, questionMap, answer.questionId);
     }
   }
 
-  const { confidenceBonus, textRichness } = scoreTextSignals(session, rawScores);
+  const { confidenceBonus, textRichness } = scoreTextSignals(input, rawScores);
 
   const normalizedValues = createEmptyScores();
+  const featureMaximums = getFeatureMaximums(input.questionSet);
   FEATURE_KEYS.forEach((feature) => {
-    normalizedValues[feature] = clamp(rawScores[feature] / Math.max(0.3, FEATURE_MAXIMUMS[feature]));
+    normalizedValues[feature] = clamp(rawScores[feature] / Math.max(0.3, featureMaximums[feature]));
   });
 
   const completion = (() => {
-    const { answered, total } = getAnsweredRequiredCount(session);
+    const { answered, total } = getAnsweredRequiredCount(input);
     const missing = total - answered;
     if (missing <= 0) return 1;
     if (missing <= 2) return 0.7;
     return 0.4;
   })();
 
-  const clarity = getClarityScore(session);
+  const clarity = getClarityScore(input);
   const concentration = getConcentrationScore(normalizedValues);
   const consistency = getConsistencyScore(normalizedValues);
 
@@ -454,12 +456,13 @@ export function buildFeatureVector(session: TestSession): FeatureVector {
   };
 }
 
-export function collectSafetySignals(session: TestSession, vector: FeatureVector) {
+export function collectSafetySignals(input: AnalysisInput, vector: FeatureVector) {
+  const { session } = input;
   const flags = new Set<"none" | "high_sensitivity" | "existential_distress" | "trauma_signal" | "self_harm_risk" | "low_information">();
-  const texts = [getTextAnswer(session, "Q023"), getTextAnswer(session, "Q024")].filter(Boolean).join("\n");
+  const texts = input.openReflectionQuestionIds.map((questionId) => getTextAnswer(session, questionId)).filter(Boolean).join("\n");
   const significantFeatures = Object.values(vector.values).filter((value) => value >= 0.7).length;
-  const answeredOpenText = [getTextAnswer(session, "Q023"), getTextAnswer(session, "Q024")].filter((value) => value.length > 0).length;
-  const { answered, total } = getAnsweredRequiredCount(session);
+  const answeredOpenText = input.openReflectionQuestionIds.map((questionId) => getTextAnswer(session, questionId)).filter((value) => value.length > 0).length;
+  const { answered, total } = getAnsweredRequiredCount(input);
 
   if (answered / total < 0.8 || (answeredOpenText === 0 && significantFeatures <= 1) || (vector.confidenceBand === "low" && significantFeatures === 0)) {
     flags.add("low_information");

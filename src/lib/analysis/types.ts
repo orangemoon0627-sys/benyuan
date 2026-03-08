@@ -1,4 +1,24 @@
-import type { FeatureVector, ReportPayload, TestSession, Mode } from "@/lib/types";
+import type { AssessmentAnswerType, FeatureVector, ReportPayload, TestSession, Mode } from "@/lib/types";
+
+
+export type AnalysisQuestionContract = {
+  questionId: string;
+  moduleId: string;
+  answerType: AssessmentAnswerType;
+  prompt: string;
+  optional?: boolean;
+  minSelections?: number;
+  maxSelections?: number;
+  scaleMin?: number;
+  scaleMax?: number;
+};
+
+export type AnalysisInput = {
+  session: TestSession;
+  questionSet: AnalysisQuestionContract[];
+  questionMap: Map<string, AnalysisQuestionContract>;
+  openReflectionQuestionIds: string[];
+};
 
 export type AnalysisEngineResult = {
   featureVector: FeatureVector;
@@ -10,5 +30,5 @@ export type AnalysisEngine = {
   label: string;
   kind: "deterministic" | "llm";
   supportedModes: Mode[];
-  run(session: TestSession): Promise<AnalysisEngineResult>;
+  run(input: AnalysisInput): Promise<AnalysisEngineResult>;
 };

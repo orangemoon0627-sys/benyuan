@@ -1,3 +1,4 @@
+import { buildAnalysisInput } from "@/lib/analysis";
 import { buildFeatureVector } from "@/lib/feature-mapper";
 import { goldenSampleDefinitions, goldenSampleSessions } from "@/lib/fixtures/golden-samples";
 import { buildReport } from "@/lib/report-builder";
@@ -28,8 +29,9 @@ export type GoldenRegressionSnapshot = {
 
 export const goldenRegressionSnapshots: GoldenRegressionSnapshot[] = goldenSampleSessions.map((session, index) => {
   const definition = goldenSampleDefinitions[index];
-  const vector = buildFeatureVector(session);
-  const report = buildReport(session, vector);
+  const input = buildAnalysisInput(session);
+  const vector = buildFeatureVector(input);
+  const report = buildReport(input, vector);
   const topFeatures = Object.entries(vector.values)
     .sort((left, right) => right[1] - left[1])
     .slice(0, 5)

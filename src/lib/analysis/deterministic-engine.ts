@@ -7,9 +7,9 @@ export const deterministicAnalysisEngine: AnalysisEngine = {
   label: "Deterministic Narrative Engine",
   kind: "deterministic",
   supportedModes: ["lite", "deep"],
-  async run(session) {
-    const featureVector = buildFeatureVector(session);
-    const report = buildReport(session, featureVector);
+  async run(input) {
+    const featureVector = buildFeatureVector(input);
+    const report = buildReport(input, featureVector);
 
     return {
       featureVector,
