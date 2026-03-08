@@ -10,7 +10,7 @@ export const hybridAnalysisEngine: AnalysisEngine = {
   supportedModes: ["lite", "deep"],
   async run(input) {
     const baseline = await deterministicAnalysisEngine.run(input);
-    const provider = resolveAnalysisProvider();
+    const provider = resolveAnalysisProvider({ mode: input.session.mode });
 
     if (!provider.available) {
       return baseline;

@@ -1,5 +1,5 @@
 import type { AssessmentAnswerType, FeatureVector, ReportPayload, TestSession, Mode } from "@/lib/types";
-
+import type { AnalysisProviderRequestMode } from "@/lib/analysis/config";
 
 export type AnalysisQuestionContract = {
   questionId: string;
@@ -33,13 +33,15 @@ export type AnalysisEngine = {
   run(input: AnalysisInput): Promise<AnalysisEngineResult>;
 };
 
-
 export type AnalysisProviderEnhancement = {
   report?: Partial<ReportPayload>;
   metadata?: {
     providerId: string;
     promptTemplateId?: string;
     promptTemplateVersion?: string;
+    requestMode?: AnalysisProviderRequestMode;
+    model?: string;
+    requestId?: string;
   };
 };
 
@@ -48,10 +50,11 @@ export type AnalysisProvider = {
   label: string;
   kind: "disabled" | "openai" | "anthropic" | "custom";
   available: boolean;
+  requestMode: AnalysisProviderRequestMode;
+  model?: string;
   reason?: string;
   enhance(input: AnalysisInput, baseline: AnalysisEngineResult): Promise<AnalysisProviderEnhancement | null>;
 };
-
 
 export type AnalysisPromptPayload = {
   system: string;

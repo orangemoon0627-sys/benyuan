@@ -2,6 +2,7 @@ import type { Mode } from "@/lib/types";
 
 export type AnalysisEngineKey = "deterministic" | "hybrid";
 export type AnalysisProviderKey = "disabled" | "openai" | "anthropic";
+export type AnalysisProviderRequestMode = "stub" | "live";
 
 export type AnalysisRuntimeConfig = {
   mode: Mode;
@@ -12,6 +13,9 @@ export type AnalysisRuntimeConfig = {
   anthropicKeyConfigured: boolean;
   openAIModel: string;
   anthropicModel: string;
+  liveProviderEnabled: boolean;
+  providerRequestMode: AnalysisProviderRequestMode;
+  providerTimeoutMs: number;
 };
 
 function normalizeEngine(value: string | null | undefined): AnalysisEngineKey | null {
@@ -24,7 +28,12 @@ function normalizeProvider(value: string | null | undefined): AnalysisProviderKe
   return null;
 }
 
+function normalizeBooleanFlag(value: string | null | undefined) {
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
 export function readAnalysisRuntimeConfig(mode: Mode, options?: { engine?: string | null; provider?: string | null }): AnalysisRuntimeConfig {
+  const liveProviderEnabled = normalizeBooleanFlag(process.env.BENYUAN_LLM_LIVE);
   return {
     mode,
     selectedEngineKey: normalizeEngine(options?.engine ?? process.env.BENYUAN_ANALYSIS_ENGINE) ?? "deterministic",
@@ -34,5 +43,8 @@ export function readAnalysisRuntimeConfig(mode: Mode, options?: { engine?: strin
     anthropicKeyConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
     openAIModel: process.env.BENYUAN_OPENAI_MODEL ?? "gpt-4.1-mini",
     anthropicModel: process.env.BENYUAN_ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest",
+    liveProviderEnabled,
+    providerRequestMode: liveProviderEnabled ? "live" : "stub",
+    providerTimeoutMs: Number(process.env.BENYUAN_PROVIDER_TIMEOUT_MS ?? 20000),
   };
 }

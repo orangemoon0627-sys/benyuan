@@ -51,9 +51,12 @@ export default function RuntimeLabPage() {
                   <p>fallback active：{runtime.fallbackActive ? "yes" : "no"}</p>
                   <p>provider available：{runtime.providerAvailable ? "yes" : "no"}</p>
                   <p>provider reason：{runtime.providerReason ?? "configured"}</p>
+                  <p>provider mode：{runtime.providerRequestMode}</p>
+                  <p>provider model：{runtime.providerModel ?? "n/a"}</p>
                   <p>prompt template：{runtime.selectedPromptTemplateKey}</p>
                   <p>env flags：OpenAI={runtime.openAIKeyConfigured ? "on" : "off"} · Anthropic={runtime.anthropicKeyConfigured ? "on" : "off"}</p>
                   <p>models：{runtime.openAIModel} · {runtime.anthropicModel}</p>
+                  <p>live provider：{runtime.liveProviderEnabled ? "enabled" : "stub only"} · timeout {runtime.providerTimeoutMs}ms</p>
                 </div>
               </ReportCard>
             );

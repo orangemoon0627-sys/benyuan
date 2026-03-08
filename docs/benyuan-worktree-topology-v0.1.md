@@ -222,3 +222,33 @@ Validated on 2026-03-08 with:
 - `npm run smoke:runtime:hybrid`
 - `BENYUAN_BASE_URL=http://localhost:3000 npm run smoke:flow:all`
 - `BENYUAN_BASE_URL=http://localhost:3000 BENYUAN_ANALYSIS_ENGINE=hybrid npm run smoke:flow:deep`
+
+
+## Live Provider Adapter Boundary
+
+The provider layer now supports an explicit safe split between stub mode and live mode:
+- `src/lib/analysis/provider.ts`
+- `src/lib/analysis/provider-adapters.ts`
+- env gate: `BENYUAN_LLM_LIVE=1`
+
+Behavior:
+- default stays in stub mode even if keys exist
+- live requests only activate when both a provider key and `BENYUAN_LLM_LIVE` are present
+- hybrid analysis still falls back safely to deterministic output when provider is unavailable
+
+## Question Content vs Analysis Mapping Split
+
+The test kernel is now separated more cleanly into independent layers:
+- question content / interaction copy:
+  - `src/features/assessment/question-content-lite.ts`
+  - `src/features/assessment/question-content-deep.ts`
+  - re-exported through `src/features/assessment/question-bank.ts`
+- answer-to-feature mapping:
+  - `src/features/assessment/analysis-mapping.ts`
+- shared feature-space contract:
+  - `src/lib/feature-space.ts`
+
+This makes later edits safer:
+- change question wording without touching mapping logic
+- change mapping logic without rewriting question presentation
+- expand question types while preserving the analysis feature space

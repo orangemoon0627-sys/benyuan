@@ -21,7 +21,7 @@ export function getAnalysisRuntimeStatus(mode: Mode, options?: { engine?: string
   const config = readAnalysisRuntimeConfig(mode, options);
   const selectedEngineKey = config.selectedEngineKey;
   const engine = resolveAnalysisEngine(mode, config.selectedEngineKey);
-  const provider = resolveAnalysisProvider({ provider: config.selectedProviderKey });
+  const provider = resolveAnalysisProvider({ mode, provider: config.selectedProviderKey });
   const fallbackActive = selectedEngineKey === "hybrid" && !provider.available;
 
   return {
@@ -34,6 +34,8 @@ export function getAnalysisRuntimeStatus(mode: Mode, options?: { engine?: string
     providerKind: provider.kind,
     providerAvailable: provider.available,
     providerReason: provider.reason,
+    providerRequestMode: provider.requestMode,
+    providerModel: provider.model,
     fallbackActive,
     selectedProviderKey: config.selectedProviderKey,
     selectedPromptTemplateKey: config.selectedPromptTemplateKey,
@@ -41,6 +43,8 @@ export function getAnalysisRuntimeStatus(mode: Mode, options?: { engine?: string
     anthropicKeyConfigured: config.anthropicKeyConfigured,
     openAIModel: config.openAIModel,
     anthropicModel: config.anthropicModel,
+    liveProviderEnabled: config.liveProviderEnabled,
+    providerTimeoutMs: config.providerTimeoutMs,
     effectiveRuntime: fallbackActive ? "deterministic_fallback" : engine.kind === "llm" ? "hybrid_provider" : "deterministic",
   };
 }

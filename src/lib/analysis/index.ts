@@ -9,3 +9,4 @@ export * from "@/lib/analysis/prompt-shaping";
 export * from "@/lib/analysis/config";
 export * from "@/lib/analysis/prompt-templates";
 export * from "@/lib/analysis/report-merge";
+export * from "@/lib/analysis/provider-adapters";
