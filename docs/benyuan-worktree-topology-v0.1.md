@@ -272,3 +272,34 @@ This gives us a safer upgrade path for future iterations:
 - ship `lite.v2` without breaking `lite.v1` sessions
 - compare report changes across questionnaire revisions
 - let future iOS or other clients pin to a specific assessment contract version
+
+
+## Test Client Contract
+
+The `/test` experience now pulls its pacing/review copy and progression logic through a dedicated client contract:
+- `src/lib/assessment-client-contract.ts`
+
+This isolates:
+- step progression summaries
+- review readiness rules
+- first-incomplete jump logic
+- hero / ritual / companion copy per context
+
+That makes future client work safer for:
+- iOS app implementation
+- alternate test shells
+- A/B variants for pacing without rewriting page-level state code
+
+## Project Roadmap Console
+
+There is now a dedicated internal roadmap surface for structured progress visibility:
+- `/lab/roadmap`
+- `/api/internal/project-status`
+- data source: `src/lib/project-roadmap.ts`
+
+This gives a web-visible control panel for:
+- current focus and next objective
+- lane-by-lane actions and their purpose
+- framework-layer progress bars
+- worktree responsibility split
+- current validation loop

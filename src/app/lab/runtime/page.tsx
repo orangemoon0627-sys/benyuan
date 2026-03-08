@@ -33,6 +33,10 @@ export default function RuntimeLabPage() {
                 黄金样本
                 <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
               </Link>
+              <Link href="/lab/roadmap" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm tracking-[0.18em] text-stone-200 uppercase shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                项目看板
+                <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+              </Link>
               <Link href="/lab/golden/audit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm tracking-[0.18em] text-stone-200 uppercase shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
                 审阅差异
                 <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
