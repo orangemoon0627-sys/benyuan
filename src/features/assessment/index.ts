@@ -5,5 +5,6 @@ export * from "./flow";
 export * from "./registry";
 export * from "./question-types";
 export * from "./question-content-lite";
+export * from "./question-content-lite-v2";
 export * from "./question-content-deep";
 export * from "./analysis-mapping";

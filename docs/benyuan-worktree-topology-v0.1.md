@@ -225,6 +225,7 @@ Validated on 2026-03-08 with:
 - `node --input-type=module -e "fetch versioned /api/test/schema"`
 - `node --input-type=module -e "fetch /api/internal/schema-matrix"`
 - `node --input-type=module -e "fetch schema diff /api/internal/schema-matrix?mode=...&target=..."`
+- `node --input-type=module -e "fetch /api/test/schema?mode=lite&version=lite.v2"`
 
 
 ## Live Provider Adapter Boundary
@@ -324,3 +325,19 @@ This surface is for quickly checking:
 It gives us a much faster review path before introducing `lite.v2` / `deep.v2` or changing phase layouts.
 
 The matrix is now also diff-ready: the API can compare a target version against the default (or an explicit base version) so the UI can immediately surface question/module/phase deltas once a second version lands.
+
+
+## Real Version Draft: lite.v2
+
+The registry now includes an actual second Lite version:
+- `lite.v1` (default)
+- `lite.v2` (draft branch for comparison)
+
+Current `lite.v2` change set:
+- adds question `Q025`
+- adds module `cognitive_topology`
+- adds phase `cognition`
+- increases Lite total steps by +1
+- keeps `lite.v1` as the default serving version
+
+This means schema diff is no longer a placeholder: `/lab/schema` now shows a real structural delta against a live draft version.

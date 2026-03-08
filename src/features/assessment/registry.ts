@@ -1,7 +1,7 @@
 import type { Mode, Answer } from "@/lib/types";
 import { assessmentModuleLabels, lifeStageOptions, moodKeywordOptions } from "./catalog";
 import { findFirstIncompleteQuestionIndex } from "./flow";
-import { fullDeepQuestionSet, fullLiteQuestionSet } from "./question-bank";
+import { fullDeepQuestionSet, fullLiteQuestionSet, fullLiteQuestionSetV2 } from "./question-bank";
 import type { AssessmentDefinition, AssessmentDefinitionDiff, AssessmentDefinitionSnapshot, AssessmentFormState, AssessmentValidationConfig, AssessmentVersionDescriptor } from "./types";
 
 export type AssessmentValidationResult =
@@ -72,6 +72,23 @@ const liteAssessmentDefinitionV1 = createAssessmentDefinition({
   ],
 });
 
+const liteAssessmentDefinitionV2 = createAssessmentDefinition({
+  mode: "lite",
+  version: "lite.v2",
+  title: "Lite Ritual / Reflective Draft",
+  description: "在 Lite 主流程中插入一格认知地貌问题，用更轻的方式补足你如何抵达清晰。",
+  storageKey: "benyuan-lite-test-draft-v2",
+  questions: fullLiteQuestionSetV2,
+  phases: [
+    { id: "entry", label: "进入状态", description: "给这次探索一个起点坐标。", moduleIds: ["entry_state"] },
+    { id: "emotion", label: "情感气候", description: "识别你最近的情绪天气。", moduleIds: ["emotional_weather"] },
+    { id: "cognition", label: "认知地貌", description: "补一格你如何处理未明之事、怎样靠近清晰。", moduleIds: ["cognitive_topology"] },
+    { id: "aesthetic", label: "审美语法", description: "从审美偏好读出精神指纹。", moduleIds: ["aesthetic_fingerprint"] },
+    { id: "temporal", label: "时间哲学", description: "看你如何与过去、现在、未来相处。", moduleIds: ["temporal_philosophy"] },
+    { id: "reflection", label: "开放反思", description: "给那些无法被选项收拢的部分留空间。", moduleIds: ["open_reflection"] },
+  ],
+});
+
 const deepAssessmentDefinitionV1 = createAssessmentDefinition({
   mode: "deep",
   version: "deep.v1",
@@ -99,6 +116,7 @@ const deepAssessmentDefinitionV1 = createAssessmentDefinition({
 const assessmentRegistry: Record<Mode, Record<string, AssessmentDefinition>> = {
   lite: {
     [liteAssessmentDefinitionV1.version]: liteAssessmentDefinitionV1,
+    [liteAssessmentDefinitionV2.version]: liteAssessmentDefinitionV2,
   },
   deep: {
     [deepAssessmentDefinitionV1.version]: deepAssessmentDefinitionV1,
