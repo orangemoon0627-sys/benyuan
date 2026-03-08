@@ -44,6 +44,7 @@ The questionnaire system is now isolated under:
 - `src/features/assessment/catalog.ts`
 - `src/features/assessment/flow.ts`
 - `src/features/assessment/registry.ts`
+- `src/features/assessment/question-types.ts`
 - `src/features/assessment/index.ts`
 
 This means future changes to question type, ordering, module grouping, or test flow should begin in `src/features/assessment/` rather than inside page components.
@@ -54,6 +55,11 @@ A new schema endpoint is available:
 - `GET /api/test/schema`
 
 The endpoint now resolves through the assessment registry, so later mode-specific structures can be served without rewriting the route.
+
+It now also exposes:
+- normalized question options for client rendering
+- resolved presentation metadata
+- question-type catalog metadata (`implemented` vs `planned`)
 
 Use it when:
 - testing dynamic question structures
@@ -86,6 +92,8 @@ This will make it much easier to:
 - add new question types
 - support multiple test modes
 - move from rule-based analysis to hybrid AI analysis later
+
+The immediate benefit is that future image/audio/ranking questions can be introduced as kernel-level changes first, then enabled gradually per client.
 
 ## Analysis Engine Boundary
 

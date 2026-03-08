@@ -11,7 +11,10 @@ import {
   fullLiteQuestionSet,
   getAssessmentDefinition,
   getAssessmentModuleLabel,
+  getAssessmentQuestionTypeMeta,
   getAssessmentStepContext,
+  getDefaultAnswerValue,
+  getQuestionOptions,
   hasDraftableAssessmentProgress,
   resolveAssessmentMode,
   isAssessmentQuestionAnswered,
@@ -260,7 +263,7 @@ function TestPageClient() {
     setState((current) => {
       const currentValues = Array.isArray(current.answers[question.questionId]) ? (current.answers[question.questionId] as string[]) : [];
       const hasOption = currentValues.includes(option);
-      const maximum = question.maxSelections ?? question.options?.length ?? 99;
+      const maximum = question.maxSelections ?? getQuestionOptions(question).length ?? 99;
       const next = hasOption ? currentValues.filter((item) => item !== option) : [...currentValues, option].slice(0, maximum);
 
       return {
@@ -315,9 +318,7 @@ function TestPageClient() {
       questionId: question.questionId,
       moduleId: question.moduleId,
       answerType: question.answerType,
-      value:
-        state.answers[question.questionId] ??
-        (question.answerType === "multi" ? [] : question.answerType === "scale" ? question.scaleMin ?? 1 : ""),
+      value: state.answers[question.questionId] ?? getDefaultAnswerValue(question),
     }));
 
     const payload = {
@@ -353,12 +354,25 @@ function TestPageClient() {
   function renderQuestion(question: QuestionDef) {
     const currentValue = state.answers[question.questionId];
 
+    const questionTypeMeta = getAssessmentQuestionTypeMeta(question.answerType);
+
+    if (questionTypeMeta.webImplementation === "planned") {
+      return (
+        <div className="rounded-[28px] bg-[rgba(255,244,214,0.05)] p-5 shadow-[0_0_0_1px_rgba(245,208,120,0.14)]">
+          <p className="text-[11px] tracking-[0.28em] text-amber-200/70 uppercase">planned question type</p>
+          <p className="mt-3 text-sm leading-7 text-stone-300/82">
+            这种题型已经在 assessment 内核里注册完成，但当前 Web MVP 还没有启用对应交互。后面接入图片、音频或排序题时，可以直接沿用这个内核扩展。
+          </p>
+        </div>
+      );
+    }
+
     if (question.answerType === "single") {
       return (
         <div className="space-y-3">
-          {question.options?.map((option) => (
-            <OptionButton key={option} active={currentValue === option} onClick={() => setAnswer(question.questionId, option)}>
-              {option}
+          {getQuestionOptions(question).map((option) => (
+            <OptionButton key={option.id} active={currentValue === option.label} pressed={currentValue === option.label} onClick={() => setAnswer(question.questionId, option.label)}>
+              {option.label}
             </OptionButton>
           ))}
         </div>
@@ -370,14 +384,14 @@ function TestPageClient() {
       return (
         <div>
           <div className="grid gap-3 md:grid-cols-2">
-            {question.options?.map((option) => (
-              <OptionButton key={option} active={values.includes(option)} pressed={values.includes(option)} onClick={() => toggleMulti(question, option)}>
-                {option}
+            {getQuestionOptions(question).map((option) => (
+              <OptionButton key={option.id} active={values.includes(option.label)} pressed={values.includes(option.label)} onClick={() => toggleMulti(question, option.label)}>
+                {option.label}
               </OptionButton>
             ))}
           </div>
           <p className="mt-5 text-sm leading-7 text-stone-500">
-            至少选择 {question.minSelections ?? 1} 项，最多 {question.maxSelections ?? question.options?.length ?? 1} 项。
+            至少选择 {question.minSelections ?? 1} 项，最多 {question.maxSelections ?? getQuestionOptions(question).length ?? 1} 项。
           </p>
         </div>
       );
@@ -562,11 +576,11 @@ function TestPageClient() {
       ? "这一页不求准确，只求给接下来的阅读一个足够温柔的入口。"
       : context.mode === "review"
         ? "接下来会进入异步分析流程，生成一份更像阅读而不是评分的结果。"
-        : context.question.answerType === "multi"
+        : getAssessmentQuestionTypeMeta(context.question.answerType).family === "choice" && getAssessmentQuestionTypeMeta(context.question.answerType).cardinality === "multi"
           ? "这不是测你像谁，而是让它看见你反复停留的地方。"
           : context.question.answerType === "scale"
             ? "不必追求绝对答案，只要给出眼下最接近的一格。"
-            : context.question.answerType === "text"
+            : getAssessmentQuestionTypeMeta(context.question.answerType).family === "text"
               ? "不用写很多，写一句不会轻易消失的话就够了。"
               : "选最让你停下来的那一个，而不是最合理的那一个。";
 

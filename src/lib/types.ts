@@ -1,5 +1,7 @@
 export type Mode = "lite" | "deep";
 
+export type AssessmentAnswerType = "single" | "multi" | "scale" | "text" | "rank" | "image_single" | "image_multi" | "audio_single";
+
 export type DimensionKey = "aesthetic" | "emotional" | "temporal";
 
 export type ConfidenceBand = "low" | "medium" | "high";
@@ -25,7 +27,7 @@ export interface BasicInfo {
 export interface Answer {
   questionId: string;
   moduleId: string;
-  answerType: "single" | "multi" | "scale" | "text";
+  answerType: AssessmentAnswerType;
   value: string | string[] | number;
   rawLabel?: string;
 }

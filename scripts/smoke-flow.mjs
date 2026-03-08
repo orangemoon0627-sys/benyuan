@@ -10,21 +10,39 @@ async function loadQuestionSet() {
   return schema.questions;
 }
 
+function getOptionLabel(option) {
+  if (typeof option === 'string') return option;
+  if (option && typeof option === 'object' && typeof option.label === 'string') return option.label;
+  return '';
+}
+
+function getDefaultAnswerValue(question) {
+  if (question.answerType === 'multi' || question.answerType === 'image_multi' || question.answerType === 'rank') {
+    return [];
+  }
+
+  if (question.answerType === 'scale') {
+    return question.scaleMin ?? 1;
+  }
+
+  return '';
+}
 
 function buildAnswers(questions) {
   return questions.map((question, index) => {
-    let value;
+    const optionLabels = (question.options ?? []).map(getOptionLabel).filter(Boolean);
+    let value = getDefaultAnswerValue(question);
 
     if (question.answerType === 'multi') {
-      value = question.options.slice(0, question.minSelections ?? 1);
+      value = optionLabels.slice(0, question.minSelections ?? 1);
     } else if (question.answerType === 'scale') {
       value = Math.min(question.scaleMax ?? 5, Math.max(question.scaleMin ?? 1, 4));
     } else if (question.answerType === 'text') {
       value = question.questionId === 'Q023'
         ? '《悉达多》让我觉得，很多弯路其实也是河流的一部分。'
         : '请继续把尚未成形的自己，慢一点带出来。';
-    } else {
-      value = question.options[(index + 1) % question.options.length];
+    } else if (optionLabels.length > 0) {
+      value = optionLabels[(index + 1) % optionLabels.length];
     }
 
     return {

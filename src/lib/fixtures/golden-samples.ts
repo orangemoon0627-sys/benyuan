@@ -1,4 +1,4 @@
-import { fullLiteQuestionSet } from "@/features/assessment";
+import { fullLiteQuestionSet, getDefaultAnswerValue } from "@/features/assessment";
 import type { Answer, BasicInfo, ConfidenceBand, SafetyFlag, TestSession } from "@/lib/types";
 
 type AnswerValue = string | string[] | number;
@@ -30,7 +30,7 @@ function buildAnswers(answerMap: Record<string, AnswerValue>): Answer[] {
     answerType: question.answerType,
     value:
       answerMap[question.questionId] ??
-      (question.answerType === "multi" ? [] : question.answerType === "scale" ? question.scaleMin ?? 1 : ""),
+      getDefaultAnswerValue(question),
   }));
 }
 

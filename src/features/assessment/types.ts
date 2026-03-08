@@ -1,19 +1,40 @@
 import type { Mode } from "@/lib/types";
 
-export type QuestionAnswerType = "single" | "multi" | "scale" | "text";
+export type QuestionAnswerType = "single" | "multi" | "scale" | "text" | "rank" | "image_single" | "image_multi" | "audio_single";
+
+export type QuestionMediaAsset = {
+  kind: "image" | "audio";
+  src: string;
+  alt?: string;
+  caption?: string;
+};
+
+export type QuestionOption = {
+  id: string;
+  label: string;
+  description?: string;
+  asset?: QuestionMediaAsset;
+};
+
+export type QuestionPresentation = {
+  kind?: "text_options" | "image_grid" | "audio_scene" | "scale_steps" | "long_text" | "ranked_cards";
+  columns?: 1 | 2 | 3;
+  helperText?: string;
+};
 
 export type QuestionDef = {
   questionId: string;
   moduleId: string;
   answerType: QuestionAnswerType;
   prompt: string;
-  options?: string[];
+  options?: Array<string | QuestionOption>;
   minSelections?: number;
   maxSelections?: number;
   scaleMin?: number;
   scaleMax?: number;
   scaleLabels?: { low: string; high: string };
   optional?: boolean;
+  presentation?: QuestionPresentation;
 };
 
 export type AssessmentAnswerValue = string | string[] | number;

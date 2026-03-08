@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { defaultAssessmentMode, getAssessmentDefinition, listAssessmentDefinitions } from "@/features/assessment";
+import {
+  defaultAssessmentMode,
+  getAssessmentDefinition,
+  listAssessmentDefinitions,
+  listAssessmentQuestionTypes,
+  serializeAssessmentQuestion,
+} from "@/features/assessment";
 import type { Mode } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -19,7 +25,14 @@ export async function GET(request: Request) {
     moduleLabels: definition.moduleLabels,
     lifeStageOptions: definition.lifeStageOptions,
     moodKeywordOptions: definition.moodKeywordOptions,
-    questions: definition.questions,
+    questionTypes: listAssessmentQuestionTypes().map((item) => ({
+      answerType: item.answerType,
+      family: item.family,
+      cardinality: item.cardinality,
+      webImplementation: item.webImplementation,
+      defaultPresentation: item.defaultPresentation,
+    })),
+    questions: definition.questions.map((question) => serializeAssessmentQuestion(question)),
     validation: definition.validation,
   });
 }
