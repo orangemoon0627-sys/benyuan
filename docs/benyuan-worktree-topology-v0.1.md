@@ -43,6 +43,7 @@ The questionnaire system is now isolated under:
 - `src/features/assessment/question-bank.ts`
 - `src/features/assessment/catalog.ts`
 - `src/features/assessment/flow.ts`
+- `src/features/assessment/registry.ts`
 - `src/features/assessment/index.ts`
 
 This means future changes to question type, ordering, module grouping, or test flow should begin in `src/features/assessment/` rather than inside page components.
@@ -51,6 +52,8 @@ This means future changes to question type, ordering, module grouping, or test f
 
 A new schema endpoint is available:
 - `GET /api/test/schema`
+
+The endpoint now resolves through the assessment registry, so later mode-specific structures can be served without rewriting the route.
 
 Use it when:
 - testing dynamic question structures
@@ -83,3 +86,13 @@ This will make it much easier to:
 - add new question types
 - support multiple test modes
 - move from rule-based analysis to hybrid AI analysis later
+
+## Analysis Engine Boundary
+
+The analysis pipeline now resolves through an engine abstraction:
+- `src/lib/analysis/types.ts`
+- `src/lib/analysis/deterministic-engine.ts`
+- `src/lib/analysis/registry.ts`
+- `src/lib/analysis/index.ts`
+
+Current runtime still uses the deterministic engine, but future AI providers can be attached behind the same registry without rewriting `store.ts` or the API routes.

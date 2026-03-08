@@ -6,7 +6,7 @@ const pollDelayMs = Number(process.env.BENYUAN_POLL_MS ?? 250);
 const pollLimit = Number(process.env.BENYUAN_POLL_LIMIT ?? 30);
 
 async function loadQuestionSet() {
-  const schema = await requestJson('/api/test/schema');
+  const schema = await requestJson('/api/test/schema?mode=lite');
   return schema.questions;
 }
 
