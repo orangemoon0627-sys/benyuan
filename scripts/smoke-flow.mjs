@@ -6,9 +6,10 @@ const pollDelayMs = Number(process.env.BENYUAN_POLL_MS ?? 250);
 const pollLimit = Number(process.env.BENYUAN_POLL_LIMIT ?? 30);
 
 async function loadQuestionSet() {
-  const questionsModule = await import(new URL('../src/lib/questions.ts', import.meta.url));
-  return questionsModule.fullLiteQuestionSet;
+  const schema = await requestJson('/api/test/schema');
+  return schema.questions;
 }
+
 
 function buildAnswers(questions) {
   return questions.map((question, index) => {

@@ -5,20 +5,23 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, History, RotateCcw, Sparkles } from "lucide-react";
-import { fullLiteQuestionSet, lifeStageOptions, moodKeywordOptions, type QuestionDef } from "@/lib/questions";
-
-type AnswerValue = string | string[] | number;
-
-type FormState = {
-  lifeStage: string;
-  moodKeywords: string[];
-  answers: Record<string, AnswerValue>;
-};
-
-type StepContext =
-  | { mode: "entry" }
-  | { mode: "question"; question: QuestionDef; questionIndex: number }
-  | { mode: "review" };
+import {
+  assessmentDraftStorageKey,
+  assessmentModuleLabels,
+  assessmentTotalSteps,
+  fullLiteQuestionSet,
+  getAssessmentModuleLabel,
+  getAssessmentStepContext,
+  hasDraftableAssessmentProgress,
+  initialAssessmentFormState,
+  isAssessmentQuestionAnswered,
+  lifeStageOptions,
+  moodKeywordOptions,
+  type AssessmentAnswerValue,
+  type AssessmentFormState as FormState,
+  type AssessmentStepContext as StepContext,
+  type QuestionDef,
+} from "@/features/assessment";
 
 type DraftPayload = {
   currentStep: number;
@@ -26,28 +29,6 @@ type DraftPayload = {
   savedAt: string;
 };
 
-const totalSteps = fullLiteQuestionSet.length + 2;
-const DRAFT_STORAGE_KEY = "benyuan-lite-test-draft-v1";
-const INITIAL_STATE: FormState = {
-  lifeStage: "turning_point",
-  moodKeywords: ["迷茫", "希望"],
-  answers: {},
-};
-
-const moduleLabels: Record<string, string> = {
-  entry_state: "进入状态",
-  emotional_weather: "情感气候",
-  aesthetic_fingerprint: "审美语法",
-  temporal_philosophy: "时间哲学",
-  open_reflection: "开放反思",
-};
-
-function hasDraftableProgress(step: number, state: FormState) {
-  if (step > 0) return true;
-  if (state.lifeStage !== INITIAL_STATE.lifeStage) return true;
-  if (state.moodKeywords.length !== INITIAL_STATE.moodKeywords.length) return true;
-  return state.moodKeywords.some((keyword, index) => keyword !== INITIAL_STATE.moodKeywords[index]);
-}
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -75,32 +56,6 @@ function OptionButton({ active, children, onClick, pressed }: { active: boolean;
       {children}
     </button>
   );
-}
-
-function getStepContext(step: number): StepContext {
-  if (step === 0) return { mode: "entry" };
-  if (step === totalSteps - 1) return { mode: "review" };
-  return { mode: "question", question: fullLiteQuestionSet[step - 1], questionIndex: step - 1 };
-}
-
-function isQuestionAnswered(question: QuestionDef, answers: Record<string, AnswerValue>) {
-  const value = answers[question.questionId];
-
-  if (question.answerType === "multi") {
-    const count = Array.isArray(value) ? value.length : 0;
-    return count >= (question.minSelections ?? 1);
-  }
-
-  if (question.answerType === "text") {
-    if (question.optional) return true;
-    return typeof value === "string" && value.trim().length > 0;
-  }
-
-  if (question.answerType === "scale") {
-    return typeof value === "number";
-  }
-
-  return typeof value === "string" && value.length > 0;
 }
 
 function formatSavedAt(savedAt: string) {
@@ -201,19 +156,19 @@ export default function TestPage() {
   const [draftReady, setDraftReady] = useState(false);
   const [draftAvailableOnLoad, setDraftAvailableOnLoad] = useState(false);
   const [draftMeta, setDraftMeta] = useState<{ currentStep: number; savedAt: string } | null>(null);
-  const [state, setState] = useState<FormState>(INITIAL_STATE);
+  const [state, setState] = useState<FormState>(initialAssessmentFormState);
 
-  const context = getStepContext(currentStep);
-  const progress = ((currentStep + 1) / totalSteps) * 100;
+  const context = getAssessmentStepContext(currentStep);
+  const progress = ((currentStep + 1) / assessmentTotalSteps) * 100;
   const openTextCount = ["Q023", "Q024"].reduce((count, key) => {
     const value = state.answers[key];
     return typeof value === "string" && value.trim().length > 0 ? count + 1 : count;
   }, 0);
 
-  const requiredQuestionsAnswered = fullLiteQuestionSet.every((question) => isQuestionAnswered(question, state.answers));
+  const requiredQuestionsAnswered = fullLiteQuestionSet.every((question) => isAssessmentQuestionAnswered(question, state.answers));
   const reviewReady = requiredQuestionsAnswered && openTextCount >= 1 && state.moodKeywords.length > 0 && Boolean(state.lifeStage);
   const firstIncompleteStep = useMemo(() => {
-    const missingRequiredIndex = fullLiteQuestionSet.findIndex((question) => !isQuestionAnswered(question, state.answers));
+    const missingRequiredIndex = fullLiteQuestionSet.findIndex((question) => !isAssessmentQuestionAnswered(question, state.answers));
 
     if (missingRequiredIndex >= 0) {
       return missingRequiredIndex + 1;
@@ -221,19 +176,19 @@ export default function TestPage() {
 
     if (openTextCount === 0) {
       const firstOpenQuestionIndex = fullLiteQuestionSet.findIndex((question) => question.answerType === "text");
-      return firstOpenQuestionIndex >= 0 ? firstOpenQuestionIndex + 1 : totalSteps - 1;
+      return firstOpenQuestionIndex >= 0 ? firstOpenQuestionIndex + 1 : assessmentTotalSteps - 1;
     }
 
     return null;
   }, [openTextCount, state.answers]);
 
   const firstIncompleteLabel = useMemo(() => {
-    if (firstIncompleteStep === null || firstIncompleteStep <= 0 || firstIncompleteStep >= totalSteps - 1) {
+    if (firstIncompleteStep === null || firstIncompleteStep <= 0 || firstIncompleteStep >= assessmentTotalSteps - 1) {
       return null;
     }
 
     const targetQuestion = fullLiteQuestionSet[firstIncompleteStep - 1];
-    return `${moduleLabels[targetQuestion.moduleId] ?? targetQuestion.moduleId} · 问题 ${firstIncompleteStep} / ${fullLiteQuestionSet.length}`;
+    return `${getAssessmentModuleLabel(targetQuestion.moduleId)} · 问题 ${firstIncompleteStep} / ${fullLiteQuestionSet.length}`;
   }, [firstIncompleteStep]);
 
   const canProceed = useMemo(() => {
@@ -245,15 +200,15 @@ export default function TestPage() {
       return reviewReady;
     }
 
-    return isQuestionAnswered(context.question, state.answers);
+    return isAssessmentQuestionAnswered(context.question, state.answers);
   }, [context, reviewReady, state.answers, state.lifeStage, state.moodKeywords]);
 
   const currentModuleLabel =
-    context.mode === "question" ? moduleLabels[context.question.moduleId] ?? context.question.moduleId : context.mode === "entry" ? "进入状态" : "提交前回望";
+    context.mode === "question" ? getAssessmentModuleLabel(context.question.moduleId) : context.mode === "entry" ? "进入状态" : "提交前回望";
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      const raw = window.localStorage.getItem(assessmentDraftStorageKey);
       if (!raw) {
         setDraftReady(true);
         return;
@@ -261,7 +216,7 @@ export default function TestPage() {
 
       const draft = JSON.parse(raw) as DraftPayload;
       if (draft?.state) {
-        const restoredStep = Math.max(0, Math.min(draft.currentStep ?? 0, totalSteps - 1));
+        const restoredStep = Math.max(0, Math.min(draft.currentStep ?? 0, assessmentTotalSteps - 1));
         setState(draft.state);
         setCurrentStep(restoredStep);
         setDraftMeta({ currentStep: restoredStep, savedAt: draft.savedAt ?? new Date().toISOString() });
@@ -278,8 +233,8 @@ export default function TestPage() {
   useEffect(() => {
     if (!draftReady) return;
 
-    if (!hasDraftableProgress(currentStep, state)) {
-      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    if (!hasDraftableAssessmentProgress(currentStep, state)) {
+      window.localStorage.removeItem(assessmentDraftStorageKey);
       setDraftMeta(null);
       return;
     }
@@ -290,11 +245,11 @@ export default function TestPage() {
       savedAt: new Date().toISOString(),
     };
 
-    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+    window.localStorage.setItem(assessmentDraftStorageKey, JSON.stringify(payload));
     setDraftMeta({ currentStep, savedAt: payload.savedAt });
   }, [currentStep, draftReady, state]);
 
-  function setAnswer(questionId: string, value: AnswerValue) {
+  function setAnswer(questionId: string, value: AssessmentAnswerValue) {
     setState((current) => ({ ...current, answers: { ...current.answers, [questionId]: value } }));
   }
 
@@ -316,7 +271,7 @@ export default function TestPage() {
   }
 
   function goNext() {
-    if (!canProceed || currentStep >= totalSteps - 1) return;
+    if (!canProceed || currentStep >= assessmentTotalSteps - 1) return;
     setCurrentStep((value) => value + 1);
   }
 
@@ -332,8 +287,8 @@ export default function TestPage() {
   }
 
   function clearDraft() {
-    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setState(INITIAL_STATE);
+    window.localStorage.removeItem(assessmentDraftStorageKey);
+    setState(initialAssessmentFormState);
     setCurrentStep(0);
     setDraftMeta(null);
     setDraftAvailableOnLoad(false);
@@ -383,7 +338,7 @@ export default function TestPage() {
       }
 
       const data = (await response.json()) as { next: string };
-      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      window.localStorage.removeItem(assessmentDraftStorageKey);
       setDraftMeta(null);
       router.push(data.next);
     } catch {
@@ -628,7 +583,7 @@ export default function TestPage() {
           className="mb-10"
         >
           <div className="flex items-center justify-between gap-4">
-            <p className="text-[11px] tracking-[0.42em] text-stone-500 uppercase">step ritual / {currentStep + 1} of {totalSteps}</p>
+            <p className="text-[11px] tracking-[0.42em] text-stone-500 uppercase">step ritual / {currentStep + 1} of {assessmentTotalSteps}</p>
             <Link href="/report/sess_sample_001" className="inline-flex items-center gap-2 text-xs tracking-[0.28em] text-stone-400 uppercase transition hover:text-stone-200">
               查看样例
               <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
@@ -682,7 +637,7 @@ export default function TestPage() {
             <motion.div className="h-full bg-[linear-gradient(90deg,rgba(216,232,255,0.84),rgba(167,193,228,0.72))]" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }} />
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {Object.entries(moduleLabels).map(([key, label]) => {
+            {Object.entries(assessmentModuleLabels).map(([key, label]) => {
               const active = context.mode === "question" ? context.question.moduleId === key : context.mode === "entry" ? key === "entry_state" : key === "open_reflection";
               return (
                 <span

@@ -1,0 +1,85 @@
+# Benyuan Worktree Topology v0.1
+
+Last updated: 2026-03-08
+
+## Active Worktrees
+
+### Orchestrator
+- Path: `/Users/fanhao/Documents/Playground`
+- Branch: `main`
+- Responsibility:
+  - integration and release gate
+  - smoke validation
+  - shared docs and status board
+  - final merge target
+
+### Frontend Worktree
+- Path: `/Users/fanhao/Documents/Playground-fe`
+- Branch: `codex/frontend-ui`
+- Responsibility:
+  - `/`, `/test`, `/processing`, `/report`
+  - visual system, motion, responsive behavior
+  - interaction QA and accessibility
+
+### Backend / Analysis Worktree
+- Path: `/Users/fanhao/Documents/Playground-be`
+- Branch: `codex/backend-analysis`
+- Responsibility:
+  - `/api/*`
+  - storage and session persistence
+  - feature mapping and report generation
+  - future LLM provider integration
+
+## Shared Dependency Setup
+
+To reduce repeated installs, both worktrees use a symlinked dependency folder:
+- `/Users/fanhao/Documents/Playground-fe/node_modules -> /Users/fanhao/Documents/Playground/node_modules`
+- `/Users/fanhao/Documents/Playground-be/node_modules -> /Users/fanhao/Documents/Playground/node_modules`
+
+## Assessment Isolation
+
+The questionnaire system is now isolated under:
+- `src/features/assessment/types.ts`
+- `src/features/assessment/question-bank.ts`
+- `src/features/assessment/catalog.ts`
+- `src/features/assessment/flow.ts`
+- `src/features/assessment/index.ts`
+
+This means future changes to question type, ordering, module grouping, or test flow should begin in `src/features/assessment/` rather than inside page components.
+
+## API Contract for Test Structure
+
+A new schema endpoint is available:
+- `GET /api/test/schema`
+
+Use it when:
+- testing dynamic question structures
+- building alternate test clients
+- validating future question-bank revisions
+- keeping smoke scripts decoupled from direct source imports
+
+## Recommended Operating Rhythm
+
+1. Make UI changes in `Playground-fe`
+2. Make analysis/API changes in `Playground-be`
+3. Reproduce integration in `Playground`
+4. Run:
+
+```bash
+npm run lint
+npm run build
+npm run smoke:flow
+```
+
+## Near-Term Upgrade Path
+
+For the next phase, keep these boundaries:
+- frontend owns presentation and pacing
+- backend owns session schema and analysis contract
+- assessment owns question definitions and flow rules
+
+This will make it much easier to:
+- replace question wording
+- add new question types
+- support multiple test modes
+- move from rule-based analysis to hybrid AI analysis later

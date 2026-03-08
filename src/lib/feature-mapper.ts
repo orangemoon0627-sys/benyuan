@@ -1,4 +1,4 @@
-import { fullLiteQuestionSet } from "@/lib/questions";
+import { fullLiteQuestionSet } from "@/features/assessment";
 import type { Answer, ConfidenceBand, FeatureVector, TestSession } from "@/lib/types";
 
 const FEATURE_GROUPS = {

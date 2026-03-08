@@ -1,4 +1,4 @@
-import { fullLiteQuestionSet } from "@/lib/questions";
+import { fullLiteQuestionSet } from "@/features/assessment";
 import type { Answer, BasicInfo, ConfidenceBand, SafetyFlag, TestSession } from "@/lib/types";
 
 type AnswerValue = string | string[] | number;

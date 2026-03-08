@@ -1,6 +1,6 @@
 import { sampleReport } from "@/lib/fixtures/report";
 import { collectSafetySignals, getAnswerLabel, getFeatureSnapshot } from "@/lib/feature-mapper";
-import { fullLiteQuestionSet } from "@/lib/questions";
+import { fullLiteQuestionSet } from "@/features/assessment";
 import type {
   Archetype,
   ConfidenceBand,

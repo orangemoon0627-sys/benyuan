@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fullLiteQuestionSet } from "@/lib/questions";
+import { fullLiteQuestionSet } from "@/features/assessment";
 import { createSession } from "@/lib/store";
 import type { Answer, BasicInfo } from "@/lib/types";
 
