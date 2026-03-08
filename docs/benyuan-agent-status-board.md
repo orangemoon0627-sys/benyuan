@@ -86,6 +86,8 @@ If you keep working with me in this same conversation, I can keep this board upd
 - Test schema API in `src/app/api/test/schema/route.ts`
 - Assessment registry in `src/features/assessment/registry.ts`
 - Analysis engine adapter layer in `src/lib/analysis/`
+- Mode-driven assessment registry with `lite` / `deep` skeleton in `src/features/assessment/registry.ts`
+- Queryable test schema by mode in `src/app/api/test/schema/route.ts`
 - End-to-end browser QA pass for `/test`, `/processing/[sessionId]`, and `/report/[sessionId]`
 - Atmospheric questionnaire framing upgrades in `src/app/test/page.tsx`
 - Cinematic processing-state refinement in `src/app/processing/[sessionId]/page.tsx`

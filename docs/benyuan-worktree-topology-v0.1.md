@@ -96,3 +96,17 @@ The analysis pipeline now resolves through an engine abstraction:
 - `src/lib/analysis/index.ts`
 
 Current runtime still uses the deterministic engine, but future AI providers can be attached behind the same registry without rewriting `store.ts` or the API routes.
+
+## Mode-Driven Assessment Core
+
+Assessment is now mode-driven instead of being hardcoded to a single questionnaire path.
+
+Current registry behavior:
+- `lite` mode: active MVP path
+- `deep` mode: structural placeholder that currently reuses the Lite bank, but already has its own storage key and phase definition
+
+This gives us a clean place to later introduce:
+- different question sets per mode
+- different validation rules per mode
+- different pacing / phase structures per mode
+- different analysis-engine routing per mode

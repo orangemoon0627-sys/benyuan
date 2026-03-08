@@ -1,28 +1,20 @@
-import { assessmentModuleLabels } from "./catalog";
-import { fullLiteQuestionSet } from "./question-bank";
-import type { AssessmentFormState, AssessmentStepContext, QuestionDef, AssessmentAnswerValue } from "./types";
+import type { AssessmentAnswerValue, AssessmentDefinition, AssessmentFormState, AssessmentStepContext, QuestionDef } from "./types";
 
-export const assessmentDraftStorageKey = "benyuan-lite-test-draft-v1";
-
-export const initialAssessmentFormState: AssessmentFormState = {
-  lifeStage: "turning_point",
-  moodKeywords: ["迷茫", "希望"],
-  answers: {},
-};
-
-export const assessmentTotalSteps = fullLiteQuestionSet.length + 2;
-
-export function hasDraftableAssessmentProgress(step: number, state: AssessmentFormState) {
-  if (step > 0) return true;
-  if (state.lifeStage !== initialAssessmentFormState.lifeStage) return true;
-  if (state.moodKeywords.length !== initialAssessmentFormState.moodKeywords.length) return true;
-  return state.moodKeywords.some((keyword, index) => keyword !== initialAssessmentFormState.moodKeywords[index]);
+export function getAssessmentTotalSteps(definition: Pick<AssessmentDefinition, "totalSteps">) {
+  return definition.totalSteps;
 }
 
-export function getAssessmentStepContext(step: number): AssessmentStepContext {
+export function hasDraftableAssessmentProgress(definition: AssessmentDefinition, step: number, state: AssessmentFormState) {
+  if (step > 0) return true;
+  if (state.lifeStage !== definition.initialState.lifeStage) return true;
+  if (state.moodKeywords.length !== definition.initialState.moodKeywords.length) return true;
+  return state.moodKeywords.some((keyword, index) => keyword !== definition.initialState.moodKeywords[index]);
+}
+
+export function getAssessmentStepContext(definition: AssessmentDefinition, step: number): AssessmentStepContext {
   if (step === 0) return { mode: "entry" };
-  if (step === assessmentTotalSteps - 1) return { mode: "review" };
-  return { mode: "question", question: fullLiteQuestionSet[step - 1], questionIndex: step - 1 };
+  if (step === getAssessmentTotalSteps(definition) - 1) return { mode: "review" };
+  return { mode: "question", question: definition.questions[step - 1], questionIndex: step - 1 };
 }
 
 export function isAssessmentQuestionAnswered(question: QuestionDef, answers: Record<string, AssessmentAnswerValue>) {
@@ -45,6 +37,10 @@ export function isAssessmentQuestionAnswered(question: QuestionDef, answers: Rec
   return typeof value === "string" && value.length > 0;
 }
 
-export function getAssessmentModuleLabel(moduleId: string) {
-  return assessmentModuleLabels[moduleId] ?? moduleId;
+export function getAssessmentModuleLabel(definition: AssessmentDefinition, moduleId: string) {
+  return definition.moduleLabels[moduleId] ?? moduleId;
+}
+
+export function findFirstIncompleteQuestionIndex(definition: AssessmentDefinition, answers: Record<string, AssessmentAnswerValue>) {
+  return definition.questions.findIndex((question) => !isAssessmentQuestionAnswered(question, answers));
 }

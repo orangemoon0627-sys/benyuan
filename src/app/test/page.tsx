@@ -2,18 +2,18 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, History, RotateCcw, Sparkles } from "lucide-react";
 import {
-  assessmentDraftStorageKey,
   assessmentModuleLabels,
-  assessmentTotalSteps,
+  defaultAssessmentMode,
   fullLiteQuestionSet,
+  getAssessmentDefinition,
   getAssessmentModuleLabel,
   getAssessmentStepContext,
   hasDraftableAssessmentProgress,
-  initialAssessmentFormState,
+  resolveAssessmentMode,
   isAssessmentQuestionAnswered,
   lifeStageOptions,
   moodKeywordOptions,
@@ -147,49 +147,52 @@ function getCompanionNote(context: StepContext) {
   };
 }
 
-export default function TestPage() {
+function TestPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
+  const assessmentMode = resolveAssessmentMode(searchParams.get("mode") ?? defaultAssessmentMode);
+  const assessmentDefinition = useMemo(() => getAssessmentDefinition(assessmentMode), [assessmentMode]);
   const [draftAvailableOnLoad, setDraftAvailableOnLoad] = useState(false);
   const [draftMeta, setDraftMeta] = useState<{ currentStep: number; savedAt: string } | null>(null);
-  const [state, setState] = useState<FormState>(initialAssessmentFormState);
+  const [state, setState] = useState<FormState>(assessmentDefinition.initialState);
 
-  const context = getAssessmentStepContext(currentStep);
-  const progress = ((currentStep + 1) / assessmentTotalSteps) * 100;
+  const context = getAssessmentStepContext(assessmentDefinition, currentStep);
+  const progress = ((currentStep + 1) / assessmentDefinition.totalSteps) * 100;
   const openTextCount = ["Q023", "Q024"].reduce((count, key) => {
     const value = state.answers[key];
     return typeof value === "string" && value.trim().length > 0 ? count + 1 : count;
   }, 0);
 
-  const requiredQuestionsAnswered = fullLiteQuestionSet.every((question) => isAssessmentQuestionAnswered(question, state.answers));
+  const requiredQuestionsAnswered = assessmentDefinition.questions.every((question) => isAssessmentQuestionAnswered(question, state.answers));
   const reviewReady = requiredQuestionsAnswered && openTextCount >= 1 && state.moodKeywords.length > 0 && Boolean(state.lifeStage);
   const firstIncompleteStep = useMemo(() => {
-    const missingRequiredIndex = fullLiteQuestionSet.findIndex((question) => !isAssessmentQuestionAnswered(question, state.answers));
+    const missingRequiredIndex = assessmentDefinition.questions.findIndex((question) => !isAssessmentQuestionAnswered(question, state.answers));
 
     if (missingRequiredIndex >= 0) {
       return missingRequiredIndex + 1;
     }
 
     if (openTextCount === 0) {
-      const firstOpenQuestionIndex = fullLiteQuestionSet.findIndex((question) => question.answerType === "text");
-      return firstOpenQuestionIndex >= 0 ? firstOpenQuestionIndex + 1 : assessmentTotalSteps - 1;
+      const firstOpenQuestionIndex = assessmentDefinition.questions.findIndex((question) => question.answerType === "text");
+      return firstOpenQuestionIndex >= 0 ? firstOpenQuestionIndex + 1 : assessmentDefinition.totalSteps - 1;
     }
 
     return null;
-  }, [openTextCount, state.answers]);
+  }, [assessmentDefinition.questions, assessmentDefinition.totalSteps, openTextCount, state.answers]);
 
   const firstIncompleteLabel = useMemo(() => {
-    if (firstIncompleteStep === null || firstIncompleteStep <= 0 || firstIncompleteStep >= assessmentTotalSteps - 1) {
+    if (firstIncompleteStep === null || firstIncompleteStep <= 0 || firstIncompleteStep >= assessmentDefinition.totalSteps - 1) {
       return null;
     }
 
-    const targetQuestion = fullLiteQuestionSet[firstIncompleteStep - 1];
-    return `${getAssessmentModuleLabel(targetQuestion.moduleId)} · 问题 ${firstIncompleteStep} / ${fullLiteQuestionSet.length}`;
-  }, [firstIncompleteStep]);
+    const targetQuestion = assessmentDefinition.questions[firstIncompleteStep - 1];
+    return `${getAssessmentModuleLabel(assessmentDefinition, targetQuestion.moduleId)} · 问题 ${firstIncompleteStep} / ${assessmentDefinition.questions.length}`;
+  }, [assessmentDefinition, firstIncompleteStep]);
 
   const canProceed = useMemo(() => {
     if (context.mode === "entry") {
@@ -204,11 +207,11 @@ export default function TestPage() {
   }, [context, reviewReady, state.answers, state.lifeStage, state.moodKeywords]);
 
   const currentModuleLabel =
-    context.mode === "question" ? getAssessmentModuleLabel(context.question.moduleId) : context.mode === "entry" ? "进入状态" : "提交前回望";
+    context.mode === "question" ? getAssessmentModuleLabel(assessmentDefinition, context.question.moduleId) : context.mode === "entry" ? "进入状态" : "提交前回望";
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(assessmentDraftStorageKey);
+      const raw = window.localStorage.getItem(assessmentDefinition.storageKey);
       if (!raw) {
         setDraftReady(true);
         return;
@@ -216,7 +219,7 @@ export default function TestPage() {
 
       const draft = JSON.parse(raw) as DraftPayload;
       if (draft?.state) {
-        const restoredStep = Math.max(0, Math.min(draft.currentStep ?? 0, assessmentTotalSteps - 1));
+        const restoredStep = Math.max(0, Math.min(draft.currentStep ?? 0, assessmentDefinition.totalSteps - 1));
         setState(draft.state);
         setCurrentStep(restoredStep);
         setDraftMeta({ currentStep: restoredStep, savedAt: draft.savedAt ?? new Date().toISOString() });
@@ -228,13 +231,13 @@ export default function TestPage() {
     } finally {
       setDraftReady(true);
     }
-  }, []);
+  }, [assessmentDefinition.storageKey, assessmentDefinition.totalSteps]);
 
   useEffect(() => {
     if (!draftReady) return;
 
-    if (!hasDraftableAssessmentProgress(currentStep, state)) {
-      window.localStorage.removeItem(assessmentDraftStorageKey);
+    if (!hasDraftableAssessmentProgress(assessmentDefinition, currentStep, state)) {
+      window.localStorage.removeItem(assessmentDefinition.storageKey);
       setDraftMeta(null);
       return;
     }
@@ -245,9 +248,9 @@ export default function TestPage() {
       savedAt: new Date().toISOString(),
     };
 
-    window.localStorage.setItem(assessmentDraftStorageKey, JSON.stringify(payload));
+    window.localStorage.setItem(assessmentDefinition.storageKey, JSON.stringify(payload));
     setDraftMeta({ currentStep, savedAt: payload.savedAt });
-  }, [currentStep, draftReady, state]);
+  }, [assessmentDefinition, currentStep, draftReady, state]);
 
   function setAnswer(questionId: string, value: AssessmentAnswerValue) {
     setState((current) => ({ ...current, answers: { ...current.answers, [questionId]: value } }));
@@ -271,7 +274,7 @@ export default function TestPage() {
   }
 
   function goNext() {
-    if (!canProceed || currentStep >= assessmentTotalSteps - 1) return;
+    if (!canProceed || currentStep >= assessmentDefinition.totalSteps - 1) return;
     setCurrentStep((value) => value + 1);
   }
 
@@ -287,8 +290,8 @@ export default function TestPage() {
   }
 
   function clearDraft() {
-    window.localStorage.removeItem(assessmentDraftStorageKey);
-    setState(initialAssessmentFormState);
+    window.localStorage.removeItem(assessmentDefinition.storageKey);
+    setState(assessmentDefinition.initialState);
     setCurrentStep(0);
     setDraftMeta(null);
     setDraftAvailableOnLoad(false);
@@ -308,7 +311,7 @@ export default function TestPage() {
     setSubmitting(true);
     setError(null);
 
-    const answers = fullLiteQuestionSet.map((question) => ({
+    const answers = assessmentDefinition.questions.map((question) => ({
       questionId: question.questionId,
       moduleId: question.moduleId,
       answerType: question.answerType,
@@ -318,7 +321,7 @@ export default function TestPage() {
     }));
 
     const payload = {
-      mode: "lite",
+      mode: assessmentDefinition.mode,
       basicInfo: {
         lifeStage: state.lifeStage,
         moodKeywords: state.moodKeywords,
@@ -338,7 +341,7 @@ export default function TestPage() {
       }
 
       const data = (await response.json()) as { next: string };
-      window.localStorage.removeItem(assessmentDraftStorageKey);
+      window.localStorage.removeItem(assessmentDefinition.storageKey);
       setDraftMeta(null);
       router.push(data.next);
     } catch {
@@ -489,7 +492,7 @@ export default function TestPage() {
     }
 
     if (context.mode === "review") {
-      const answeredCount = fullLiteQuestionSet.reduce((count, question) => {
+      const answeredCount = assessmentDefinition.questions.reduce((count, question) => {
         const value = state.answers[question.questionId];
         const answered =
           question.answerType === "multi"
@@ -514,7 +517,7 @@ export default function TestPage() {
               <div className="mt-4 space-y-3 text-sm leading-7 text-stone-300/78">
                 <p>生命阶段：{lifeStageOptions.find((item) => item.value === state.lifeStage)?.label ?? state.lifeStage}</p>
                 <p>心境关键词：{state.moodKeywords.join(" · ")}</p>
-                <p>已回答题目：{answeredCount} / {fullLiteQuestionSet.length}</p>
+                <p>已回答题目：{answeredCount} / {assessmentDefinition.questions.length}</p>
                 <p>开放反思：{openTextCount} / 2</p>
               </div>
             </div>
@@ -583,7 +586,7 @@ export default function TestPage() {
           className="mb-10"
         >
           <div className="flex items-center justify-between gap-4">
-            <p className="text-[11px] tracking-[0.42em] text-stone-500 uppercase">step ritual / {currentStep + 1} of {assessmentTotalSteps}</p>
+            <p className="text-[11px] tracking-[0.42em] text-stone-500 uppercase">step ritual / {currentStep + 1} of {assessmentDefinition.totalSteps}</p>
             <Link href="/report/sess_sample_001" className="inline-flex items-center gap-2 text-xs tracking-[0.28em] text-stone-400 uppercase transition hover:text-stone-200">
               查看样例
               <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
@@ -597,7 +600,7 @@ export default function TestPage() {
             <div className="rounded-[24px] bg-white/[0.03] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
               <p className="text-[11px] tracking-[0.28em] text-stone-500 uppercase">当前段落</p>
               <p className="mt-3 text-xl text-stone-100">{currentModuleLabel}</p>
-              <p className="mt-2 text-sm leading-7 text-stone-400">{context.mode === "question" ? `问题 ${context.questionIndex + 1} / ${fullLiteQuestionSet.length}` : context.mode === "entry" ? "进入前校准" : "提交前回望"}</p>
+              <p className="mt-2 text-sm leading-7 text-stone-400">{context.mode === "question" ? `问题 ${context.questionIndex + 1} / ${assessmentDefinition.questions.length}` : context.mode === "entry" ? "进入前校准" : "提交前回望"}</p>
             </div>
           </div>
 
@@ -711,5 +714,13 @@ export default function TestPage() {
         </Shell>
       </div>
     </main>
+  );
+}
+
+export default function TestPage() {
+  return (
+    <Suspense fallback={<main className="min-h-[60vh] bg-[#08080a]" />}>
+      <TestPageClient />
+    </Suspense>
   );
 }
