@@ -224,6 +224,7 @@ Validated on 2026-03-08 with:
 - `BENYUAN_BASE_URL=http://localhost:3000 BENYUAN_ANALYSIS_ENGINE=hybrid npm run smoke:flow:deep`
 - `node --input-type=module -e "fetch versioned /api/test/schema"`
 - `node --input-type=module -e "fetch /api/internal/schema-matrix"`
+- `node --input-type=module -e "fetch schema diff /api/internal/schema-matrix?mode=...&target=..."`
 
 
 ## Live Provider Adapter Boundary
@@ -321,3 +322,5 @@ This surface is for quickly checking:
 - default-version status
 
 It gives us a much faster review path before introducing `lite.v2` / `deep.v2` or changing phase layouts.
+
+The matrix is now also diff-ready: the API can compare a target version against the default (or an explicit base version) so the UI can immediately surface question/module/phase deltas once a second version lands.

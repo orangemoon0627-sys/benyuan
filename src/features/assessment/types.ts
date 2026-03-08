@@ -88,3 +88,49 @@ export type AssessmentDefinition = {
   initialState: AssessmentFormState;
   validation: AssessmentValidationConfig;
 };
+
+
+export type AssessmentPhaseSnapshot = {
+  id: string;
+  label: string;
+  description: string;
+  moduleIds: string[];
+  questionCount: number;
+};
+
+export type AssessmentDefinitionSnapshot = {
+  mode: Mode;
+  version: string;
+  title: string;
+  description: string;
+  storageKey: string;
+  totalSteps: number;
+  questionCount: number;
+  openReflectionQuestionIds: string[];
+  modules: string[];
+  phases: AssessmentPhaseSnapshot[];
+  questionIds: string[];
+  isDefaultVersion: boolean;
+};
+
+export type AssessmentDefinitionDiff = {
+  mode: Mode;
+  baseVersion: string;
+  targetVersion: string;
+  questionCountDelta: number;
+  totalStepsDelta: number;
+  storageKeyChanged: boolean;
+  addedQuestions: string[];
+  removedQuestions: string[];
+  addedModules: string[];
+  removedModules: string[];
+  addedOpenReflections: string[];
+  removedOpenReflections: string[];
+  addedPhases: string[];
+  removedPhases: string[];
+  changedPhaseQuestionCounts: Array<{
+    phaseId: string;
+    from: number;
+    to: number;
+  }>;
+};

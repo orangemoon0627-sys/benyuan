@@ -2,7 +2,7 @@ import type { Mode, Answer } from "@/lib/types";
 import { assessmentModuleLabels, lifeStageOptions, moodKeywordOptions } from "./catalog";
 import { findFirstIncompleteQuestionIndex } from "./flow";
 import { fullDeepQuestionSet, fullLiteQuestionSet } from "./question-bank";
-import type { AssessmentDefinition, AssessmentFormState, AssessmentValidationConfig, AssessmentVersionDescriptor } from "./types";
+import type { AssessmentDefinition, AssessmentDefinitionDiff, AssessmentDefinitionSnapshot, AssessmentFormState, AssessmentValidationConfig, AssessmentVersionDescriptor } from "./types";
 
 export type AssessmentValidationResult =
   | { ok: true }
@@ -105,6 +105,37 @@ const assessmentRegistry: Record<Mode, Record<string, AssessmentDefinition>> = {
   },
 };
 
+
+function toAssessmentDefinitionSnapshot(definition: AssessmentDefinition, isDefaultVersion: boolean): AssessmentDefinitionSnapshot {
+  return {
+    mode: definition.mode,
+    version: definition.version,
+    title: definition.title,
+    description: definition.description,
+    storageKey: definition.storageKey,
+    totalSteps: definition.totalSteps,
+    questionCount: definition.questions.length,
+    openReflectionQuestionIds: definition.validation.openReflectionQuestionIds,
+    modules: [...new Set(definition.questions.map((question) => question.moduleId))],
+    phases: definition.phases.map((phase) => ({
+      id: phase.id,
+      label: phase.label,
+      description: phase.description,
+      moduleIds: phase.moduleIds,
+      questionCount: definition.questions.filter((question) => phase.moduleIds.includes(question.moduleId)).length,
+    })),
+    questionIds: definition.questions.map((question) => question.questionId),
+    isDefaultVersion,
+  };
+}
+
+function diffStringLists(base: string[], target: string[]) {
+  return {
+    added: target.filter((item) => !base.includes(item)),
+    removed: base.filter((item) => !target.includes(item)),
+  };
+}
+
 const defaultAssessmentVersions: Record<Mode, string> = {
   lite: liteAssessmentDefinitionV1.version,
   deep: deepAssessmentDefinitionV1.version,
@@ -153,29 +184,54 @@ export function getAssessmentDefinition(mode: Mode = defaultAssessmentMode, vers
 
 
 
-export function listAssessmentDefinitionSnapshots() {
-  return (Object.keys(assessmentRegistry) as Mode[]).flatMap((mode) =>
-    Object.values(assessmentRegistry[mode] ?? {}).map((definition) => ({
-      mode: definition.mode,
-      version: definition.version,
-      title: definition.title,
-      description: definition.description,
-      storageKey: definition.storageKey,
-      totalSteps: definition.totalSteps,
-      questionCount: definition.questions.length,
-      openReflectionQuestionIds: definition.validation.openReflectionQuestionIds,
-      modules: [...new Set(definition.questions.map((question) => question.moduleId))],
-      phases: definition.phases.map((phase) => ({
-        id: phase.id,
-        label: phase.label,
-        description: phase.description,
-        moduleIds: phase.moduleIds,
-        questionCount: definition.questions.filter((question) => phase.moduleIds.includes(question.moduleId)).length,
-      })),
-      questionIds: definition.questions.map((question) => question.questionId),
-      isDefaultVersion: defaultAssessmentVersions[mode] === definition.version,
-    })),
+export function listAssessmentDefinitionSnapshots(mode?: Mode) {
+  const modes = mode ? [mode] : (Object.keys(assessmentRegistry) as Mode[]);
+  return modes.flatMap((item) =>
+    Object.values(assessmentRegistry[item] ?? {}).map((definition) =>
+      toAssessmentDefinitionSnapshot(definition, defaultAssessmentVersions[item] === definition.version),
+    ),
   );
+}
+
+export function getAssessmentDefinitionSnapshot(mode: Mode, version?: string | null) {
+  const definition = getAssessmentDefinition(mode, version);
+  return toAssessmentDefinitionSnapshot(definition, defaultAssessmentVersions[mode] === definition.version);
+}
+
+export function diffAssessmentDefinitionSnapshots(mode: Mode, targetVersion: string, baseVersion?: string | null): AssessmentDefinitionDiff {
+  const resolvedBaseVersion = resolveAssessmentVersion(mode, baseVersion ?? defaultAssessmentVersions[mode]);
+  const baseSnapshot = getAssessmentDefinitionSnapshot(mode, resolvedBaseVersion);
+  const targetSnapshot = getAssessmentDefinitionSnapshot(mode, targetVersion);
+  const questionDiff = diffStringLists(baseSnapshot.questionIds, targetSnapshot.questionIds);
+  const moduleDiff = diffStringLists(baseSnapshot.modules, targetSnapshot.modules);
+  const openReflectionDiff = diffStringLists(baseSnapshot.openReflectionQuestionIds, targetSnapshot.openReflectionQuestionIds);
+  const phaseDiff = diffStringLists(
+    baseSnapshot.phases.map((phase) => phase.id),
+    targetSnapshot.phases.map((phase) => phase.id),
+  );
+  const changedPhaseQuestionCounts = targetSnapshot.phases.flatMap((phase) => {
+    const basePhase = baseSnapshot.phases.find((item) => item.id === phase.id);
+    if (!basePhase || basePhase.questionCount === phase.questionCount) return [];
+    return [{ phaseId: phase.id, from: basePhase.questionCount, to: phase.questionCount }];
+  });
+
+  return {
+    mode,
+    baseVersion: baseSnapshot.version,
+    targetVersion: targetSnapshot.version,
+    questionCountDelta: targetSnapshot.questionCount - baseSnapshot.questionCount,
+    totalStepsDelta: targetSnapshot.totalSteps - baseSnapshot.totalSteps,
+    storageKeyChanged: baseSnapshot.storageKey !== targetSnapshot.storageKey,
+    addedQuestions: questionDiff.added,
+    removedQuestions: questionDiff.removed,
+    addedModules: moduleDiff.added,
+    removedModules: moduleDiff.removed,
+    addedOpenReflections: openReflectionDiff.added,
+    removedOpenReflections: openReflectionDiff.removed,
+    addedPhases: phaseDiff.added,
+    removedPhases: phaseDiff.removed,
+    changedPhaseQuestionCounts,
+  };
 }
 
 export function validateAssessmentSubmission(mode: Mode, answers: Answer[], version?: string | null): AssessmentValidationResult {
