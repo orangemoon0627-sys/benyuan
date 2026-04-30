@@ -30,7 +30,7 @@
 
 - 监听端口：`3000`
 - 数据目录：`/app/data`
-- 需要持久化挂载：`/app/data`
+- 需要在部署平台配置持久化挂载：`/app/data`
 - 启动命令：`npm run start`
 
 `render.yaml` 当前定义：
