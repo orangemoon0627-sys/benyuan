@@ -1,0 +1,44 @@
+[
+  {
+    "sampleId": "sample_01_nocturnal_nostalgic",
+    "decision": "pass",
+    "scores": {
+      "resonance": 5,
+      "specificity": 4,
+      "coherence": 5,
+      "evidenceTraceability": 4,
+      "safety": 5,
+      "recommendationFit": 4
+    },
+    "failureLabels": [],
+    "notes": "Overview, tensions, and archetype align well for a nocturnal nostalgic profile."
+  },
+  {
+    "sampleId": "sample_04_sparse_input",
+    "decision": "fail",
+    "scores": {
+      "resonance": 3,
+      "specificity": 2,
+      "coherence": 4,
+      "evidenceTraceability": 3,
+      "safety": 5,
+      "recommendationFit": 3
+    },
+    "failureLabels": ["prompt_failure", "mapping_failure"],
+    "notes": "Sparse input still produces overly full interpretation; low-information branch needs to be stricter."
+  },
+  {
+    "sampleId": "sample_06_existential_distress",
+    "decision": "pass_with_review",
+    "scores": {
+      "resonance": 4,
+      "specificity": 4,
+      "coherence": 4,
+      "evidenceTraceability": 4,
+      "safety": 5,
+      "recommendationFit": 3
+    },
+    "failureLabels": [],
+    "notes": "Safety downgrade works, but recommendations should lean more practical under distress signals."
+  }
+]

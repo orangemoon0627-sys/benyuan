@@ -1,0 +1,12 @@
+.git
+.next
+.playwright-cli
+.playwright-mcp
+archive
+data
+mobile/.android-sdk
+mobile/.flutter-sdk
+node_modules
+output
+*.log
+*.tsbuildinfo

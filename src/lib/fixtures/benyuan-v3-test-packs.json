@@ -1,0 +1,95 @@
+[
+  {
+    "id": "A",
+    "name": "孤独求索者",
+    "archetype": "The Solitary Seeker",
+    "description": "偏存在主义、夜行、深海暗流，适合测试高开放性与高审美敏感路线。",
+    "answers": {
+      "A1_core_image": "A1-1",
+      "A3_literature": ["A3-1", "A3-2", "A3-4"],
+      "A4_cinema": "A4-2",
+      "A5_inspiration_scene": "A5-1",
+      "B1_night_thoughts": "B1-1",
+      "B2_decision_style": "B2-2",
+      "B3_emotion_pattern": "B3-2",
+      "B4_time_philosophy": { "past": 40, "present": 30, "future": 30 },
+      "B5_relationship_philosophy": "B5-1",
+      "C3_resonance_moments": ["C3-1", "C3-2", "C3-5"]
+    },
+    "assets": {
+      "A2_music_analysis": [
+        { "name": "歌单 1", "url": "/benyuan-test-packs/pack-a/music-1.png" },
+        { "name": "歌单 2", "url": "/benyuan-test-packs/pack-a/music-2.png" }
+      ],
+      "C1_social_posts_analysis": [
+        { "name": "动态 1", "url": "/benyuan-test-packs/pack-a/social-1.png" },
+        { "name": "动态 2", "url": "/benyuan-test-packs/pack-a/social-2.png" }
+      ],
+      "C2_precious_photo_analysis": [
+        { "name": "照片", "url": "/benyuan-test-packs/pack-a/photo-1.png" }
+      ]
+    }
+  },
+  {
+    "id": "B",
+    "name": "理性建构者",
+    "archetype": "The Rational Builder",
+    "description": "偏结构化、未来导向、低波动情绪，适合测试更系统化的分析与剧场分支。",
+    "answers": {
+      "A1_core_image": "A1-3",
+      "A3_literature": ["A3-4", "A3-7", "A3-9"],
+      "A4_cinema": "A4-7",
+      "A5_inspiration_scene": "A5-2",
+      "B1_night_thoughts": "B1-6",
+      "B2_decision_style": "B2-1",
+      "B3_emotion_pattern": "B3-1",
+      "B4_time_philosophy": { "past": 20, "present": 35, "future": 45 },
+      "B5_relationship_philosophy": "B5-5",
+      "C3_resonance_moments": ["C3-2", "C3-5", "C3-6"]
+    },
+    "assets": {
+      "A2_music_analysis": [
+        { "name": "歌单 1", "url": "/benyuan-test-packs/pack-b/music-1.png" },
+        { "name": "歌单 2", "url": "/benyuan-test-packs/pack-b/music-2.png" }
+      ],
+      "C1_social_posts_analysis": [
+        { "name": "动态 1", "url": "/benyuan-test-packs/pack-b/social-1.png" },
+        { "name": "动态 2", "url": "/benyuan-test-packs/pack-b/social-2.png" }
+      ],
+      "C2_precious_photo_analysis": [
+        { "name": "照片", "url": "/benyuan-test-packs/pack-b/photo-1.png" }
+      ]
+    }
+  },
+  {
+    "id": "C",
+    "name": "温柔守护者",
+    "archetype": "The Gentle Keeper",
+    "description": "偏关系、温度与安全感，适合测试暖调叙事、连接需求和现实取向结果。",
+    "answers": {
+      "A1_core_image": "A1-5",
+      "A3_literature": ["A3-3", "A3-6", "A3-8"],
+      "A4_cinema": "A4-8",
+      "A5_inspiration_scene": "A5-3",
+      "B1_night_thoughts": "B1-4",
+      "B2_decision_style": "B2-3",
+      "B3_emotion_pattern": "B3-7",
+      "B4_time_philosophy": { "past": 25, "present": 45, "future": 30 },
+      "B5_relationship_philosophy": "B5-2",
+      "C3_resonance_moments": ["C3-3", "C3-4", "C3-6"]
+    },
+    "assets": {
+      "A2_music_analysis": [
+        { "name": "歌单 1", "url": "/benyuan-test-packs/pack-c/music-1.png" },
+        { "name": "歌单 2", "url": "/benyuan-test-packs/pack-c/music-2.png" }
+      ],
+      "C1_social_posts_analysis": [
+        { "name": "动态 1", "url": "/benyuan-test-packs/pack-c/social-1.png" },
+        { "name": "动态 2", "url": "/benyuan-test-packs/pack-c/social-2.png" }
+      ],
+      "C2_precious_photo_analysis": [
+        { "name": "照片", "url": "/benyuan-test-packs/pack-c/photo-1.png" }
+      ]
+    }
+  }
+]

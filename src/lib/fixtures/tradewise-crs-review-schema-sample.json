@@ -1,0 +1,23 @@
+{
+  "reviewDate": "2026-03-10",
+  "generatedAt": "2026-03-11T00:00:00.000Z",
+  "summary": "执行纪律延续稳定，买入茅台低吸明确，卖出宁德时代兑现到位，整体节奏偏稳，轮动应对较成熟。",
+  "scores": {
+    "discipline": 9,
+    "execution": 8,
+    "timing": 8,
+    "riskControl": 8,
+    "planConsistency": 10,
+    "emotionStability": 7
+  },
+  "tradingPattern": "延续计划内交易风格，偏趋势与轮动结合；高位兑现新能源仓位，转向更稳的高股息防守。",
+  "strengthSectors": ["高股息", "新能源", "电网设备"],
+  "profitMetrics": {
+    "winRate": 66.7,
+    "profitLossRatio": 1.9,
+    "totalProfit": 2.4,
+    "maxDrawdown": 1.1
+  },
+  "tomorrowPlan": "继续只做计划内低吸与兑现，不追高。",
+  "generatorVersion": "crs.gpt-5.4"
+}

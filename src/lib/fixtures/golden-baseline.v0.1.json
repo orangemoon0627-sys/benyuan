@@ -1,0 +1,228 @@
+{
+  "snapshots": [
+    {
+      "sampleId": "sample_01_nocturnal_nostalgic",
+      "title": "高敏感夜行型",
+      "archetypeName": "微光的收藏者",
+      "confidenceBand": "high",
+      "safetyFlags": [
+        "none"
+      ],
+      "topFeatures": [
+        {
+          "key": "aesthetic_niche_orientation",
+          "score": 0.923
+        },
+        {
+          "key": "aesthetic_music_nocturnal",
+          "score": 0.857
+        },
+        {
+          "key": "temporal_past_weight",
+          "score": 0.829
+        },
+        {
+          "key": "emotional_transformation",
+          "score": 0.698
+        },
+        {
+          "key": "temporal_change_openness",
+          "score": 0.645
+        }
+      ],
+      "tensionNames": [
+        "表达冲动与自我保护"
+      ],
+      "overview": "你当前的心境关键词里有迷茫、疲惫、希望，这让你的整体气候既敏感也保留着微弱的向前感。你像一间很晚还亮着微光的房间，真正重要的线索常常在安静下来以后才慢慢浮现。情绪对你来说很少只是表面经过，它更像缓慢下沉的水流，会在身体和记忆里停留一阵，直到你找到能容纳它的方式。过去对你并没有真正结束，它仍以片段、气味、画面和熟悉句子的方式留在当下，像在提醒你别太快略过自己。",
+      "reportSchemaVersion": "report.v0.2",
+      "promptVersion": "prompt.v0.1"
+    },
+    {
+      "sampleId": "sample_02_minimal_present",
+      "title": "清醒留白型",
+      "archetypeName": "微光的收藏者",
+      "confidenceBand": "high",
+      "safetyFlags": [
+        "none"
+      ],
+      "topFeatures": [
+        {
+          "key": "aesthetic_visual_minimal",
+          "score": 0.875
+        },
+        {
+          "key": "temporal_narrative_coherence",
+          "score": 0.759
+        },
+        {
+          "key": "temporal_present_depth",
+          "score": 0.711
+        },
+        {
+          "key": "emotional_rhythm_stable",
+          "score": 0.7
+        },
+        {
+          "key": "temporal_change_openness",
+          "score": 0.613
+        }
+      ],
+      "tensionNames": [
+        "清晰与雾感之间"
+      ],
+      "overview": "你当前的心境关键词里有平静、希望，这让你的整体气候既敏感也保留着微弱的向前感。你的内在并不嘈杂，却有很高的密度。你常被克制、留白和少量却准确的表达打动，因为那更接近你理解世界的方式。你的情绪系统带着明显节律，有时稳住，有时起伏，但这种波动并不只是负担，它也构成了你理解他人的入口。你与时间的关系带着意义感：比起赶路，你更在意这些片段最终会不会连成一条能被自己认出的线。",
+      "reportSchemaVersion": "report.v0.2",
+      "promptVersion": "prompt.v0.1"
+    },
+    {
+      "sampleId": "sample_03_future_open",
+      "title": "前行生成型",
+      "archetypeName": "微光的收藏者",
+      "confidenceBand": "high",
+      "safetyFlags": [
+        "none"
+      ],
+      "topFeatures": [
+        {
+          "key": "temporal_future_pull",
+          "score": 0.991
+        },
+        {
+          "key": "temporal_change_openness",
+          "score": 0.742
+        },
+        {
+          "key": "aesthetic_niche_orientation",
+          "score": 0.385
+        },
+        {
+          "key": "aesthetic_visual_minimal",
+          "score": 0.344
+        },
+        {
+          "key": "emotional_rhythm_tidal",
+          "score": 0.333
+        }
+      ],
+      "tensionNames": [
+        "清晰与雾感之间"
+      ],
+      "overview": "你当前的心境关键词里有希望、兴奋，这让你的整体气候既敏感也保留着微弱的向前感。你的内在并不嘈杂，却有很高的密度。你常被克制、留白和少量却准确的表达打动，因为那更接近你理解世界的方式。你的情绪系统带着明显节律，有时稳住，有时起伏，但这种波动并不只是负担，它也构成了你理解他人的入口。你也不是停在原地的人。即使此刻仍在辨认方向，未来仍像一束远光，提醒你还有别的可能性等待被靠近。",
+      "reportSchemaVersion": "report.v0.2",
+      "promptVersion": "prompt.v0.1"
+    },
+    {
+      "sampleId": "sample_04_sparse_input",
+      "title": "低信息雾面型",
+      "archetypeName": "微光的收藏者",
+      "confidenceBand": "high",
+      "safetyFlags": [
+        "none"
+      ],
+      "topFeatures": [
+        {
+          "key": "aesthetic_literary_tenderness",
+          "score": 0.735
+        },
+        {
+          "key": "aesthetic_visual_minimal",
+          "score": 0.594
+        },
+        {
+          "key": "emotional_rhythm_stable",
+          "score": 0.55
+        },
+        {
+          "key": "temporal_present_depth",
+          "score": 0.474
+        },
+        {
+          "key": "emotional_granularity",
+          "score": 0.405
+        }
+      ],
+      "tensionNames": [
+        "清晰与雾感之间"
+      ],
+      "overview": "你当前的心境关键词里有迷茫，这让你的整体气候既敏感也保留着微弱的向前感。你的内在并不嘈杂，却有很高的密度。你常被克制、留白和少量却准确的表达打动，因为那更接近你理解世界的方式。你的情绪系统带着明显节律，有时稳住，有时起伏，但这种波动并不只是负担，它也构成了你理解他人的入口。你与时间的关系带着意义感：比起赶路，你更在意这些片段最终会不会连成一条能被自己认出的线。",
+      "reportSchemaVersion": "report.v0.2",
+      "promptVersion": "prompt.v0.1"
+    },
+    {
+      "sampleId": "sample_05_aesthetic_led",
+      "title": "审美主导型",
+      "archetypeName": "微光的收藏者",
+      "confidenceBand": "high",
+      "safetyFlags": [
+        "none"
+      ],
+      "topFeatures": [
+        {
+          "key": "aesthetic_visual_surreal",
+          "score": 0.909
+        },
+        {
+          "key": "aesthetic_literary_existential",
+          "score": 0.64
+        },
+        {
+          "key": "aesthetic_niche_orientation",
+          "score": 0.615
+        },
+        {
+          "key": "temporal_change_openness",
+          "score": 0.613
+        },
+        {
+          "key": "emotional_rhythm_stable",
+          "score": 0.55
+        }
+      ],
+      "tensionNames": [
+        "清晰与雾感之间"
+      ],
+      "overview": "你当前的心境关键词里有平静、兴奋，这让你的整体气候既敏感也保留着微弱的向前感。你的精神场景更接近一片带雾的地带：边界并不清晰，但正因如此，很多别人略过的感受会在你这里留下回声。你的情绪系统带着明显节律，有时稳住，有时起伏，但这种波动并不只是负担，它也构成了你理解他人的入口。你与时间的关系带着意义感：比起赶路，你更在意这些片段最终会不会连成一条能被自己认出的线。",
+      "reportSchemaVersion": "report.v0.2",
+      "promptVersion": "prompt.v0.1"
+    },
+    {
+      "sampleId": "sample_06_existential_distress",
+      "title": "存在困惑型",
+      "archetypeName": "深渊边的抄写员",
+      "confidenceBand": "high",
+      "safetyFlags": [
+        "none"
+      ],
+      "topFeatures": [
+        {
+          "key": "emotional_depth",
+          "score": 0.847
+        },
+        {
+          "key": "aesthetic_niche_orientation",
+          "score": 0.769
+        },
+        {
+          "key": "aesthetic_literary_existential",
+          "score": 0.72
+        },
+        {
+          "key": "aesthetic_visual_surreal",
+          "score": 0.618
+        },
+        {
+          "key": "temporal_meaning_density",
+          "score": 0.566
+        }
+      ],
+      "tensionNames": [
+        "清晰与雾感之间"
+      ],
+      "overview": "你当前的心境关键词里有低压、迷茫、疲惫，这让你的整体气候既敏感也保留着微弱的向前感。你会天然靠近带着裂纹、余温和真实质感的东西，因为那比完整无瑕更像生活本身。情绪对你来说很少只是表面经过，它更像缓慢下沉的水流，会在身体和记忆里停留一阵，直到你找到能容纳它的方式。过去对你并没有真正结束，它仍以片段、气味、画面和熟悉句子的方式留在当下，像在提醒你别太快略过自己。",
+      "reportSchemaVersion": "report.v0.2",
+      "promptVersion": "prompt.v0.1"
+    }
+  ],
+  "version": "golden-baseline.v0.1",
+  "frozenAt": "2026-03-08T06:51:31.774Z"
+}
