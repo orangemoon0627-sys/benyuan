@@ -1,0 +1,42 @@
+name: BenyuanOriginShell
+options:
+  bundleIdPrefix: com.fanhao
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    PRODUCT_BUNDLE_IDENTIFIER: com.fanhao.benyuan.origin.shell
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: 本源
+    INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+    INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_CFBundleShortVersionString: $(MARKETING_VERSION)
+    INFOPLIST_KEY_CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+    INFOPLIST_KEY_NSCameraUsageDescription: 本源会在你主动拍摄素材时使用相机，用于 Part 1 的多模态分析。
+    INFOPLIST_KEY_NSPhotoLibraryUsageDescription: 本源会在你主动选择图片素材时访问照片库，用于 Part 1 的多模态分析。
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+targets:
+  BenyuanOriginShell:
+    type: application
+    platform: iOS
+    sources:
+      - path: swiftui-starter
+      - path: BenyuanDesignTokens.swift
+      - path: native-smoke-fixture.png
+    settings:
+      base:
+        PRODUCT_NAME: BenyuanOriginShell
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+schemes:
+  BenyuanOriginShell:
+    build:
+      targets:
+        BenyuanOriginShell: all
+    run:
+      config: Debug

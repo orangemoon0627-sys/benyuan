@@ -1,14 +1,18 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ReportExperience } from "@/components/report-experience";
-import { getReport } from "@/lib/store";
+import { getSessionRuntime } from "@/lib/store";
 
 export default async function ReportPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
-  const report = await getReport(sessionId);
+  const runtime = await getSessionRuntime(sessionId);
 
-  if (!report) {
-    notFound();
+  if (!runtime.report) {
+    if (!runtime.session) {
+      notFound();
+    }
+
+    redirect(`/processing/${sessionId}`);
   }
 
-  return <ReportExperience report={report} />;
+  return <ReportExperience report={runtime.report} />;
 }

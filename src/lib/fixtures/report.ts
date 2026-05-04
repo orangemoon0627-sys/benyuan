@@ -5,6 +5,8 @@ export const sampleReport: ReportPayload = {
   sessionId: "sess_sample_001",
   overview:
     "你当下的精神气候，像一间凌晨仍亮着灯的房间：外面很安静，里面却有许多尚未说完的思绪。你似乎天然会被那些带有余温、裂缝与回声的东西吸引，因为它们既能容纳你的敏感，也能帮你替复杂感受找到形状。与此同时，你并不满足于只是沉在情绪里，你还会反复追问：这些波动究竟会把我带向哪里。于是，你的内在世界总在怀旧与生成之间轻轻拉扯，一边不愿失去曾经照亮过你的痕迹，一边又在等待某个更像自己的未来慢慢浮现。",
+  narrativeOverview:
+    "你现在呈现出的原型，是回声里的守夜人（The Echo Keeper）。这并不意味着你只属于夜晚，而是说明你很擅长在安静中听见那些尚未散去的东西：旧关系的余温、某句话的回响、一段旋律里的隐痛，甚至是自己没有来得及解释清楚的部分。你会把别人很快略过的细节留下来，再慢慢判断，哪些值得珍藏，哪些可以送它们离开。\n\n从精神星图来看，最突出的部分是审美敏感、情感深度与意义追寻。你并不只是“感受很多”，你更像在用感受理解世界。音乐、文字、空间、光线、时间感，这些对别人也许只是氛围，对你却是实实在在的线索。你会从一首歌的低亮度、一本书的留白、一个场景的旧痕迹里，判断自己此刻正处在哪种精神天气之中。\n\n你也因此活在一种典型张力里：一边回望，一边前行。过去并没有真正离场，它仍以气味、片段和熟悉句子的方式反复回来；但未来又在远处持续发光，提醒你不能一直住在回声里。这份张力不是缺陷，而更像你的生命结构：你需要回头确认重要之物仍在，才愿意继续往前。\n\n你对关系并不是没有需求，只是你要的从来不是热闹，而是有效理解。你会保护自己的节奏和边界，但真正被看见时，复原也会明显加快。对你来说，这份报告不是终局判定，而是一张当前阶段的精神地形图：让你知道自己正被什么照亮、被什么拉扯，以及下一步可以把哪一部分，先温柔而真实地带回现实。",
   dimensionReadings: [
     {
       dimension: "aesthetic",
@@ -82,6 +84,57 @@ export const sampleReport: ReportPayload = {
       ],
     },
   ],
+  sevenDimensions: [
+    {
+      key: "openness",
+      label: "开放性",
+      score: 84,
+      interpretation: "你会主动靠近复杂、含混和仍未被说尽的事物。新的审美、新的解释框架与新的生命路径，对你来说更像召唤而不是威胁。",
+      evidence: [],
+    },
+    {
+      key: "independence",
+      label: "独立性",
+      score: 73,
+      interpretation: "你既重视独处，也并不排斥连接。你更在意的是关系有没有分寸，而不是简单地靠近或疏远。",
+      evidence: [],
+    },
+    {
+      key: "emotional_depth",
+      label: "情感深度",
+      score: 86,
+      interpretation: "你的情绪不是轻轻掠过，而是会沉入身体、记忆和叙事。你对细微波动的感受力很强，也因此更容易活在多层次的情绪里。",
+      evidence: [],
+    },
+    {
+      key: "meaning_seeking",
+      label: "意义追寻",
+      score: 82,
+      interpretation: "意义对你不是装饰性问题，而是会反复回来的核心命题。你需要知道自己为何这样活、这样爱、这样继续向前。",
+      evidence: [],
+    },
+    {
+      key: "aesthetic_sensitivity",
+      label: "审美敏感",
+      score: 89,
+      interpretation: "你对光线、质地、节奏、留白和象征有很高的分辨力。美对你来说不是装饰，而是理解世界与理解自己的路径之一。",
+      evidence: [],
+    },
+    {
+      key: "action_tendency",
+      label: "行动力",
+      score: 56,
+      interpretation: "你会在思考和行动之间反复校准。多数时候你能动起来，但需要一个足够像自己的理由。",
+      evidence: [],
+    },
+    {
+      key: "relationship_need",
+      label: "关系需求",
+      score: 64,
+      interpretation: "你对连接有明确需要，但不会为了连接放弃全部边界。你要的不是很多人，而是少数真正有效的回应。",
+      evidence: [],
+    },
+  ],
   tensions: [
     {
       tensionId: "nostalgia_vs_becoming",
@@ -142,7 +195,11 @@ export const sampleReport: ReportPayload = {
   ],
   archetype: {
     name: "回声里的守夜人",
+    englishName: "The Echo Keeper",
     subtitle: "在旧日余温与新生方向之间缓慢校准自己",
+    coreEssence: "在安静处辨认仍未散去的回声，在旧日余温与未来方向之间缓慢校准自己。",
+    visualPrompt:
+      "A solitary night sentinel standing inside a dim shoreline observatory, echoes of old letters and piano notes dissolving into mist, deep indigo and moon-silver palette, cinematic surreal realism, poetic darkness, soft volumetric light, reflective water, 16:9",
     description:
       "这个原型成立，不是因为你只属于夜晚或怀旧，而是因为你擅长在安静处听见仍未消散的回声。你会把那些别人很快略过的细节留下来，再慢慢判断，哪些值得珍藏，哪些应该送它们离开。",
     sourceSignals: ["aesthetic_music_nocturnal", "emotional_depth", "temporal_past_weight"],
@@ -197,9 +254,67 @@ export const sampleReport: ReportPayload = {
       description: "选一个你反复回想的旧片段，只写它的气味、光线和身体感受，不写结论。",
     },
   ],
+  growthSuggestions: [
+    {
+      title: "练习整合「怀旧与生成中的未来」",
+      description: "你不必强迫自己立刻告别旧时刻。更适合你的方式，是把过去转成素材，而不是继续把它当成唯一住处。",
+      actionableSteps: [
+        "保留一个旧时刻档案，但只记录事实、气味和画面。",
+        "每周做一件只属于未来的微小动作，让新的自己有现实落点。",
+        "当你再次回头时，先问自己：这次回望是在取材，还是在停住？",
+      ],
+    },
+    {
+      title: "让审美敏感进入现实结构",
+      description: "你的感受力与审美能力已经很强，真正需要的是把它们稳定地放进生活，而不是只在某些瞬间被动发生。",
+      actionableSteps: [
+        "开始一个只对自己负责的小型创作档案。",
+        "每周记录一个让你停下来的画面，并写下它为何成立。",
+        "把喜欢的氛围拆成颜色、声音、句子与节奏，训练表达词汇。",
+      ],
+    },
+  ],
+  curatedRecommendations: {
+    books: [
+      {
+        title: "《挪威的森林》",
+        creator: "村上春树",
+        reason: "它会接住你对关系余温、旧时刻和绵长回声的敏感。",
+      },
+      {
+        title: "《孤独六讲》",
+        creator: "蒋勋",
+        reason: "如果你需要重新理解孤独，它能把孤独从缺口慢慢改写成一种能力。",
+      },
+    ],
+    films: [
+      {
+        title: "《花样年华》",
+        creator: "王家卫",
+        reason: "如果你熟悉克制表达与情感余温，这部片会把那些未说尽的部分显影。",
+      },
+      {
+        title: "《镜子》",
+        creator: "安德烈·塔可夫斯基",
+        reason: "它会让你重新观看记忆、时间与自我之间的关系。",
+      },
+    ],
+    music: [
+      {
+        title: "Says",
+        creator: "Nils Frahm",
+        reason: "适合那些需要时间让情绪慢慢浮上来的夜晚。",
+      },
+      {
+        title: "Near Light",
+        creator: "Olafur Arnalds",
+        reason: "它会把你的克制、留白与微亮感轻轻托住。",
+      },
+    ],
+  },
   safetyFlags: ["none"],
   confidenceBand: "medium",
   generatedAt: new Date().toISOString(),
-  promptVersion: "prompt.v0.1",
-  reportSchemaVersion: "report.v0.2",
+  promptVersion: "prompt.v3.0",
+  reportSchemaVersion: "report.v3.0",
 };

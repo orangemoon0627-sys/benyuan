@@ -44,7 +44,11 @@ function buildSession(definition: GoldenSampleDefinition): TestSession {
     assessmentVersion: getAssessmentDefinition(mode).version,
     basicInfo: definition.basicInfo,
     answers: buildAnswers(mode, definition.answers),
+    lifecycleStatus: "completed",
+    latestReportId: `${definition.sampleId}_report`,
     createdAt: "2026-03-08T00:00:00.000Z",
+    updatedAt: "2026-03-08T00:00:00.000Z",
+    completedAt: "2026-03-08T00:00:00.000Z",
   };
 }
 

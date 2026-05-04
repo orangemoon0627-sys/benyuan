@@ -1,6 +1,6 @@
 # "Benyuan" Agent Status Board
 
-Last updated: 2026-03-08
+Last updated: 2026-05-02
 
 ## Visibility Note
 
@@ -20,6 +20,14 @@ If you keep working with me in this same conversation, I can keep this board upd
 - `review_ready`
 - `done`
 - `blocked`
+
+## Current Snapshot
+
+- Working tree: `/Users/fanhao/Documents/Playground-benyuan`
+- Branch: `codex/benyuan-parallel`
+- Current stage: 深月场 UI 与 iOS pilot 收口
+- Latest self-check: `npm run build`, `npm run lint`, `smoke:benyuan:golden`, `smoke:benyuan:test-packs`, `ios:shell:regression`, `ios:shell:native-smoke`
+- Bug found in this pass: stale TradeWise npm scripts remained after the Benyuan worktree split; fixed by narrowing `package.json` scripts to Benyuan entry points.
 
 ## Agent Board
 
@@ -41,7 +49,7 @@ If you keep working with me in this same conversation, I can keep this board upd
 | M1 | Content system ready | `done` | Product + Assessment |
 | M2 | Narrative engine ready | `done` | Prompt + Safety |
 | M3 | End-to-end MVP | `review_ready` | Engineering |
-| M4 | Internal pilot ready | `in_progress` | Orchestrator + Evaluation |
+| M4 | Internal pilot ready | `review_ready` | Orchestrator + Evaluation |
 
 ## Delivered
 
@@ -120,11 +128,23 @@ If you keep working with me in this same conversation, I can keep this board upd
 - End-to-end browser QA pass for `/test`, `/processing/[sessionId]`, and `/report/[sessionId]`
 - Atmospheric questionnaire framing upgrades in `src/app/test/page.tsx`
 - Cinematic processing-state refinement in `src/app/processing/[sessionId]/page.tsx`
+- Benyuan beta freeze 2026-03-11 with A / B / C live baseline, iOS shell demo route sync, and project-visible status panel in `/lab/status`
+- Current beta freeze doc in `docs/benyuan-beta-freeze-2026-03-11-r2.md`
+- Web → iOS shell migration map in `docs/benyuan-ios-web-shell-map-v0.2.md`
+- 2026-03-14 iOS shell regression rerun green: `18 / 18` passed in `/Users/fanhao/Documents/Playground/output/benyuan-ios-regression.json`
+- 2026-03-14 iOS native smoke rerun green on simulator `iPhone 17`, with fresh `library + camera` screenshots in `/Users/fanhao/Documents/Playground/output/benyuan-ios-native-smoke.json`
+- `/lab/status` switched to dynamic rendering so runtime / benchmark / iOS evidence updates no longer depend on a rebuild
+- Acceptance-board driven manual readiness in `/lab/status` and `/lab/native-handoff`, sourced from `docs/benyuan-ios-camera-acceptance-board.md`
+- 2026-03-14 real-device iPhone acceptance closed at `10 / 10`, recorded in `docs/benyuan-ios-camera-real-device-record-2026-03-14.md`
+- Pilot handoff package anchored in `docs/benyuan-pilot-handoff-2026-03-14.md`
+- Guided pilot artifact chain initialized in `docs/benyuan-pilot-session-template.md`, `docs/benyuan-pilot-session-01.md`, `docs/benyuan-pilot-feedback-log-2026-03-14.md`, and `docs/benyuan-pilot-summary-2026-03-14.md`
 
 ## In Progress
 
-- Compare future report iterations against the new v0.2 baseline
-- Historical baseline accumulation beyond v0.2
+- Deep-moon field UI polish across `/`, `/collect`, `/processing/benyuan`, `/theater`, and `/constellation`
+- iOS shell pilot readiness, including simulator smoke plus real-device manual evidence
+- Guided pilot feedback loop and follow-up result-expression refinements
+- Historical baseline accumulation beyond the current freeze
 
 ## Review Ready
 
@@ -143,13 +163,15 @@ If you keep working with me in this same conversation, I can keep this board upd
 
 ## Up Next
 
-1. Decide whether the next report iteration stays rule-based or upgrades to prompt-generated analysis
-2. Compare that next iteration against the new v0.2 baseline
-3. Consider PNG export or richer visual share-card variants
-4. Keep localized safety/help fallback copy current
+1. Tighten typography, spacing, and section rhythm so "minimal" still feels designed.
+2. Re-check the iPhone real-device route with the current local/staging URL and update the real-device record.
+3. Run at least 2 guided pilot sessions and keep all findings inside the pilot feedback log.
+4. Decide whether the next report iteration stays controlled-hybrid or upgrades toward prompt-native generation.
+5. Consider PNG export or richer visual share-card variants.
 
 ## Risks Right Now
 
-- Product scope can expand too fast if seven dimensions are reintroduced before MVP validation.
-- Rule-based dynamic reporting is good enough for MVP, but it may feel repetitive if not diversified before pilot.
-- Safety flags exist, but report-page wording for higher-risk states still needs a tailored pass.
+- Product scope can expand too fast if seven dimensions are reintroduced before pilot feedback.
+- UI may drift back into "too plain" if typography, layout rhythm, and interaction continuity are not treated as product work.
+- Controlled-hybrid dynamic reporting is stable for pilot, but may feel repetitive if not diversified after feedback.
+- Real-device evidence must stay current with the active Web URL; stale Railway/local targets can make the app look like an older build.

@@ -3,7 +3,7 @@ import process from 'node:process';
 
 const baseUrl = (process.env.BENYUAN_BASE_URL ?? 'http://localhost:3001').replace(/\/$/, '');
 const pollDelayMs = Number(process.env.BENYUAN_POLL_MS ?? 250);
-const pollLimit = Number(process.env.BENYUAN_POLL_LIMIT ?? 30);
+const pollLimit = Number(process.env.BENYUAN_POLL_LIMIT ?? 120);
 const assessmentMode = process.env.BENYUAN_MODE === 'deep' ? 'deep' : 'lite';
 
 async function loadSchema() {
@@ -125,7 +125,7 @@ async function main() {
   let job = null;
   for (let attempt = 1; attempt <= pollLimit; attempt += 1) {
     job = await requestJson(`/api/analysis/${analysis.jobId}`);
-    console.log(`smoke:poll attempt=${attempt} status=${job.status}`);
+    console.log(`smoke:poll attempt=${attempt} status=${job.status} stage=${job.currentStageKey ?? '-'} runtime=${job.effectiveRuntime ?? '-'}`);
 
     if (job.status === 'done') break;
     if (job.status === 'failed') {

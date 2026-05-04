@@ -2,25 +2,41 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, Download, ImageDown, Share2 } from "lucide-react";
+import { shareWithBenyuanNativeShell } from "@/lib/benyuan-native-shell";
 import type { ReportPayload } from "@/lib/types";
 
+const textTypeLabel: Record<ReportPayload["recommendations"][number]["type"], string> = {
+  philosophy: "哲思",
+  book: "书籍",
+  music: "音乐",
+  practice: "练习",
+};
+
 function formatReportAsText(report: ReportPayload) {
+  const narrative = report.narrativeOverview ?? report.overview;
+  const dimensionSectionTitle = report.sevenDimensions?.length ? "【七维星图】" : "【三维解读】";
   const sections = [
     `本源｜${report.archetype.name}`,
     report.archetype.subtitle ?? "",
     "",
     "【精神地形总览】",
-    report.overview,
+    narrative,
     "",
-    "【三维解读】",
+    dimensionSectionTitle,
     ...report.dimensionReadings.flatMap((reading) => [`${reading.title}（${reading.confidenceBand}）`, reading.summary, ""]),
-    "【内在张力】",
+    "【核心张力】",
     ...report.tensions.flatMap((tension) => [tension.name, `两极：${tension.poles.join(" / ")}`, tension.description, `与之相处：${tension.suggestion}`, ""]),
     "【精神原型】",
     report.archetype.description,
     "",
+    ...(report.growthSuggestions?.length
+      ? [
+          "【成长方向】",
+          ...report.growthSuggestions.flatMap((item) => [item.title, item.description, ...item.actionableSteps, ""]),
+        ]
+      : []),
     "【可带走的东西】",
-    ...report.recommendations.flatMap((item) => [`${item.type.toUpperCase()}｜${item.title}`, item.description, ""]),
+    ...report.recommendations.flatMap((item) => [`${textTypeLabel[item.type] ?? item.type}｜${item.title}`, item.description, ""]),
     "【边界说明】",
     "本结果是一种理解性镜像，不构成心理或医学诊断。",
   ];
@@ -107,25 +123,28 @@ export function ReportActions({ report }: { report: ReportPayload }) {
   }
 
   async function handleShare() {
-    const shareText = `${report.archetype.name}\n\n${report.overview}`;
+    const shareText = [report.archetype.name, report.overview].join("\n\n");
 
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `本源｜${report.archetype.name}`,
-          text: shareText,
-        });
-        setActionHint("系统分享面板已打开。你可以把这段阶段摘要带去任何对话里。");
-      } else {
-        await navigator.clipboard.writeText(shareText);
-        setActionHint("当前环境未提供系统分享，已改为复制摘要。");
-      }
+      const channel = await shareWithBenyuanNativeShell({
+        title: `本源｜${report.archetype.name}`,
+        text: shareText,
+        url: window.location.href,
+      });
+
+      setActionHint(
+        channel === "native"
+          ? "已调用 iOS shell 原生分享面板，这段摘要已经进入系统分享链路。"
+          : channel === "web"
+            ? "系统分享面板已打开，这段摘要已经进入当前设备的分享链路。"
+            : "当前环境未提供系统分享，已改为保留可复制的摘要。",
+      );
 
       setShareState("done");
       resetActionState("share");
     } catch {
       setShareState("error");
-      setActionHint("当前环境不支持系统分享或剪贴板写入。你仍然可以复制全文或保存文本。");
+      setActionHint("当前环境不支持系统分享或剪贴板写入。你仍然可以复制全文，或把结果保存为文本档案。");
       resetActionState("share");
     }
   }
@@ -134,11 +153,11 @@ export function ReportActions({ report }: { report: ReportPayload }) {
     try {
       await navigator.clipboard.writeText(textPayload);
       setCopyState("done");
-      setActionHint("全文已复制到剪贴板。");
+      setActionHint("全文已复制到剪贴板，这份结果可以继续沿你的外部工作流流转。");
       resetActionState("copy");
     } catch {
       setCopyState("error");
-      setActionHint("当前环境不支持剪贴板写入。你可以先使用“保存为文本”。");
+      setActionHint("当前环境不支持剪贴板写入。你可以先使用“保存为文本”，把这份结果留在本地。");
       resetActionState("copy");
     }
   }
@@ -146,7 +165,7 @@ export function ReportActions({ report }: { report: ReportPayload }) {
   function handleSave() {
     downloadFile(`benyuan-${report.archetype.name}.txt`, textPayload, "text/plain;charset=utf-8");
     setSaveState("done");
-    setActionHint("文本档案已开始下载。");
+    setActionHint("文本档案已开始下载，这份结果已经被折叠成可离线回看的记录。");
     resetActionState("save");
   }
 
@@ -157,11 +176,11 @@ export function ReportActions({ report }: { report: ReportPayload }) {
       const svg = await response.text();
       await exportSvgAsPng(svg, `benyuan-${report.archetype.name}-social.png`, 1200, 1200);
       setCardState("done");
-      setActionHint("PNG 卡片已开始导出。");
+      setActionHint("PNG 卡片已开始导出，这份阶段快照已经可以被带走。");
       resetActionState("card");
     } catch {
       setCardState("error");
-      setActionHint("PNG 导出这次没有成功，你可以先使用下方 SVG 版本。");
+      setActionHint("PNG 导出这次没有成功，你可以先使用下方 SVG 下载继续带走这份结果。");
       resetActionState("card");
     }
   }
@@ -206,7 +225,7 @@ export function ReportActions({ report }: { report: ReportPayload }) {
       {actionHint ? <p role="status" aria-live="polite" className="text-sm leading-7 text-stone-400">{actionHint}</p> : null}
 
       <div className="flex flex-wrap items-center gap-4 text-xs tracking-[0.18em] text-stone-500 uppercase">
-        <span>svg variants</span>
+        <span>SVG 下载</span>
         <a href={`/api/report/${report.sessionId}/card?variant=portrait`} className="transition hover:text-stone-300">
           海报版
         </a>
@@ -214,7 +233,7 @@ export function ReportActions({ report }: { report: ReportPayload }) {
           方卡版
         </a>
         <a href={`/api/report/${report.sessionId}/card?variant=story`} className="transition hover:text-stone-300">
-          Story 版
+          Story 竖版
         </a>
       </div>
     </div>

@@ -45,7 +45,7 @@ export function ReportReadingPath({ items, mode = "immersive" }: { items: Readin
 
   return (
     <>
-      <p className="text-[11px] tracking-[0.42em] text-stone-500 uppercase">reading path</p>
+      <p className="text-[11px] tracking-[0.42em] text-stone-500 uppercase">阅读路径</p>
       <nav className="mt-6 space-y-2">
         {items.map((item) => {
           const active = item.id === activeId;

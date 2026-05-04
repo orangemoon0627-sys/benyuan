@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { ReportCard } from "@/components/report-card";
+import { InternalLabNav } from "@/components/internal-lab-nav";
+import { LabRouteDraftPanel } from "@/components/lab-route-draft-panel";
 import { goldenAuditSummary } from "@/lib/golden-audit";
 import { goldenRegressionSnapshots } from "@/lib/golden-regression";
 import { getFeatureLabel } from "@/lib/report-builder";
+import { buildAssessmentContentWorkbench } from "@/features/assessment";
+import { buildAnalysisWorkbenchCatalog } from "@/lib/analysis";
+import { listDraftSessionsForRoute, syncWorkbenchDraftSessions } from "@/lib/store";
 
 const confidenceLabel: Record<string, string> = {
   low: "初步草图",
@@ -11,7 +16,12 @@ const confidenceLabel: Record<string, string> = {
   high: "较高聚焦",
 };
 
-export default function GoldenLabPage() {
+export default async function GoldenLabPage() {
+  const contentWorkbench = buildAssessmentContentWorkbench();
+  const analysisWorkbench = buildAnalysisWorkbenchCatalog(contentWorkbench.draftBlueprints);
+  await syncWorkbenchDraftSessions(contentWorkbench.draftBlueprints, analysisWorkbench.impactMatrix);
+  const routeDrafts = await listDraftSessionsForRoute("/lab/golden");
+
   return (
     <main className="relative overflow-hidden bg-[#08080a] px-6 pb-20 pt-10 text-stone-100 md:pb-24 md:pt-14">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(189,218,255,0.12),transparent_23%),radial-gradient(circle_at_82%_18%,rgba(109,80,131,0.12),transparent_26%),radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.03),transparent_42%)]" />
@@ -46,6 +56,9 @@ export default function GoldenLabPage() {
           </div>
         </section>
 
+
+        <InternalLabNav current="/lab/golden" className="mt-6" />
+        <LabRouteDraftPanel routeTitle="Golden 面板" items={routeDrafts} />
         <section className="mt-10 grid gap-6">
           {goldenRegressionSnapshots.map((snapshot, index) => (
             <ReportCard key={snapshot.sampleId} eyebrow={`0${index + 1} / ${snapshot.sampleId}`} title={snapshot.title}>

@@ -66,6 +66,153 @@ export type AssessmentSchemaVersionDescriptor = {
   isDefault: boolean;
 };
 
+export type AssessmentSchemaCompanionNote = {
+  eyebrow: string;
+  title: string;
+  body: string;
+};
+
+export type AssessmentSchemaNativePresentationHints = {
+  screenStyle: "entry_sheet" | "immersive_choice" | "focused_scale" | "reflection_editor" | "review_summary";
+  accentTone: "mist" | "signal" | "memory" | "review";
+  iosPreferredControl: "tag_picker" | "single_select_cards" | "multi_select_chips" | "stepper_scale" | "multiline_text" | "summary_list";
+  iosPreferredTransition: "fade" | "push" | "cross_dissolve" | "blur_expand";
+  responseLayout: "stack" | "grid_2" | "chips" | "slider" | "editor" | "summary";
+  haptics: "none" | "selection" | "soft_impact";
+  topBarStyle: "ambient_back" | "progress_header" | "summary_header";
+  primaryActionStyle: "floating_capsule" | "pinned_footer_cta" | "immersive_submit";
+  optionChrome: "mist_cards" | "ghost_chips" | "numbered_scale" | "journal_surface" | "summary_panels";
+  backgroundTreatment: "breathing_mist" | "signal_glow" | "memory_fog" | "review_halo";
+  motionPreset: "slow_breathe" | "guided_push" | "still_focus";
+  spacingDensity: "airy" | "balanced" | "compact";
+  keepPrimaryActionPinned: boolean;
+  supportsLongformInput: boolean;
+  recommendedInputMinHeight: number | null;
+  recommendedSelectionCount: {
+    min: number;
+    max: number | null;
+  } | null;
+};
+
+export type AssessmentSchemaFlowStep = {
+  step: number;
+  progress: number;
+  kind: "entry" | "question" | "review";
+  phaseId: string;
+  phaseLabel: string;
+  phaseDescription: string;
+  moduleId: string;
+  moduleLabel: string;
+  questionId: string | null;
+  questionIndex: number | null;
+  questionCount: number;
+  phaseStepIndex: number;
+  phaseStepCount: number;
+  previousStep: number | null;
+  nextStep: number | null;
+  answerType: AssessmentAnswerType | null;
+  heroHeadline: string;
+  title: string;
+  description: string;
+  ritualLine: string;
+  companionNote: AssessmentSchemaCompanionNote;
+  nativeHints: AssessmentSchemaNativePresentationHints;
+};
+
+export type AssessmentSchemaFlowContract = {
+  pacing: {
+    pattern: "single_question_progression";
+    progressMetric: "step_index_ratio";
+    supportsBackNavigation: boolean;
+    supportsDraftPersistence: boolean;
+    entryStep: number;
+    firstQuestionStep: number;
+    lastQuestionStep: number;
+    reviewStep: number;
+    questionStepCount: number;
+  };
+  review: {
+    requireLifeStage: boolean;
+    minimumMoodKeywords: number;
+    requireAllRequiredQuestions: boolean;
+    requiredOpenReflectionCount: number;
+    openReflectionQuestionIds: string[];
+    incompleteJumpStrategy: "first_incomplete_step";
+  };
+  steps: AssessmentSchemaFlowStep[];
+};
+
+export type AssessmentSchemaNativeContentBlock = "hero" | "progress" | "prompt" | "options" | "reflection" | "summary" | "companion_note";
+
+export type AssessmentSchemaNativeBlueprint =
+  | "entry_calibration"
+  | "single_choice_ritual"
+  | "multi_choice_ritual"
+  | "scale_focus"
+  | "reflection_journal"
+  | "review_handoff";
+
+export type AssessmentSchemaNativeScreen = {
+  step: number;
+  screenId: string;
+  blueprint: AssessmentSchemaNativeBlueprint;
+  headline: string;
+  primaryPrompt: string;
+  componentTokens: {
+    topBarStyle: AssessmentSchemaNativePresentationHints["topBarStyle"];
+    primaryActionStyle: AssessmentSchemaNativePresentationHints["primaryActionStyle"];
+    optionChrome: AssessmentSchemaNativePresentationHints["optionChrome"];
+  };
+  interactionTokens: {
+    control: AssessmentSchemaNativePresentationHints["iosPreferredControl"];
+    transition: AssessmentSchemaNativePresentationHints["iosPreferredTransition"];
+    layout: AssessmentSchemaNativePresentationHints["responseLayout"];
+    haptics: AssessmentSchemaNativePresentationHints["haptics"];
+  };
+  atmosphereTokens: {
+    accentTone: AssessmentSchemaNativePresentationHints["accentTone"];
+    backgroundTreatment: AssessmentSchemaNativePresentationHints["backgroundTreatment"];
+    motionPreset: AssessmentSchemaNativePresentationHints["motionPreset"];
+    spacingDensity: AssessmentSchemaNativePresentationHints["spacingDensity"];
+  };
+  contentBlocks: AssessmentSchemaNativeContentBlock[];
+  primaryActionLabel: string;
+  supportsProgressJump: boolean;
+};
+
+export type AssessmentSchemaNativeBlueprintProp = {
+  name: string;
+  type: string;
+  required: boolean;
+  description: string;
+};
+
+export type AssessmentSchemaNativeBlueprintChecklist = {
+  key: string;
+  label: string;
+  doneWhen: string;
+};
+
+export type AssessmentSchemaNativeBlueprintContract = {
+  blueprint: AssessmentSchemaNativeBlueprint;
+  recommendedComponentName: string;
+  recommendedContainer: "immersive_scroll_shell" | "focus_scroll_shell" | "summary_scroll_shell";
+  primaryInputSlot: "entry_tag_stack" | "choice_card_stack" | "choice_chip_cloud" | "scale_stepper" | "journal_editor" | "summary_review_list";
+  footerSlot: "floating_continue" | "sticky_continue" | "immersive_submit";
+  requiredBlocks: AssessmentSchemaNativeContentBlock[];
+  optionalBlocks: AssessmentSchemaNativeContentBlock[];
+  propsContract: AssessmentSchemaNativeBlueprintProp[];
+  implementationChecklist: AssessmentSchemaNativeBlueprintChecklist[];
+  implementationNotes: string[];
+};
+
+export type AssessmentSchemaNativeMap = {
+  platform: "ios";
+  screenMap: AssessmentSchemaNativeScreen[];
+  blueprintSequence: AssessmentSchemaNativeBlueprint[];
+  blueprintCatalog: AssessmentSchemaNativeBlueprintContract[];
+};
+
 export type AssessmentSchemaDefinition = {
   status: "ok";
   mode: Mode;
@@ -85,6 +232,8 @@ export type AssessmentSchemaDefinition = {
     requireAtLeastOneOpenReflection: boolean;
     openReflectionQuestionIds: string[];
   };
+  flow: AssessmentSchemaFlowContract;
+  native: AssessmentSchemaNativeMap;
   availableVersions: AssessmentSchemaVersionDescriptor[];
   availableModes: Array<{
     mode: Mode;

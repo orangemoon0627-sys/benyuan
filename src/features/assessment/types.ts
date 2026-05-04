@@ -113,6 +113,107 @@ export type AssessmentDefinitionSnapshot = {
   isDefaultVersion: boolean;
 };
 
+
+export type AssessmentFlowSnapshot = {
+  mode: Mode;
+  version: string;
+  pacing: {
+    entryStep: number;
+    firstQuestionStep: number;
+    lastQuestionStep: number;
+    reviewStep: number;
+    questionStepCount: number;
+  };
+  review: {
+    requireLifeStage: boolean;
+    minimumMoodKeywords: number;
+    requireAllRequiredQuestions: boolean;
+    requiredOpenReflectionCount: number;
+    openReflectionQuestionIds: string[];
+    incompleteJumpStrategy: string;
+  };
+  stepKeys: string[];
+  firstQuestionTitle: string | null;
+  reviewTitle: string | null;
+  firstQuestionNativeControl: string | null;
+  reviewNativeControl: string | null;
+  firstQuestionTokenBundle: string | null;
+  reviewTokenBundle: string | null;
+};
+
+export type AssessmentFlowDiff = {
+  mode: Mode;
+  baseVersion: string;
+  targetVersion: string;
+  pacingChangedKeys: string[];
+  reviewChangedKeys: string[];
+  addedStepKeys: string[];
+  removedStepKeys: string[];
+  changedStepPhaseIds: Array<{
+    step: number;
+    from: string;
+    to: string;
+  }>;
+  changedStepQuestionIds: Array<{
+    step: number;
+    from: string | null;
+    to: string | null;
+  }>;
+  changedStepTitles: Array<{
+    step: number;
+    from: string;
+    to: string;
+  }>;
+  changedStepNativeControls: Array<{
+    step: number;
+    from: string;
+    to: string;
+  }>;
+  changedStepTokenBundles: Array<{
+    step: number;
+    from: string;
+    to: string;
+  }>;
+};
+
+
+export type AssessmentNativeBlueprintSnapshot = {
+  mode: Mode;
+  version: string;
+  blueprintSequence: string[];
+  blueprintIds: string[];
+  catalog: Array<{
+    blueprint: string;
+    recommendedComponentName: string;
+    recommendedContainer: string;
+    primaryInputSlot: string;
+    footerSlot: string;
+    requiredBlocks: string[];
+    optionalBlocks: string[];
+    propsContractKeys: string[];
+    checklistKeys: string[];
+  }>;
+};
+
+export type AssessmentNativeBlueprintDiff = {
+  mode: Mode;
+  baseVersion: string;
+  targetVersion: string;
+  addedBlueprints: string[];
+  removedBlueprints: string[];
+  addedSequenceBlueprints: string[];
+  removedSequenceBlueprints: string[];
+  changedSequenceSteps: Array<{
+    step: number;
+    from: string;
+    to: string;
+  }>;
+  changedBlueprintContracts: Array<{
+    blueprint: string;
+    changedKeys: string[];
+  }>;
+};
+
 export type AssessmentDefinitionDiff = {
   mode: Mode;
   baseVersion: string;

@@ -10,3 +10,6 @@ export * from "@/lib/analysis/config";
 export * from "@/lib/analysis/prompt-templates";
 export * from "@/lib/analysis/report-merge";
 export * from "@/lib/analysis/provider-adapters";
+export * from "@/lib/analysis/report-schemas";
+export * from "@/lib/analysis/pipeline";
+export * from "@/lib/analysis/workbench";

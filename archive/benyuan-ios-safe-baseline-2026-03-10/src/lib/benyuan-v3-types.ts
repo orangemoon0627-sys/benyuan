@@ -1,0 +1,323 @@
+export type BenyuanModuleKey = "A" | "B" | "C";
+export type BenyuanQuestionKind = "single" | "multi" | "upload" | "distribution";
+export type BigFiveKey = "openness" | "conscientiousness" | "extraversion" | "agreeableness" | "neuroticism";
+export type SevenDimensionKey =
+  | "openness"
+  | "independence"
+  | "emotional_depth"
+  | "meaning_seeking"
+  | "aesthetic_sensitivity"
+  | "action_tendency"
+  | "relationship_need";
+
+export type BenyuanQuestionOption = {
+  id: string;
+  text: string;
+  psychologicalSignal?: string;
+  tags?: string[];
+};
+
+export type BenyuanQuestion = {
+  id: string;
+  module: BenyuanModuleKey;
+  title: string;
+  prompt: string;
+  kind: BenyuanQuestionKind;
+  minSelections?: number;
+  maxSelections?: number;
+  options?: BenyuanQuestionOption[];
+  outputKey: string;
+  helperText?: string;
+  distributionKeys?: Array<{ key: "past" | "present" | "future"; label: string }>;
+  analysisDimensions?: string[];
+  acceptedFiles?: string;
+  uploadRange?: { min: number; max: number };
+};
+
+export type MusicAnalysis = {
+  primary_genres: string[];
+  emotional_tone: string;
+  era_distribution: Record<string, number>;
+  language_diversity: string[];
+  personality_signals: Record<string, string>;
+};
+
+export type SocialPostAnalysis = {
+  post_id: number;
+  text_content: string;
+  emotional_tone: string;
+  themes: string[];
+  expression_style: string;
+  self_presentation: string;
+  time_clue: string;
+  psychological_signals: string[];
+};
+
+export type SocialPostOverallPattern = {
+  dominant_emotion: string;
+  core_themes: string[];
+  expression_authenticity: string;
+};
+
+export type PreciousPhotoAnalysis = {
+  visual_content: string;
+  composition: string;
+  lighting: string;
+  color_mood: string;
+  symbolic_elements: string[];
+  psychological_interpretation: {
+    core_themes: string[];
+    emotional_tone: string;
+    self_concept: string;
+    existential_stance: string;
+    traits: string[];
+  };
+};
+
+export type Part1Data = {
+  aesthetics: {
+    core_desire_image?: string;
+    music_analysis?: MusicAnalysis | null;
+    literature?: string[];
+    cinema?: string;
+    inspiration_scene?: string;
+  };
+  philosophy: {
+    night_thoughts?: string;
+    decision_style?: string;
+    emotion_pattern?: string;
+    time_orientation?: { past: number; present: number; future: number };
+    relationship_philosophy?: string;
+  };
+  narrative: {
+    social_posts_analysis?: SocialPostAnalysis[] | null;
+    social_posts_overall_pattern?: SocialPostOverallPattern | null;
+    precious_photo_analysis?: PreciousPhotoAnalysis | null;
+    resonance_moments?: string[];
+  };
+};
+
+export type AggregatedTraits = {
+  big_five: Record<BigFiveKey, number>;
+  core_themes: string[];
+  archetype_hints: string[];
+};
+
+export type Part1AnswerMap = Record<string, unknown>;
+
+export type Part1SubmissionInput = {
+  user_id?: string;
+  answers: Part1AnswerMap;
+};
+
+export type Part1Record = {
+  part1_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  answers: Part1AnswerMap;
+  part1_data: Part1Data;
+  aggregated_traits: AggregatedTraits;
+};
+
+export type BenyuanUploadedAssetRef = {
+  asset_id: string;
+  question_id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  uploaded_at: string;
+};
+
+export type BenyuanStoredAsset = BenyuanUploadedAssetRef & {
+  stored_path: string;
+};
+
+export type MultimodalInputItem = {
+  visible_text?: string;
+  source?: string;
+  description?: string;
+  asset_id?: string;
+  file_name?: string;
+  mime_type?: string;
+};
+
+export type MultimodalAnalysisInput = {
+  part1_id: string;
+  music_inputs?: MultimodalInputItem[];
+  social_post_inputs?: MultimodalInputItem[];
+  precious_photo_input?: MultimodalInputItem;
+  runtime_override?: AgentRuntimeOverride;
+};
+
+export type TheaterChoiceOption = {
+  id: string;
+  text: string;
+  trait_signal: string;
+  response: string;
+};
+
+export type TheaterChoice = {
+  choice_id: number;
+  scene: string;
+  options: TheaterChoiceOption[];
+};
+
+export type TheaterMirrorQuestionOption = {
+  id: string;
+  text: string;
+  trait_signal: string;
+};
+
+export type TheaterMirrorQuestion = {
+  question_id: number;
+  dialogue: string;
+  question: string;
+  options: TheaterMirrorQuestionOption[];
+};
+
+export type TheaterScript = {
+  user_id: string;
+  generated_at: string;
+  personalization_summary: {
+    core_archetype: string;
+    aesthetic_style: string;
+    emotional_tone: string;
+    key_themes: string[];
+  };
+  act1: {
+    scene_description: string;
+    visual_prompt: string;
+    ambient_sound: string;
+    duration: number;
+  };
+  act2: {
+    choices: TheaterChoice[];
+  };
+  act3: {
+    scene_description: string;
+    mirror_questions: TheaterMirrorQuestion[];
+    mirror_final_words: string;
+  };
+  epilogue: {
+    scene_description: string;
+    closing_text: string;
+    transition_prompt: string;
+    transition_animation: string;
+  };
+};
+
+export type TheaterScriptRecord = {
+  theater_script_id: string;
+  part1_id: string;
+  created_at: string;
+  runtime: AgentRuntimeResult;
+  theater_script: TheaterScript;
+};
+
+export type Part2ChoiceRecord = {
+  choice_id: number;
+  selected: string;
+  hesitation_time?: number;
+  hover_sequence?: string[];
+  timestamp: string;
+};
+
+export type Part2MirrorRecord = {
+  question_id: number;
+  selected: string;
+  hesitation_time?: number;
+  timestamp: string;
+};
+
+export type Part2Metadata = {
+  total_time?: number;
+  part1_time?: number;
+  part2_time?: number;
+  device?: string;
+  hesitation_patterns?: Array<Record<string, unknown>>;
+  phase_durations?: Record<string, number>;
+  hover_totals?: Record<string, number>;
+};
+
+export type Part2Record = {
+  part2_id: string;
+  part1_id: string;
+  theater_script_id: string;
+  created_at: string;
+  act2_choices: Part2ChoiceRecord[];
+  act3_responses: Part2MirrorRecord[];
+  metadata: Part2Metadata;
+};
+
+export type PsycheArchetype = {
+  name: string;
+  english_name: string;
+  core_essence: string;
+  visual_prompt: string;
+};
+
+export type PsycheDimension = {
+  score: number;
+  interpretation: string;
+};
+
+export type PsycheConstellation = {
+  user_id: string;
+  generated_at: string;
+  archetype: PsycheArchetype;
+  seven_dimensions: Record<SevenDimensionKey, PsycheDimension>;
+  narrative_overview: string;
+  core_tensions: Array<{
+    tension_id: number;
+    name: string;
+    description: string;
+    growth_direction: string;
+  }>;
+  growth_suggestions: Array<{
+    title: string;
+    description: string;
+    actionable_steps: string[];
+  }>;
+  recommendations: {
+    books: Array<{ title: string; author: string; reason: string }>;
+    films: Array<{ title: string; director: string; reason: string }>;
+    music: Array<{ artist: string; album: string; reason: string }>;
+  };
+};
+
+export type ConstellationRecord = {
+  constellation_id: string;
+  part1_id: string;
+  part2_id: string;
+  created_at: string;
+  runtime: AgentRuntimeResult;
+  psyche_constellation: PsycheConstellation;
+  archetype_image_url?: string;
+};
+
+export type AgentRuntimeOverride = {
+  api_key?: string;
+  base_url?: string;
+  model?: string;
+  provider_name?: string;
+  reasoning_effort?: "low" | "medium" | "high";
+  disable_response_storage?: boolean;
+  live?: boolean;
+};
+
+export type AgentRuntimeResult = {
+  provider: string;
+  model: string;
+  mode: "live" | "fallback";
+  request_id?: string;
+  error?: string;
+};
+
+export type BenyuanV3Store = {
+  uploaded_assets: Record<string, BenyuanStoredAsset>;
+  part1_records: Record<string, Part1Record>;
+  theater_scripts: Record<string, TheaterScriptRecord>;
+  part2_records: Record<string, Part2Record>;
+  constellations: Record<string, ConstellationRecord>;
+};

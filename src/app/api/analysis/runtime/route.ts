@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAnalysisRuntimeStatus } from "@/lib/analysis";
+import { getAnalysisRuntimeStatus, listAnalysisPromptTemplates, listAnalysisReportSchemas } from "@/lib/analysis";
 import type { Mode } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -9,9 +9,18 @@ export async function GET(request: Request) {
 
   const requestedEngine = searchParams.get("engine");
   const requestedProvider = searchParams.get("provider");
+  const requestedPromptTemplate = searchParams.get("promptTemplate");
+  const requestedReportSchema = searchParams.get("reportSchema");
 
   return NextResponse.json({
     status: "ok",
-    runtime: getAnalysisRuntimeStatus(mode, { engine: requestedEngine, provider: requestedProvider }),
+    runtime: getAnalysisRuntimeStatus(mode, {
+      engine: requestedEngine,
+      provider: requestedProvider,
+      promptTemplate: requestedPromptTemplate,
+      reportSchema: requestedReportSchema,
+    }),
+    promptTemplates: listAnalysisPromptTemplates(),
+    reportSchemas: listAnalysisReportSchemas(),
   });
 }

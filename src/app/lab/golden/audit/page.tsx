@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { ReportCard } from "@/components/report-card";
+import { InternalLabNav } from "@/components/internal-lab-nav";
 import { goldenAuditResults, goldenAuditSummary } from "@/lib/golden-audit";
 import { buildGoldenBaselineDiff } from "@/lib/golden-baseline-diff";
 import { goldenBaselineHistory } from "@/lib/golden-baseline-history";
@@ -151,6 +152,8 @@ export default async function GoldenAuditPage({ searchParams }: GoldenAuditPageP
           </ReportCard>
         </section>
 
+
+        <InternalLabNav current="/lab/golden" className="mt-6" />
         <section className="mt-10 grid gap-6">
           {goldenAuditResults.map((result, index) => {
             const diff = diffResults.find((item) => item.sampleId === result.sampleId);

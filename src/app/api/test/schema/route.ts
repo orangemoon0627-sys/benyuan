@@ -7,6 +7,7 @@ import {
   listAssessmentVersions,
   serializeAssessmentQuestion,
 } from "@/features/assessment";
+import { buildAssessmentFlowContract, buildAssessmentNativeScreenMap } from "@/lib/assessment-client-contract";
 import type { Mode } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -14,9 +15,8 @@ export async function GET(request: Request) {
   const requestedMode = (searchParams.get("mode") as Mode | null) ?? defaultAssessmentMode;
   const requestedVersion = searchParams.get("version");
   const definition = getAssessmentDefinition(requestedMode, requestedVersion);
-
-  return NextResponse.json({
-    status: "ok",
+  const payload = {
+    status: "ok" as const,
     mode: definition.mode,
     version: definition.version,
     title: definition.title,
@@ -47,5 +47,13 @@ export async function GET(request: Request) {
     })),
     questions: definition.questions.map((question) => serializeAssessmentQuestion(question)),
     validation: definition.validation,
+  };
+
+  const flow = buildAssessmentFlowContract(payload);
+
+  return NextResponse.json({
+    ...payload,
+    flow,
+    native: buildAssessmentNativeScreenMap(flow),
   });
 }

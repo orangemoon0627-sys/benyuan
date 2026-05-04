@@ -1,8 +1,22 @@
+import { assessmentDefaultValidation, assessmentBaseInitialState, assessmentVersionManifests } from "@/config/assessment/version-manifests";
+import { buildAssessmentFlowContract, buildAssessmentNativeScreenMap } from "@/lib/assessment-client-contract";
 import type { Mode, Answer } from "@/lib/types";
 import { assessmentModuleLabels, lifeStageOptions, moodKeywordOptions } from "./catalog";
 import { findFirstIncompleteQuestionIndex } from "./flow";
+import { serializeAssessmentQuestion } from "./question-types";
 import { fullDeepQuestionSet, fullLiteQuestionSet, fullLiteQuestionSetV2 } from "./question-bank";
-import type { AssessmentDefinition, AssessmentDefinitionDiff, AssessmentDefinitionSnapshot, AssessmentFormState, AssessmentValidationConfig, AssessmentVersionDescriptor } from "./types";
+import type {
+  AssessmentDefinition,
+  AssessmentDefinitionDiff,
+  AssessmentDefinitionSnapshot,
+  AssessmentFlowDiff,
+  AssessmentFlowSnapshot,
+  AssessmentFormState,
+  AssessmentNativeBlueprintDiff,
+  AssessmentNativeBlueprintSnapshot,
+  AssessmentValidationConfig,
+  AssessmentVersionDescriptor,
+} from "./types";
 
 export type AssessmentValidationResult =
   | { ok: true }
@@ -15,16 +29,11 @@ export type AssessmentValidationResult =
       };
     };
 
-const baseInitialState: AssessmentFormState = {
-  lifeStage: "turning_point",
-  moodKeywords: ["迷茫", "希望"],
-  answers: {},
-};
-
-const defaultValidation: AssessmentValidationConfig = {
-  requireAtLeastOneOpenReflection: true,
-  openReflectionQuestionIds: ["Q023", "Q024"],
-};
+const assessmentQuestionSets = {
+  "lite.v1": fullLiteQuestionSet,
+  "lite.v2": fullLiteQuestionSetV2,
+  "deep.v1": fullDeepQuestionSet,
+} as const;
 
 function createAssessmentDefinition(config: {
   mode: Mode;
@@ -32,12 +41,12 @@ function createAssessmentDefinition(config: {
   title: string;
   description: string;
   storageKey: string;
-  questions?: AssessmentDefinition["questions"];
+  questionSetKey: keyof typeof assessmentQuestionSets;
   initialState?: AssessmentFormState;
   validation?: AssessmentValidationConfig;
   phases: AssessmentDefinition["phases"];
 }) {
-  const questions = config.questions ?? fullLiteQuestionSet;
+  const questions = assessmentQuestionSets[config.questionSetKey] ?? fullLiteQuestionSet;
   const definition: AssessmentDefinition = {
     mode: config.mode,
     version: config.version,
@@ -50,79 +59,28 @@ function createAssessmentDefinition(config: {
     questions,
     totalSteps: questions.length + 2,
     phases: config.phases,
-    initialState: config.initialState ?? baseInitialState,
-    validation: config.validation ?? defaultValidation,
+    initialState: config.initialState ?? assessmentBaseInitialState,
+    validation: config.validation ?? assessmentDefaultValidation,
   };
 
   return definition;
 }
 
-const liteAssessmentDefinitionV1 = createAssessmentDefinition({
-  mode: "lite",
-  version: "lite.v1",
-  title: "Lite Ritual",
-  description: "适合当前 MVP 的单题推进式自我探索流程。",
-  storageKey: "benyuan-lite-test-draft-v1",
-  phases: [
-    { id: "entry", label: "进入状态", description: "给这次探索一个起点坐标。", moduleIds: ["entry_state"] },
-    { id: "emotion", label: "情感气候", description: "识别你最近的情绪天气。", moduleIds: ["emotional_weather"] },
-    { id: "aesthetic", label: "审美语法", description: "从审美偏好读出精神指纹。", moduleIds: ["aesthetic_fingerprint"] },
-    { id: "temporal", label: "时间哲学", description: "看你如何与过去、现在、未来相处。", moduleIds: ["temporal_philosophy"] },
-    { id: "reflection", label: "开放反思", description: "给那些无法被选项收拢的部分留空间。", moduleIds: ["open_reflection"] },
-  ],
-});
+const assessmentRegistry = assessmentVersionManifests.reduce<Record<Mode, Record<string, AssessmentDefinition>>>(
+  (accumulator, manifest) => {
+    const definition = createAssessmentDefinition(manifest);
+    const modeBucket = accumulator[manifest.mode] ?? {};
 
-const liteAssessmentDefinitionV2 = createAssessmentDefinition({
-  mode: "lite",
-  version: "lite.v2",
-  title: "Lite Ritual / Reflective Draft",
-  description: "在 Lite 主流程中插入一格认知地貌问题，用更轻的方式补足你如何抵达清晰。",
-  storageKey: "benyuan-lite-test-draft-v2",
-  questions: fullLiteQuestionSetV2,
-  phases: [
-    { id: "entry", label: "进入状态", description: "给这次探索一个起点坐标。", moduleIds: ["entry_state"] },
-    { id: "emotion", label: "情感气候", description: "识别你最近的情绪天气。", moduleIds: ["emotional_weather"] },
-    { id: "cognition", label: "认知地貌", description: "补一格你如何处理未明之事、怎样靠近清晰。", moduleIds: ["cognitive_topology"] },
-    { id: "aesthetic", label: "审美语法", description: "从审美偏好读出精神指纹。", moduleIds: ["aesthetic_fingerprint"] },
-    { id: "temporal", label: "时间哲学", description: "看你如何与过去、现在、未来相处。", moduleIds: ["temporal_philosophy"] },
-    { id: "reflection", label: "开放反思", description: "给那些无法被选项收拢的部分留空间。", moduleIds: ["open_reflection"] },
-  ],
-});
-
-const deepAssessmentDefinitionV1 = createAssessmentDefinition({
-  mode: "deep",
-  version: "deep.v1",
-  title: "Deep Ritual",
-  description: "独立于 Lite 的深描探索流，补入认知、关系、欲望与灵性结构。",
-  storageKey: "benyuan-deep-test-draft-v1",
-  questions: fullDeepQuestionSet,
-  validation: {
-    requireAtLeastOneOpenReflection: true,
-    openReflectionQuestionIds: ["D015", "D016"],
+    return {
+      ...accumulator,
+      [manifest.mode]: {
+        ...modeBucket,
+        [definition.version]: definition,
+      },
+    };
   },
-  phases: [
-    { id: "entry", label: "进入状态", description: "建立初始生命坐标与情绪背景。", moduleIds: ["entry_state"] },
-    { id: "cognition", label: "认知地貌", description: "观察你如何辨认模式、处理矛盾与观看自己的思考。", moduleIds: ["cognitive_topology"] },
-    { id: "emotion", label: "情感气候", description: "追踪情绪模式与触发点。", moduleIds: ["emotional_weather"] },
-    { id: "desire", label: "欲望拓扑", description: "摸到你真正想守住什么，也看见更深的不安。", moduleIds: ["desire_topology"] },
-    { id: "relation", label: "关系语法", description: "理解你如何允许他人靠近，以及你如何保护边界。", moduleIds: ["relational_grammar"] },
-    { id: "aesthetic", label: "审美语法", description: "提取审美、象征与共鸣线索。", moduleIds: ["aesthetic_fingerprint"] },
-    { id: "temporal", label: "时间哲学", description: "组织生命叙事与变化方向。", moduleIds: ["temporal_philosophy"] },
-    { id: "spiritual", label: "灵性向度", description: "记录你如何理解意义、连接与超越。", moduleIds: ["spiritual_dimension"] },
-    { id: "reflection", label: "开放反思", description: "把无法量化的部分留给文字和图像化回忆。", moduleIds: ["open_reflection"] },
-  ],
-});
-
-const assessmentRegistry: Record<Mode, Record<string, AssessmentDefinition>> = {
-  lite: {
-    [liteAssessmentDefinitionV1.version]: liteAssessmentDefinitionV1,
-    [liteAssessmentDefinitionV2.version]: liteAssessmentDefinitionV2,
-  },
-  deep: {
-    [deepAssessmentDefinitionV1.version]: deepAssessmentDefinitionV1,
-  },
-};
-
+  { lite: {}, deep: {} },
+);
 
 function toAssessmentDefinitionSnapshot(definition: AssessmentDefinition, isDefaultVersion: boolean): AssessmentDefinitionSnapshot {
   return {
@@ -147,6 +105,17 @@ function toAssessmentDefinitionSnapshot(definition: AssessmentDefinition, isDefa
   };
 }
 
+function getNativeTokenBundle(step: ReturnType<typeof buildAssessmentFlowContract>["steps"][number]) {
+  return [
+    step.nativeHints.topBarStyle,
+    step.nativeHints.primaryActionStyle,
+    step.nativeHints.optionChrome,
+    step.nativeHints.backgroundTreatment,
+    step.nativeHints.motionPreset,
+    step.nativeHints.spacingDensity,
+  ].join("/");
+}
+
 function diffStringLists(base: string[], target: string[]) {
   return {
     added: target.filter((item) => !base.includes(item)),
@@ -154,9 +123,65 @@ function diffStringLists(base: string[], target: string[]) {
   };
 }
 
+function toAssessmentFlowSnapshot(definition: AssessmentDefinition): AssessmentFlowSnapshot {
+  const flow = buildAssessmentFlowContract({
+    totalSteps: definition.totalSteps,
+    phases: definition.phases,
+    questions: definition.questions.map((question) => serializeAssessmentQuestion(question)),
+    validation: definition.validation,
+    moduleLabels: definition.moduleLabels,
+  });
+  const questionSteps = flow.steps.filter((step) => step.kind === "question");
+  const firstQuestion = questionSteps[0] ?? null;
+  const reviewStep = flow.steps.find((step) => step.kind === "review") ?? null;
+
+  return {
+    mode: definition.mode,
+    version: definition.version,
+    pacing: { ...flow.pacing },
+    review: { ...flow.review },
+    stepKeys: flow.steps.map((step) => `${step.kind}:${step.phaseId}:${step.questionId ?? "none"}`),
+    firstQuestionTitle: firstQuestion?.title ?? null,
+    reviewTitle: reviewStep?.title ?? null,
+    firstQuestionNativeControl: firstQuestion?.nativeHints.iosPreferredControl ?? null,
+    reviewNativeControl: reviewStep?.nativeHints.iosPreferredControl ?? null,
+    firstQuestionTokenBundle: firstQuestion ? getNativeTokenBundle(firstQuestion) : null,
+    reviewTokenBundle: reviewStep ? getNativeTokenBundle(reviewStep) : null,
+  };
+}
+
+function toAssessmentNativeBlueprintSnapshot(definition: AssessmentDefinition): AssessmentNativeBlueprintSnapshot {
+  const flow = buildAssessmentFlowContract({
+    totalSteps: definition.totalSteps,
+    phases: definition.phases,
+    questions: definition.questions.map((question) => serializeAssessmentQuestion(question)),
+    validation: definition.validation,
+    moduleLabels: definition.moduleLabels,
+  });
+  const native = buildAssessmentNativeScreenMap(flow);
+
+  return {
+    mode: definition.mode,
+    version: definition.version,
+    blueprintSequence: native.blueprintSequence,
+    blueprintIds: native.blueprintCatalog.map((item) => item.blueprint),
+    catalog: native.blueprintCatalog.map((item) => ({
+      blueprint: item.blueprint,
+      recommendedComponentName: item.recommendedComponentName,
+      recommendedContainer: item.recommendedContainer,
+      primaryInputSlot: item.primaryInputSlot,
+      footerSlot: item.footerSlot,
+      requiredBlocks: item.requiredBlocks,
+      optionalBlocks: item.optionalBlocks,
+      propsContractKeys: item.propsContract.map((prop) => prop.name),
+      checklistKeys: item.implementationChecklist.map((check) => check.key),
+    })),
+  };
+}
+
 const defaultAssessmentVersions: Record<Mode, string> = {
-  lite: liteAssessmentDefinitionV1.version,
-  deep: deepAssessmentDefinitionV1.version,
+  lite: assessmentVersionManifests.find((item) => item.mode === "lite" && item.isDefault)?.version ?? "lite.v1",
+  deep: assessmentVersionManifests.find((item) => item.mode === "deep" && item.isDefault)?.version ?? "deep.v1",
 };
 
 export const defaultAssessmentMode: Mode = "lite";
@@ -200,8 +225,6 @@ export function getAssessmentDefinition(mode: Mode = defaultAssessmentMode, vers
   return assessmentRegistry[mode]?.[resolvedVersion] ?? assessmentRegistry[defaultAssessmentMode][defaultAssessmentVersions[defaultAssessmentMode]];
 }
 
-
-
 export function listAssessmentDefinitionSnapshots(mode?: Mode) {
   const modes = mode ? [mode] : (Object.keys(assessmentRegistry) as Mode[]);
   return modes.flatMap((item) =>
@@ -214,6 +237,142 @@ export function listAssessmentDefinitionSnapshots(mode?: Mode) {
 export function getAssessmentDefinitionSnapshot(mode: Mode, version?: string | null) {
   const definition = getAssessmentDefinition(mode, version);
   return toAssessmentDefinitionSnapshot(definition, defaultAssessmentVersions[mode] === definition.version);
+}
+
+export function getAssessmentFlowSnapshot(mode: Mode, version?: string | null) {
+  const definition = getAssessmentDefinition(mode, version);
+  return toAssessmentFlowSnapshot(definition);
+}
+
+export function getAssessmentNativeBlueprintSnapshot(mode: Mode, version?: string | null) {
+  const definition = getAssessmentDefinition(mode, version);
+  return toAssessmentNativeBlueprintSnapshot(definition);
+}
+
+export function diffAssessmentNativeBlueprintSnapshots(mode: Mode, targetVersion: string, baseVersion?: string | null): AssessmentNativeBlueprintDiff {
+  const resolvedBaseVersion = resolveAssessmentVersion(mode, baseVersion ?? defaultAssessmentVersions[mode]);
+  const baseSnapshot = getAssessmentNativeBlueprintSnapshot(mode, resolvedBaseVersion);
+  const targetSnapshot = getAssessmentNativeBlueprintSnapshot(mode, targetVersion);
+  const blueprintDiff = diffStringLists(baseSnapshot.blueprintIds, targetSnapshot.blueprintIds);
+  const sequenceDiff = diffStringLists(baseSnapshot.blueprintSequence, targetSnapshot.blueprintSequence);
+  const comparableSequenceSteps = Math.min(baseSnapshot.blueprintSequence.length, targetSnapshot.blueprintSequence.length);
+  const changedSequenceSteps = Array.from({ length: comparableSequenceSteps }, (_, step) => {
+    const from = baseSnapshot.blueprintSequence[step];
+    const to = targetSnapshot.blueprintSequence[step];
+    if (from === to) return null;
+    return { step, from, to };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const changedBlueprintContracts = targetSnapshot.catalog.flatMap((contract) => {
+    const baseContract = baseSnapshot.catalog.find((item) => item.blueprint === contract.blueprint);
+    if (!baseContract) return [];
+
+    const changedKeys = [
+      baseContract.recommendedComponentName === contract.recommendedComponentName ? null : "recommendedComponentName",
+      baseContract.recommendedContainer === contract.recommendedContainer ? null : "recommendedContainer",
+      baseContract.primaryInputSlot === contract.primaryInputSlot ? null : "primaryInputSlot",
+      baseContract.footerSlot === contract.footerSlot ? null : "footerSlot",
+      JSON.stringify(baseContract.requiredBlocks) === JSON.stringify(contract.requiredBlocks) ? null : "requiredBlocks",
+      JSON.stringify(baseContract.optionalBlocks) === JSON.stringify(contract.optionalBlocks) ? null : "optionalBlocks",
+    ].filter((value): value is string => Boolean(value));
+
+    return changedKeys.length > 0 ? [{ blueprint: contract.blueprint, changedKeys }] : [];
+  });
+
+  return {
+    mode,
+    baseVersion: baseSnapshot.version,
+    targetVersion: targetSnapshot.version,
+    addedBlueprints: blueprintDiff.added,
+    removedBlueprints: blueprintDiff.removed,
+    addedSequenceBlueprints: sequenceDiff.added,
+    removedSequenceBlueprints: sequenceDiff.removed,
+    changedSequenceSteps,
+    changedBlueprintContracts,
+  };
+}
+
+export function diffAssessmentFlowSnapshots(mode: Mode, targetVersion: string, baseVersion?: string | null): AssessmentFlowDiff {
+  const resolvedBaseVersion = resolveAssessmentVersion(mode, baseVersion ?? defaultAssessmentVersions[mode]);
+  const baseSnapshot = getAssessmentFlowSnapshot(mode, resolvedBaseVersion);
+  const targetSnapshot = getAssessmentFlowSnapshot(mode, targetVersion);
+  const baseDefinition = getAssessmentDefinition(mode, resolvedBaseVersion);
+  const targetDefinition = getAssessmentDefinition(mode, targetVersion);
+  const baseFlow = buildAssessmentFlowContract({
+    totalSteps: baseDefinition.totalSteps,
+    phases: baseDefinition.phases,
+    questions: baseDefinition.questions.map((question) => serializeAssessmentQuestion(question)),
+    validation: baseDefinition.validation,
+    moduleLabels: baseDefinition.moduleLabels,
+  });
+  const targetFlow = buildAssessmentFlowContract({
+    totalSteps: targetDefinition.totalSteps,
+    phases: targetDefinition.phases,
+    questions: targetDefinition.questions.map((question) => serializeAssessmentQuestion(question)),
+    validation: targetDefinition.validation,
+    moduleLabels: targetDefinition.moduleLabels,
+  });
+
+  const pacingChangedKeys = Object.keys(baseSnapshot.pacing).filter(
+    (key) => baseSnapshot.pacing[key as keyof typeof baseSnapshot.pacing] !== targetSnapshot.pacing[key as keyof typeof targetSnapshot.pacing],
+  );
+  const reviewChangedKeys = Object.keys(baseSnapshot.review).filter(
+    (key) => JSON.stringify(baseSnapshot.review[key as keyof typeof baseSnapshot.review]) !== JSON.stringify(targetSnapshot.review[key as keyof typeof targetSnapshot.review]),
+  );
+  const addedRemovedStepKeys = diffStringLists(baseSnapshot.stepKeys, targetSnapshot.stepKeys);
+  const comparableSteps = Math.min(baseFlow.steps.length, targetFlow.steps.length);
+
+  const changedStepPhaseIds = Array.from({ length: comparableSteps }, (_, step) => {
+    const baseStep = baseFlow.steps[step];
+    const targetStep = targetFlow.steps[step];
+    if (!baseStep || !targetStep || baseStep.phaseId === targetStep.phaseId) return null;
+    return { step, from: baseStep.phaseId, to: targetStep.phaseId };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const changedStepQuestionIds = Array.from({ length: comparableSteps }, (_, step) => {
+    const baseStep = baseFlow.steps[step];
+    const targetStep = targetFlow.steps[step];
+    if (!baseStep || !targetStep || baseStep.questionId === targetStep.questionId) return null;
+    return { step, from: baseStep.questionId, to: targetStep.questionId };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const changedStepTitles = Array.from({ length: comparableSteps }, (_, step) => {
+    const baseStep = baseFlow.steps[step];
+    const targetStep = targetFlow.steps[step];
+    if (!baseStep || !targetStep || baseStep.title === targetStep.title) return null;
+    return { step, from: baseStep.title, to: targetStep.title };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const changedStepNativeControls = Array.from({ length: comparableSteps }, (_, step) => {
+    const baseStep = baseFlow.steps[step];
+    const targetStep = targetFlow.steps[step];
+    if (!baseStep || !targetStep || baseStep.nativeHints.iosPreferredControl === targetStep.nativeHints.iosPreferredControl) return null;
+    return { step, from: baseStep.nativeHints.iosPreferredControl, to: targetStep.nativeHints.iosPreferredControl };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  const changedStepTokenBundles = Array.from({ length: comparableSteps }, (_, step) => {
+    const baseStep = baseFlow.steps[step];
+    const targetStep = targetFlow.steps[step];
+    const baseBundle = getNativeTokenBundle(baseStep);
+    const targetBundle = getNativeTokenBundle(targetStep);
+    if (!baseStep || !targetStep || baseBundle === targetBundle || !baseBundle || !targetBundle) return null;
+    return { step, from: baseBundle, to: targetBundle };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  return {
+    mode,
+    baseVersion: baseSnapshot.version,
+    targetVersion: targetSnapshot.version,
+    pacingChangedKeys,
+    reviewChangedKeys,
+    addedStepKeys: addedRemovedStepKeys.added,
+    removedStepKeys: addedRemovedStepKeys.removed,
+    changedStepPhaseIds,
+    changedStepQuestionIds,
+    changedStepTitles,
+    changedStepNativeControls,
+    changedStepTokenBundles,
+  };
 }
 
 export function diffAssessmentDefinitionSnapshots(mode: Mode, targetVersion: string, baseVersion?: string | null): AssessmentDefinitionDiff {

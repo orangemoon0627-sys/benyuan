@@ -1,39 +1,20 @@
+import { analysisPromptTemplateConfig, type AnalysisPromptTemplateConfig } from "@/config/analysis/prompt-templates";
 import type { Mode } from "@/lib/types";
 
-export type AnalysisPromptTemplate = {
-  id: string;
-  version: string;
-  label: string;
-  supportedModes: Mode[];
-  system: string;
-  guidance: string[];
-};
+export type AnalysisPromptTemplate = AnalysisPromptTemplateConfig;
 
-const corePromptTemplate: AnalysisPromptTemplate = {
-  id: "benyuan.analysis.core",
-  version: "prompt-template.v1",
-  label: "Core Analysis Template",
-  supportedModes: ["lite", "deep"],
-  system:
-    "You are the Benyuan analysis layer. Preserve nuance, avoid rigid labels, and only deepen the deterministic baseline when evidence is sufficient.",
-  guidance: [
-    "Do not replace the deterministic baseline unless there is stronger evidence.",
-    "Prefer softer, precise language over categorical typing.",
-    "Keep safety-sensitive states conservative and non-romanticized.",
-  ],
-};
-
-const promptTemplateRegistry = {
-  core: corePromptTemplate,
-};
-
-export type AnalysisPromptTemplateKey = keyof typeof promptTemplateRegistry;
+export type AnalysisPromptTemplateKey = keyof typeof analysisPromptTemplateConfig;
 
 export function listAnalysisPromptTemplates() {
-  return Object.values(promptTemplateRegistry);
+  return Object.entries(analysisPromptTemplateConfig).map(([key, template]) => ({
+    key: key as AnalysisPromptTemplateKey,
+    ...template,
+  }));
 }
 
-export function resolveAnalysisPromptTemplate(key?: string | null) {
-  if (key === "core") return promptTemplateRegistry.core;
-  return promptTemplateRegistry.core;
+export function resolveAnalysisPromptTemplate(key?: string | null, mode?: Mode) {
+  if (key === "constellation_v3") return analysisPromptTemplateConfig.constellation_v3;
+  if (key === "depth" && mode === "deep") return analysisPromptTemplateConfig.depth;
+  if (key === "core") return analysisPromptTemplateConfig.core;
+  return analysisPromptTemplateConfig.constellation_v3;
 }

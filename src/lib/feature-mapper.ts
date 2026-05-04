@@ -5,6 +5,7 @@ import type { Answer, ConfidenceBand, FeatureVector, TestSession } from "@/lib/t
 import {
   assessmentChangeRegex,
   assessmentEmotionWordRegex,
+  assessmentExistentialRegex,
   assessmentMappingVersion,
   assessmentOptionMappings,
   assessmentScaleMappings,
@@ -82,6 +83,9 @@ function scoreTextSignals(input: AnalysisInput, rawScores: FeatureScores) {
 
   if (assessmentEmotionWordRegex.test(q023)) {
     rawScores.emotional_granularity += 0.1;
+    if (q023.length > 32) {
+      rawScores.emotional_depth += 0.14;
+    }
   }
 
   if (/(夜|深夜|凌晨|爵士|钢琴|后摇|雨|耳机)/u.test(q023)) {
@@ -98,6 +102,12 @@ function scoreTextSignals(input: AnalysisInput, rawScores: FeatureScores) {
 
   if (assessmentTimeReferenceRegex.test(q024) && q024.length > 12) {
     rawScores.temporal_narrative_coherence += 0.1;
+  }
+
+  const existentialCorpus = [q023, q024].filter(Boolean).join("\n");
+  if (assessmentExistentialRegex.test(existentialCorpus)) {
+    rawScores.temporal_meaning_density += 0.12;
+    rawScores.aesthetic_literary_existential += 0.08;
   }
 
   if (assessmentChangeRegex.test(q024)) {
@@ -274,20 +284,44 @@ export function buildFeatureVector(input: AnalysisInput): FeatureVector {
 export function collectSafetySignals(input: AnalysisInput, vector: FeatureVector) {
   const { session } = input;
   const flags = new Set<"none" | "high_sensitivity" | "existential_distress" | "trauma_signal" | "self_harm_risk" | "low_information">();
-  const texts = input.openReflectionQuestionIds.map((questionId) => getTextAnswer(session, questionId)).filter(Boolean).join("\n");
+  const openTexts = input.openReflectionQuestionIds.map((questionId) => getTextAnswer(session, questionId));
+  const texts = openTexts.filter(Boolean).join("\n");
   const significantFeatures = Object.values(vector.values).filter((value) => value >= 0.7).length;
-  const answeredOpenText = input.openReflectionQuestionIds.map((questionId) => getTextAnswer(session, questionId)).filter((value) => value.length > 0).length;
+  const answeredOpenText = openTexts.filter((value) => value.length > 0).length;
+  const totalOpenTextLength = openTexts.reduce((sum, value) => sum + value.length, 0);
   const { answered, total } = getAnsweredRequiredCount(input);
 
-  if (answered / total < 0.8 || (answeredOpenText === 0 && significantFeatures <= 1) || (vector.confidenceBand === "low" && significantFeatures === 0)) {
+  if (
+    answered / total < 0.8 ||
+    (answeredOpenText === 0 && significantFeatures <= 1) ||
+    (answeredOpenText < 2 && totalOpenTextLength < 28 && significantFeatures <= 2) ||
+    (vector.confidenceBand === "low" && significantFeatures === 0)
+  ) {
     flags.add("low_information");
   }
 
-  if (vector.values.emotional_depth > 0.72 && (vector.values.aesthetic_literary_tenderness > 0.56 || vector.values.aesthetic_music_nocturnal > 0.56)) {
+  const nocturnalSensitivityProfile =
+    vector.values.aesthetic_music_nocturnal > 0.78 &&
+    vector.values.temporal_past_weight > 0.68 &&
+    vector.values.emotional_transformation > 0.6;
+
+  if (
+    (vector.values.emotional_depth > 0.68 &&
+      (
+        vector.values.aesthetic_literary_tenderness > 0.5 ||
+        vector.values.aesthetic_music_nocturnal > 0.5 ||
+        vector.values.aesthetic_literary_existential > 0.6
+      )) ||
+    nocturnalSensitivityProfile
+  ) {
     flags.add("high_sensitivity");
   }
 
-  if (vector.values.aesthetic_literary_existential > 0.72 && vector.values.temporal_meaning_density > 0.65 && vector.values.emotional_depth > 0.65) {
+  if (
+    vector.values.aesthetic_literary_existential > 0.68 &&
+    vector.values.temporal_meaning_density > 0.54 &&
+    (vector.values.emotional_depth > 0.62 || assessmentExistentialRegex.test(texts))
+  ) {
     flags.add("existential_distress");
   }
 

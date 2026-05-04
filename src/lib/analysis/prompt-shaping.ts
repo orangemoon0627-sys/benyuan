@@ -9,7 +9,7 @@ function stringifyAnswer(value: string | string[] | number) {
 
 export function buildAnalysisPromptPayload(input: AnalysisInput): AnalysisPromptShapingResult {
   const runtimeConfig = readAnalysisRuntimeConfig(input.session.mode);
-  const template = resolveAnalysisPromptTemplate(runtimeConfig.selectedPromptTemplateKey);
+  const template = resolveAnalysisPromptTemplate(runtimeConfig.selectedPromptTemplateKey, input.session.mode);
   const answered = input.session.answers.filter((answer) => {
     if (typeof answer.value === "string") return answer.value.trim().length > 0;
     if (Array.isArray(answer.value)) return answer.value.length > 0;
@@ -32,7 +32,10 @@ export function buildAnalysisPromptPayload(input: AnalysisInput): AnalysisPrompt
       system: `${template.system}
 
 Guidance:
-- ${template.guidance.join("\n- ")}`,
+- ${template.guidance.join("\n- ")}
+
+Emphasis:
+- ${template.emphasis.join("\n- ")}`,
       user: JSON.stringify(
         {
           mode: input.session.mode,

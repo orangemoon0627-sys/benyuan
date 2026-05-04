@@ -1,5 +1,6 @@
 import goldenBaselineV01 from "@/lib/fixtures/golden-baseline.v0.1.json";
 import goldenBaselineV02 from "@/lib/fixtures/golden-baseline.v0.2.json";
+import goldenBaselineV03 from "@/lib/fixtures/golden-baseline.v0.3.json";
 
 export type GoldenBaselineSnapshot = (typeof goldenBaselineV01.snapshots)[number];
 
@@ -23,6 +24,18 @@ export type GoldenBaselineRegistryEntry = {
 };
 
 export const goldenBaselineRegistry: GoldenBaselineRegistryEntry[] = [
+  {
+    id: "v0.3",
+    title: "v3 安全校准与 8 样本扩展基线",
+    notes: "基于 report.v3.0 / prompt-template.v3 冻结，纳入 low-information 降级、高敏感/存在困惑识别，以及 deep 样本的完整 8 条覆盖。",
+    filePath: "src/lib/fixtures/golden-baseline.v0.3.json",
+    freezeReason: "Golden audit aligned after safety recalibration, archetype routing refinement, and expansion from 6 to 8 regression samples.",
+    allowedDrift: "后续若 archetype、safety、top features、tension 或 overview 继续变动，必须重新审阅并决定是否冻结 v0.4。",
+    schemaVersion: "report.v3.0",
+    promptVersion: "prompt-template.v3",
+    reviewerSignoff: "engineering-agent / evaluation-agent / codex",
+    dataset: goldenBaselineV03,
+  },
   {
     id: "v0.2",
     title: "文案分支化后的首个真实基线",

@@ -8,3 +8,4 @@ export * from "./question-content-lite";
 export * from "./question-content-lite-v2";
 export * from "./question-content-deep";
 export * from "./analysis-mapping";
+export * from "./content-workbench";

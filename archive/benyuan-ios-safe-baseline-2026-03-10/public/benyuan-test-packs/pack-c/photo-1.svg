@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1067" viewBox="0 0 1600 1067">
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#111111"/>
+    <stop offset="58%" stop-color="#5D8A63"/>
+    <stop offset="100%" stop-color="#050505"/>
+  </linearGradient>
+</defs>
+<rect width="1600" height="1067" fill="url(#sky)"/>
+<ellipse cx="800" cy="900" rx="540" ry="120" fill="#0B0B0B"/>
+<circle cx="1100" cy="280" r="86" fill="#F6D49A" fill-opacity="0.62"/>
+<path d="M0 760 C 180 620, 420 640, 560 730 S 900 860, 1120 720 S 1420 620, 1600 760 L 1600 1067 L 0 1067 Z" fill="#090909"/>
+<rect x="776" y="468" width="34" height="250" fill="#121212"/>
+<circle cx="793" cy="420" r="74" fill="#181818"/>
+<text x="84" y="110" fill="#FFFFFF" font-size="54" font-family="-apple-system, BlinkMacSystemFont, SF Pro Display, PingFang SC, sans-serif" font-weight="500">林间清晨</text>
+<text x="72" y="180" fill="#E8E8E8" font-size="32" font-family="-apple-system, BlinkMacSystemFont, SF Pro Display, PingFang SC, sans-serif" font-weight="400">清晨的山林与薄雾</text>
+<text x="72" y="250" fill="#E8E8E8" font-size="32" font-family="-apple-system, BlinkMacSystemFont, SF Pro Display, PingFang SC, sans-serif" font-weight="400">柔光、安静、温暖绿色</text>
+</svg>

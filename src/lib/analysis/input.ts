@@ -16,7 +16,7 @@ function toAnalysisQuestionContract(question: ReturnType<typeof getAssessmentDef
   };
 }
 
-export function buildAnalysisInput(session: TestSession): AnalysisInput {
+export function buildAnalysisInput(session: TestSession, options?: { stageReporter?: AnalysisInput["stageReporter"] }): AnalysisInput {
   const definition = getAssessmentDefinition(session.mode, session.assessmentVersion);
   const questionSet = definition.questions.map((question) => toAnalysisQuestionContract(question));
 
@@ -25,5 +25,6 @@ export function buildAnalysisInput(session: TestSession): AnalysisInput {
     questionSet,
     questionMap: new Map(questionSet.map((question) => [question.questionId, question])),
     openReflectionQuestionIds: definition.validation.openReflectionQuestionIds,
+    stageReporter: options?.stageReporter,
   };
 }
