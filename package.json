@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "deploy:staging": "bash scripts/deploy-staging.sh",
+    "deploy:staging:dry": "bash scripts/deploy-staging.sh --dry-run",
     "smoke:flow": "node --experimental-strip-types scripts/smoke-flow.mjs",
     "smoke:flow:deep": "BENYUAN_MODE=deep node --experimental-strip-types scripts/smoke-flow.mjs",
     "smoke:flow:all": "npm run smoke:flow && npm run smoke:flow:deep",
