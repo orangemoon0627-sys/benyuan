@@ -64,6 +64,10 @@ assert(
   "GitHub workflow must deploy the prebuilt .next artifact with --skip-checks",
 );
 assert(
+  workflow.includes('git config "branch.${GITHUB_REF_NAME}.remote" benyuan'),
+  "GitHub workflow must align the dispatch branch tracking remote to benyuan",
+);
+assert(
   !workflow.includes("BENYUAN_STAGING_SSH_KEY: ${{ runner.temp }}"),
   "GitHub workflow must not use runner context in job-level env",
 );
