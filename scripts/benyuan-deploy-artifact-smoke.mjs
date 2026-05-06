@@ -64,6 +64,14 @@ assert(
   "GitHub workflow must deploy the prebuilt .next artifact with --skip-checks",
 );
 assert(
+  workflow.includes("next.config.mjs"),
+  "GitHub workflow artifact must include runtime-readable next.config.mjs",
+);
+assert(
+  !workflow.includes("next.config.ts"),
+  "GitHub workflow artifact must not ship next.config.ts because production omit=dev would make next start auto-install TypeScript",
+);
+assert(
   workflow.includes('git config "branch.${GITHUB_REF_NAME}.remote" benyuan'),
   "GitHub workflow must align the dispatch branch tracking remote to benyuan",
 );
