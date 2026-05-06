@@ -236,7 +236,7 @@ if [ "$allow_dirty" = "0" ]; then
     "git archive --format=tar HEAD | ssh -i '$ssh_key' -o BatchMode=yes '$ssh_target' \"tar -xf - -C '$release_dir'\""
 else
   stream_to_remote "Uploading working tree source archive" \
-    "COPYFILE_DISABLE=1 tar --exclude='.git' --exclude='.next' --exclude='node_modules' --exclude='output' --exclude='data' --exclude='.playwright-cli' -cf - . | ssh -i '$ssh_key' -o BatchMode=yes '$ssh_target' \"tar -xf - -C '$release_dir'\""
+    "COPYFILE_DISABLE=1 tar --no-xattrs --exclude='.git' --exclude='.next' --exclude='node_modules' --exclude='output' --exclude='data' --exclude='.playwright-cli' -cf - . | ssh -i '$ssh_key' -o BatchMode=yes '$ssh_target' \"tar -xf - -C '$release_dir'\""
 fi
 
 remote_run "set -euo pipefail
@@ -244,7 +244,7 @@ printf '%s\n' '$revision' > '$release_dir/REVISION'
 ln -sfn '$app_root/shared/data' '$release_dir/data'"
 
 stream_to_remote "Uploading local Next.js build artifact" \
-  "COPYFILE_DISABLE=1 tar --exclude='.next/cache' --exclude='.next/dev' -czf - .next | ssh -i '$ssh_key' -o BatchMode=yes '$ssh_target' \"cd '$release_dir' && rm -rf .next && tar -xzf - && find .next -name '._*' -type f -delete && chown -R root:root .next\""
+  "COPYFILE_DISABLE=1 tar --no-xattrs --exclude='.next/cache' --exclude='.next/dev' -czf - .next | ssh -i '$ssh_key' -o BatchMode=yes '$ssh_target' \"cd '$release_dir' && rm -rf .next && tar -xzf - && find .next -name '._*' -type f -delete && chown -R root:root .next\""
 
 log "Installing production dependencies and restarting PM2"
 remote_run "set -euo pipefail
