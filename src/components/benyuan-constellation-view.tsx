@@ -215,7 +215,7 @@ export function BenyuanConstellationView() {
   const [activeDimensionKey, setActiveDimensionKey] = useState<string | null>(null);
   const [shareState, setShareState] = useState<"idle" | "done" | "error">("idle");
   const [pngState, setPngState] = useState<"idle" | "done" | "error">("idle");
-  const [, setActionHint] = useState<string | null>(null);
+  const [actionHint, setActionHint] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -382,7 +382,7 @@ export function BenyuanConstellationView() {
   }
 
   return (
-    <div className={benyuanUiRecipes.immersiveFlowNarrow}>
+    <div className={cx(benyuanUiRecipes.immersiveFlowNarrow, "cosmic-result-one-shot")}>
       <ImmersiveTopBar backHref="/theater" progressValue={100} />
 
       <GlassPanel className={cx(benyuanUiRecipes.heroAccentPanel, "cosmic-result-hero mx-auto w-full max-w-[30rem]")}>
@@ -392,19 +392,11 @@ export function BenyuanConstellationView() {
           <p className="mt-4 text-[10px] uppercase tracking-[0.32em] text-[var(--text-tertiary)]">{data.archetype.english_name}</p>
           <div className="mt-6 h-px w-16 bg-[linear-gradient(90deg,transparent,rgba(217,214,223,0.54),transparent)]" />
           <p className="mt-7 max-w-[18.5rem] text-[1.12rem] leading-[1.62] text-[var(--text-primary)] md:max-w-[23rem] md:text-[1.48rem]">{data.archetype.core_essence}</p>
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-2.5">
-            <SecondaryButton type="button" onClick={() => void handleShare()} className="min-h-11 px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50">
-              {shareState === "done" ? "已分享" : shareState === "error" ? "分享失败" : "分享"}
-            </SecondaryButton>
-            <SecondaryButton type="button" onClick={() => void handleExportPng()} className="min-h-11 px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50">
-              {pngState === "done" ? "已保存" : pngState === "error" ? "保存失败" : "保存"}
-            </SecondaryButton>
-            <a href="/collect" className={cx(benyuanUiRecipes.secondaryLink, "min-h-11 px-5 py-3 text-sm")}>重新探索</a>
-          </div>
+          <p className="cosmic-result-hero-hint">继续向下接收星图</p>
         </div>
       </GlassPanel>
 
-      <div className="mx-auto grid w-full max-w-[30rem] grid-cols-1 gap-2.5">
+      <div className="cosmic-result-sequence mx-auto grid w-full max-w-[30rem] grid-cols-1 gap-2.5">
         <button
           type="button"
           onClick={() => activeDimension && setActiveDimensionKey(activeDimension.key)}
@@ -555,6 +547,26 @@ export function BenyuanConstellationView() {
           </div>
         </div>
       </details>
+
+      <section className="cosmic-result-final mx-auto w-full max-w-[30rem]" aria-label="星图收束">
+        <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">RETURN</p>
+        <h3 className="mt-4 text-[2.05rem] font-black leading-none tracking-[0em] text-[var(--text-primary)] md:text-[2.7rem]">这不是结论</h3>
+        <p className="mt-4 text-[1.02rem] leading-8 text-[var(--text-primary)]">是你此刻的精神坐标。</p>
+        <p className="mt-5 text-sm leading-7 text-[var(--text-secondary)]">{supportHint}</p>
+      </section>
+
+      <div className="cosmic-result-action-dock mx-auto w-full max-w-[30rem]">
+        {actionHint ? <p role="status" aria-live="polite" className="cosmic-result-action-hint">{actionHint}</p> : null}
+        <div className="grid grid-cols-3 gap-2">
+          <SecondaryButton type="button" onClick={() => void handleShare()} className="cosmic-result-action-button disabled:cursor-not-allowed disabled:opacity-50">
+            {shareState === "done" ? "已分享" : shareState === "error" ? "分享失败" : "分享"}
+          </SecondaryButton>
+          <SecondaryButton type="button" onClick={() => void handleExportPng()} className="cosmic-result-action-button disabled:cursor-not-allowed disabled:opacity-50">
+            {pngState === "done" ? "已保存" : pngState === "error" ? "保存失败" : "保存"}
+          </SecondaryButton>
+          <a href="/collect" className={cx(benyuanUiRecipes.secondaryLink, "cosmic-result-action-button")}>重新探索</a>
+        </div>
+      </div>
     </div>
   );
 }

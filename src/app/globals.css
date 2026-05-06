@@ -1054,6 +1054,73 @@ select:focus-visible {
   box-shadow: 0 0 20px rgba(196, 177, 122, 0.38);
 }
 
+.cosmic-result-one-shot {
+  position: relative;
+  margin-bottom: calc(-4.75rem - var(--safe-bottom));
+  padding-bottom: 0;
+}
+
+.cosmic-result-one-shot::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, transparent 0 calc(50% - 0.5px), rgba(196, 177, 122, 0.09) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    radial-gradient(ellipse at 50% 7%, rgba(238, 241, 255, 0.07), transparent 36%),
+    linear-gradient(180deg, rgba(5, 6, 15, 0), rgba(0, 0, 0, 0.42));
+}
+
+.cosmic-result-hero-hint {
+  position: relative;
+  margin-top: 2.25rem;
+  padding-top: 2.45rem;
+  color: var(--text-tertiary);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+}
+
+.cosmic-result-hero-hint::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 1.7rem;
+  background: linear-gradient(180deg, rgba(196, 177, 122, 0.62), transparent);
+  transform: translateX(-50%);
+}
+
+.cosmic-result-hero-hint::after {
+  content: "";
+  position: absolute;
+  top: 1.55rem;
+  left: 50%;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-right: 1px solid rgba(196, 177, 122, 0.62);
+  border-bottom: 1px solid rgba(196, 177, 122, 0.62);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.cosmic-result-sequence {
+  position: relative;
+  isolation: isolate;
+  padding-block: 0.35rem;
+}
+
+.cosmic-result-sequence::before {
+  content: "";
+  position: absolute;
+  top: -1.35rem;
+  bottom: -1.35rem;
+  left: 1.72rem;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(196, 177, 122, 0.2) 18%, rgba(225, 230, 255, 0.1) 54%, transparent);
+  z-index: -1;
+}
+
 .cosmic-result-card {
   min-height: 8.7rem;
   border-color: rgba(225, 230, 255, 0.12);
@@ -1077,6 +1144,63 @@ select:focus-visible {
   border-radius: 999px;
   background: rgba(196, 177, 122, 0.88);
   box-shadow: 0 0 16px rgba(196, 177, 122, 0.3);
+}
+
+.cosmic-result-final {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid rgba(225, 230, 255, 0.12);
+  border-bottom: 1px solid rgba(196, 177, 122, 0.16);
+  padding: 3.2rem 1.15rem 3.4rem;
+  text-align: center;
+}
+
+.cosmic-result-final::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 2.2rem;
+  background: linear-gradient(180deg, rgba(196, 177, 122, 0.58), transparent);
+}
+
+.cosmic-result-final::after {
+  content: "";
+  position: absolute;
+  inset: auto 12% 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(238, 241, 255, 0.24), transparent);
+}
+
+.cosmic-result-action-dock {
+  border: 1px solid rgba(225, 230, 255, 0.12);
+  border-radius: 1.7rem;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(196, 177, 122, 0.08), transparent 52%),
+    linear-gradient(180deg, rgba(238, 241, 255, 0.06), rgba(4, 5, 12, 0.72)),
+    rgba(0, 0, 0, 0.38);
+  padding: 0.72rem;
+  box-shadow:
+    0 18px 58px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px);
+}
+
+.cosmic-result-action-button {
+  min-height: 2.75rem !important;
+  padding: 0.62rem 0.35rem !important;
+  white-space: nowrap;
+  font-size: 0.78rem !important;
+  line-height: 1 !important;
+}
+
+.cosmic-result-action-hint {
+  padding: 0.35rem 0.5rem 0.75rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.7;
 }
 
 @keyframes horizonDrift {
