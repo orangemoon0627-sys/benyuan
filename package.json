@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:staging:dry": "bash scripts/deploy-staging.sh --dry-run",
+    "smoke:deploy:artifact": "node scripts/benyuan-deploy-artifact-smoke.mjs",
     "smoke:flow": "node --experimental-strip-types scripts/smoke-flow.mjs",
     "smoke:flow:deep": "BENYUAN_MODE=deep node --experimental-strip-types scripts/smoke-flow.mjs",
     "smoke:flow:all": "npm run smoke:flow && npm run smoke:flow:deep",

@@ -22,7 +22,7 @@ Future domain after ICP: http(s)://staging-benyuan.orangemoonai.cn/
 服务器内存较小，不适合在服务器上跑完整 `next build`。发布策略固定为：
 
 ```text
-本地 lint/build -> 上传源码和 .next 产物 -> 服务器 npm ci --omit=dev -> PM2 重启 -> smoke 验证
+本地或 GitHub Actions runner npm ci/lint/build -> 上传预构建 .next 产物 -> 服务器 npm ci --omit=dev --no-audit --no-fund -> PM2 重启 -> smoke 验证
 ```
 
 ## 日常 Web 发布
@@ -63,6 +63,7 @@ git config --worktree branch.codex/benyuan-parallel.pushRemote benyuan
 ### 2. 本地验证
 
 ```bash
+npm ci --no-audit --no-fund
 npm run lint
 npm run build
 ```
@@ -118,14 +119,15 @@ npm run deploy:staging:dry -- --allow-dirty
 
 1. 检查 `benyuan` remote 是否是本源 GitHub 仓库。
 2. 默认要求工作树干净。
-3. 执行 `npm run lint`。
-4. 执行 `npm run build`。
-5. 通过 SSH 创建远端 release。
-6. 上传源码和本地 `.next` 产物。
-7. 在服务器执行 `npm ci --omit=dev`。
-8. 将 `/opt/apps/benyuan-staging/current` 指向新 release。
-9. 重启 PM2 进程 `benyuan-staging`。
-10. 运行服务器内部 curl 检查和公网 smoke 检查。
+3. 执行 `npm ci --no-audit --no-fund`。
+4. 执行 `npm run lint`。
+5. 执行 `npm run build`。
+6. 通过 SSH 创建远端 release。
+7. 上传源码和本地 `.next` 预构建产物。
+8. 在服务器执行 `npm ci --omit=dev --no-audit --no-fund`。
+9. 将 `/opt/apps/benyuan-staging/current` 指向新 release。
+10. 重启 PM2 进程 `benyuan-staging`。
+11. 运行服务器内部 curl 检查和公网 smoke 检查。
 
 公网 smoke 会先跑：
 
@@ -134,6 +136,28 @@ BENYUAN_BASE_URL=<staging-url> npm run smoke:runtime:gate
 ```
 
 这个护栏保证没有显式 `BENYUAN_LLM_LIVE=1` 时，Codex 默认模型配置不会把 staging 误切成 live provider。
+
+## GitHub Actions 发布
+
+仓库提供手动 workflow：
+
+```text
+.github/workflows/benyuan-staging.yml
+```
+
+它在 GitHub runner 上执行：
+
+```bash
+npm ci --no-audit --no-fund
+npm run lint
+npm run build
+```
+
+然后用 `npm run deploy:staging -- --skip-checks` 上传已经生成好的 `.next`，服务器只做生产依赖安装、PM2 重启和 smoke。需要在 GitHub Secrets 中配置：
+
+```text
+BENYUAN_STAGING_SSH_PRIVATE_KEY
+```
 
 ### 5. 发布后验证
 

@@ -1,0 +1,97 @@
+name: Benyuan Staging Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_base_url:
+        description: Staging URL used by smoke checks
+        required: true
+        default: http://120.26.126.88
+      dry_run:
+        description: Print deploy actions without changing the server
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: benyuan-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build artifact and deploy 本源 staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BENYUAN_STAGING_HOST: 120.26.126.88
+      BENYUAN_STAGING_USER: root
+      BENYUAN_STAGING_SSH_KEY: ${{ runner.temp }}/benyuan_staging_ed25519
+      BENYUAN_STAGING_APP_ROOT: /opt/apps/benyuan-staging
+      BENYUAN_STAGING_PORT: 3015
+      BENYUAN_STAGING_PROCESS: benyuan-staging
+      BENYUAN_STAGING_PUBLIC_BASE_URL: ${{ inputs.public_base_url }}
+
+    steps:
+      - name: Checkout 本源
+        uses: actions/checkout@v4
+
+      - name: Configure 本源 deploy remote
+        run: |
+          git remote remove benyuan 2>/dev/null || true
+          git remote add benyuan https://github.com/orangemoon0627-sys/benyuan.git
+          git remote -v
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install runner dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build prebuilt .next artifact
+        run: npm run build
+
+      - name: Archive prebuilt artifact for audit
+        run: |
+          tar -czf "$RUNNER_TEMP/benyuan-staging-prebuilt.tgz" \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            next.config.ts \
+            tsconfig.json \
+            postcss.config.mjs \
+            eslint.config.mjs
+
+      - name: Upload prebuilt artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benyuan-staging-prebuilt-${{ github.sha }}
+          path: ${{ runner.temp }}/benyuan-staging-prebuilt.tgz
+          retention-days: 7
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.BENYUAN_STAGING_SSH_PRIVATE_KEY }}
+        run: |
+          test -n "$SSH_PRIVATE_KEY"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$BENYUAN_STAGING_SSH_KEY"
+          chmod 600 "$BENYUAN_STAGING_SSH_KEY"
+          ssh-keyscan -H "$BENYUAN_STAGING_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy prebuilt artifact to ECS
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npm run deploy:staging -- --skip-checks --dry-run
+          else
+            npm run deploy:staging -- --skip-checks
+          fi

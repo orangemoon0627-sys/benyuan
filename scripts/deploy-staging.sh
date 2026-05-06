@@ -25,11 +25,11 @@ usage() {
   cat <<EOF
 Usage: npm run deploy:staging -- [options]
 
-Build 本源 locally, upload a release to the staging ECS, restart PM2, and verify.
+Build 本源 locally, upload the prebuilt release artifact to the staging ECS, restart PM2, and verify.
 
 Options:
   --allow-dirty   Allow deploying with uncommitted local changes.
-  --skip-checks   Skip local lint/build checks.
+  --skip-checks   Skip local npm ci/lint/build checks. Requires an existing .next artifact.
   --push          Push current branch to the configured 本源 deploy remote before deploying.
   --dry-run       Print the planned deployment without changing the server.
   -h, --help      Show this help.
@@ -204,10 +204,11 @@ fi
 
 if [ "$skip_checks" = "0" ]; then
   log "Local verification"
+  run npm npm ci --no-audit --no-fund
   run npm npm run lint
   run npm npm run build
 else
-  log "Skipping local lint/build checks"
+  log "Skipping local npm ci/lint/build checks"
 fi
 
 if [ ! -d "$repo_root/.next" ]; then
@@ -249,7 +250,7 @@ stream_to_remote "Uploading local Next.js build artifact" \
 log "Installing production dependencies and restarting PM2"
 remote_run "set -euo pipefail
 cd '$release_dir'
-npm ci --omit=dev --registry='$npm_registry'
+npm ci --omit=dev --no-audit --no-fund --registry='$npm_registry'
 ln -sfn '$release_dir' '$app_root/current'
 pm2 delete '$process_name' >/dev/null 2>&1 || true
 pm2 start ./node_modules/next/dist/bin/next --name '$process_name' -- start -p '$app_port' -H 127.0.0.1
