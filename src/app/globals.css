@@ -402,9 +402,9 @@ select:focus-visible {
 
 .postmodern-question-stage {
   position: relative;
-  min-height: 15rem;
+  min-height: clamp(10.25rem, 24svh, 13.25rem);
   overflow: visible;
-  padding: 1rem 0.5rem 0.5rem;
+  padding: clamp(0.75rem, 2.4svh, 1rem) 0.5rem 0.25rem;
 }
 
 .postmodern-question-stage::before {

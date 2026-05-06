@@ -368,7 +368,7 @@ export function SecondaryButton({ className = "", children, ...props }: ButtonHT
 }
 
 export function BottomActionBar({ className = "", children }: { className?: string; children: ReactNode }) {
-  return <div className={cx(benyuanUiRecipes.bottomDock, className)}>{children}</div>;
+  return <div className={cx(benyuanUiRecipes.bottomDock, className)} data-benyuan-bottom-action-bar="true">{children}</div>;
 }
 
 export function TextField(props: React.InputHTMLAttributes<HTMLInputElement>) {

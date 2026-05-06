@@ -142,12 +142,12 @@ function visualUnits(text: string) {
 function questionPromptClass(prompt: string) {
   const units = visualUnits(prompt);
   if (units > 34) {
-    return "text-[1.42rem] font-black leading-[1.18] tracking-[0em] md:text-[2.05rem] md:leading-[1.08]";
+    return "text-[1.18rem] font-extrabold leading-[1.24] tracking-[0em] md:text-[1.92rem] md:leading-[1.12]";
   }
   if (units > 24) {
-    return "text-[1.62rem] font-black leading-[1.12] tracking-[0em] md:text-[2.34rem] md:leading-[1.04]";
+    return "text-[1.34rem] font-extrabold leading-[1.18] tracking-[0em] md:text-[2.18rem] md:leading-[1.07]";
   }
-  return "text-[1.92rem] font-black leading-[1.04] tracking-[0em] md:text-[2.7rem] md:leading-[0.99]";
+  return "text-[1.62rem] font-black leading-[1.08] tracking-[0em] md:text-[2.55rem] md:leading-[1.01]";
 }
 
 function formatUploadOriginLabel(origin?: string) {
@@ -309,7 +309,7 @@ function QuestionBlock({
           <span>{questionStep}</span>
           <span>MODULE {moduleKey}</span>
         </div>
-        <h3 className={cx("postmodern-question-title mt-5 max-w-[22.5rem] text-[var(--text-primary)] md:max-w-[26rem]", questionPromptClass(question.prompt))}>{question.prompt}</h3>
+        <h3 className={cx("postmodern-question-title mt-4 max-w-[20.75rem] text-[var(--text-primary)] md:mt-5 md:max-w-[26rem]", questionPromptClass(question.prompt))}>{question.prompt}</h3>
         {showHelperText ? <p className="mt-4 max-w-[22rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[26rem]">{question.helperText}</p> : null}
         {question.kind === "upload" ? (
           <p className="mt-4 text-xs font-semibold tracking-[0.12em] text-[var(--text-tertiary)]">{uploadCountLine}</p>
@@ -317,7 +317,7 @@ function QuestionBlock({
       </div>
 
       {question.kind === "single" ? (
-        <div className="mx-auto mt-4 grid max-h-[45svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
+        <div className="mx-auto mt-3 grid max-h-[47svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
           {question.options?.map((option, index) => {
             const active = value === option.id;
             return (
@@ -326,11 +326,11 @@ function QuestionBlock({
                 type="button"
                 onClick={() => onSingle(option.id)}
                 data-active={active ? "true" : "false"}
-                className={cx(benyuanUiRecipes.interactiveCard(active, "accent"), "group min-h-[4.35rem] cursor-pointer px-4 py-3.5 text-left md:px-5 md:py-4")}
+                className={cx(benyuanUiRecipes.interactiveCard(active, "accent"), "group min-h-[4.1rem] cursor-pointer px-4 py-3.5 text-left md:min-h-[4.35rem] md:px-5 md:py-4")}
               >
                 <div className="flex items-center gap-4">
                   <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
-                  <div className="min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{formatOptionText(option.text)}</div>
+                  <div className="min-w-0 flex-1 text-[0.98rem] font-semibold leading-6 text-[var(--text-primary)] md:text-[1rem]">{formatOptionText(option.text)}</div>
                   <div className="cosmic-option-select" aria-hidden />
                 </div>
               </button>
@@ -340,7 +340,7 @@ function QuestionBlock({
       ) : null}
 
       {question.kind === "multi" ? (
-        <div className="mx-auto mt-4 grid max-h-[45svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
+        <div className="mx-auto mt-3 grid max-h-[47svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
           {question.options?.map((option, index) => {
             const selected = Array.isArray(value) && value.includes(option.id);
             return (
@@ -349,11 +349,11 @@ function QuestionBlock({
                 type="button"
                 onClick={() => onToggleMulti(option.id)}
                 data-active={selected ? "true" : "false"}
-                className={cx(benyuanUiRecipes.interactiveCard(selected, "accent"), "min-h-[4.35rem] cursor-pointer px-4 py-3.5 text-left md:px-5 md:py-4")}
+                className={cx(benyuanUiRecipes.interactiveCard(selected, "accent"), "min-h-[4.1rem] cursor-pointer px-4 py-3.5 text-left md:min-h-[4.35rem] md:px-5 md:py-4")}
               >
                 <div className="flex items-center gap-4">
                   <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
-                  <div className="min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{formatOptionText(option.text)}</div>
+                  <div className="min-w-0 flex-1 text-[0.98rem] font-semibold leading-6 text-[var(--text-primary)] md:text-[1rem]">{formatOptionText(option.text)}</div>
                   <div className="cosmic-option-select" aria-hidden />
                 </div>
               </button>
