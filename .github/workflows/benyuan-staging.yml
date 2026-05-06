@@ -28,7 +28,7 @@ jobs:
     env:
       BENYUAN_STAGING_HOST: 120.26.126.88
       BENYUAN_STAGING_USER: root
-      BENYUAN_STAGING_SSH_KEY: ${{ runner.temp }}/benyuan_staging_ed25519
+      BENYUAN_STAGING_SSH_KEY: /tmp/benyuan_staging_ed25519
       BENYUAN_STAGING_APP_ROOT: /opt/apps/benyuan-staging
       BENYUAN_STAGING_PORT: 3015
       BENYUAN_STAGING_PROCESS: benyuan-staging

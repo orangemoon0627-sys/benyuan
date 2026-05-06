@@ -63,6 +63,14 @@ assert(
   workflow.includes("npm run deploy:staging -- --skip-checks"),
   "GitHub workflow must deploy the prebuilt .next artifact with --skip-checks",
 );
+assert(
+  !workflow.includes("BENYUAN_STAGING_SSH_KEY: ${{ runner.temp }}"),
+  "GitHub workflow must not use runner context in job-level env",
+);
+assert(
+  workflow.includes("BENYUAN_STAGING_SSH_KEY: /tmp/benyuan_staging_ed25519"),
+  "GitHub workflow must use a dispatch-parse-safe SSH key path",
+);
 
 const deploySurfaces = `${deployScript}\n${workflow}`;
 for (const forbidden of ["darwin-api.service", "/opt/darwin-api", "127.0.0.1:3201", " 3201"]) {
