@@ -50,6 +50,22 @@ assert(
   !/(npm\s+run\s+build|next\s+build)/.test(remoteInstallSection),
   "server install/restart section must not build Next.js",
 );
+assert(
+  !remoteInstallSection.includes("find '$app_root/releases' -mindepth 1 -maxdepth 1 -type d | sort -r"),
+  "release cleanup must not sort release directories by name because commit-prefixed names can delete the newest release",
+);
+assert(
+  remoteInstallSection.includes("-printf '%T@ %p\\\\n'"),
+  "release cleanup must sort releases by modification time",
+);
+assert(
+  remoteInstallSection.includes('current_release=\\"\\$(readlink -f'),
+  "release cleanup must resolve the active current release before deleting old releases",
+);
+assert(
+  remoteInstallSection.includes('if [ \\"\\$old_release\\" = \\"\\$current_release\\" ]; then'),
+  "release cleanup must never delete the active current release",
+);
 
 assert(
   workflow.includes("npm ci --no-audit --no-fund"),
