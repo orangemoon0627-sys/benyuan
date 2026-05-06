@@ -700,6 +700,178 @@ select:focus-visible {
   z-index: 1;
 }
 
+.theater-lens-stage {
+  position: relative;
+  isolation: isolate;
+}
+
+.theater-lens-stage::before,
+.theater-lens-stage::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.theater-lens-stage::before {
+  inset: -1px;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(248,249,255,0.065), transparent 35%),
+    radial-gradient(ellipse at 52% 52%, rgba(184,168,121,0.052), transparent 36%),
+    linear-gradient(180deg, rgba(246,248,255,0.055), rgba(32,35,76,0.045) 44%, rgba(2,3,10,0.18));
+  opacity: 0.95;
+}
+
+.theater-lens-stage::after {
+  left: 50%;
+  top: 18%;
+  width: min(118%, 30rem);
+  height: min(118%, 30rem);
+  border: 1px solid rgba(222,227,255,0.08);
+  border-radius: 999px;
+  transform: translateX(-50%) rotate(-12deg) scaleX(1.34);
+  opacity: 0.58;
+  box-shadow:
+    inset 0 0 56px rgba(226,230,255,0.04),
+    0 0 70px rgba(184,168,121,0.035);
+  mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 56%, transparent 76%);
+}
+
+.theater-lens-stage__inner,
+.theater-lens-stage .cosmic-editorial-stage,
+.theater-lens-stage .theater-choice-stack,
+.theater-lens-stage .theater-bottom-intent {
+  position: relative;
+  z-index: 1;
+}
+
+.theater-lens-stage--opening .cosmic-editorial-stage::before {
+  width: 13rem;
+  height: 13rem;
+  top: -4rem;
+  opacity: 0.38;
+}
+
+.theater-lens-stage--opening .cosmic-editorial-stage::after {
+  width: 13.5rem;
+  height: 13.5rem;
+  opacity: 0.56;
+}
+
+.theater-lens-stage--choice::after,
+.theater-lens-stage--mirror::after {
+  top: 7%;
+  opacity: 0.42;
+  transform: translateX(-50%) rotate(-18deg) scaleX(1.42);
+}
+
+.theater-epilogue-lens::before {
+  background:
+    radial-gradient(ellipse at 50% 21%, rgba(248,249,255,0.11), transparent 37%),
+    radial-gradient(ellipse at 50% 62%, rgba(184,168,121,0.08), transparent 38%),
+    linear-gradient(180deg, rgba(246,248,255,0.058), rgba(32,35,76,0.045) 44%, rgba(2,3,10,0.2));
+}
+
+.theater-epilogue-lens::after {
+  top: 12%;
+  opacity: 0.7;
+}
+
+.theater-stage-sigil {
+  transform: translateZ(0);
+}
+
+.theater-phase-whisper {
+  margin-bottom: 0.8rem;
+  color: rgba(184, 168, 121, 0.82);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.theater-scene-copy {
+  text-shadow: 0 16px 54px rgba(2,3,10,0.42);
+}
+
+.theater-ghost-trigger {
+  box-shadow:
+    0 12px 34px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.theater-scene-tail {
+  max-height: 11rem;
+  overflow-y: auto;
+}
+
+.theater-choice-stack {
+  position: relative;
+}
+
+.theater-choice-stack::before {
+  content: "";
+  position: absolute;
+  left: 2.12rem;
+  top: 0.8rem;
+  bottom: 0.8rem;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(221,226,255,0.12), rgba(184,168,121,0.16), transparent);
+  opacity: 0.7;
+}
+
+.theater-choice-stack .cosmic-choice-card {
+  min-height: 4.1rem;
+}
+
+.theater-choice-stack .cosmic-choice-card::before {
+  opacity: 0.34;
+}
+
+.theater-choice-stack .postmodern-option-index {
+  position: relative;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(248,249,255,0.11), transparent 50%),
+    rgba(7,8,18,0.7);
+}
+
+.theater-option-copy {
+  font-weight: 640;
+  letter-spacing: 0;
+}
+
+.theater-mirror-hint {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.theater-bottom-intent .postmodern-primary-action {
+  width: 100%;
+}
+
+@media (max-width: 380px) {
+  .theater-lens-stage {
+    border-radius: 2.1rem !important;
+  }
+
+  .theater-lens-stage::after {
+    width: 112%;
+    height: 112%;
+  }
+
+  .theater-choice-stack .cosmic-choice-card {
+    min-height: 3.95rem;
+  }
+
+  .theater-option-copy {
+    font-size: 0.9rem;
+    line-height: 1.62;
+  }
+}
+
 .cosmic-passive-panel .cosmic-option-glyph {
   width: 5.5rem;
   height: 5.5rem;

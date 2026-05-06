@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { benyuanUiRecipes, cx } from "@/config/benyuan-ui-recipes";
 
 export function FrameworkPage({
@@ -48,8 +48,8 @@ export function PageScaffold({ children, phase = "collect" }: { children: ReactN
   );
 }
 
-export function GlassPanel({ className = "", children }: { className?: string; children: ReactNode }) {
-  return <section className={cx(benyuanUiRecipes.glassPanel, className)}>{children}</section>;
+export function GlassPanel({ className = "", children, ...props }: HTMLAttributes<HTMLElement> & { children: ReactNode }) {
+  return <section {...props} className={cx(benyuanUiRecipes.glassPanel, className)}>{children}</section>;
 }
 
 export function ImmersiveSigil({

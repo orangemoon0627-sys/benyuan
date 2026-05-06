@@ -48,12 +48,12 @@ function act1SceneClass(scene: string) {
 function theaterHeadingClass(text: string) {
   const units = visualUnits(text);
   if (units > 34) {
-    return "text-[1.78rem] font-black leading-[1.12] tracking-[0em] md:text-[2.7rem] md:leading-[1.02]";
+    return "text-[1.48rem] font-black leading-[1.14] tracking-[0em] md:text-[2.36rem] md:leading-[1.06]";
   }
   if (units > 22) {
-    return "text-[2.04rem] font-black leading-[1.04] tracking-[0em] md:text-[3.05rem] md:leading-[0.98]";
+    return "text-[1.74rem] font-black leading-[1.08] tracking-[0em] md:text-[2.72rem] md:leading-[1.01]";
   }
-  return "text-[2.28rem] font-black leading-[1] tracking-[0em] md:text-[3.5rem] md:leading-[0.94]";
+  return "text-[1.98rem] font-black leading-[1.03] tracking-[0em] md:text-[3.12rem] md:leading-[0.96]";
 }
 
 function optionIndexLabel(index: number) {
@@ -174,6 +174,7 @@ export function BenyuanTheaterExperience() {
   const epilogueLead = useMemo(() => shortSceneLine(record?.theater_script.epilogue.scene_description ?? "", 46), [record]);
   const epilogueClose = useMemo(() => shortSceneLine(record?.theater_script.epilogue.closing_text ?? "", 40), [record]);
   const phaseIndex = getPhaseIndex(phase);
+  const phaseTitle = phaseMeta[phaseIndex]?.title ?? "剧场";
 
   const phaseProgressPercent = useMemo(() => {
     if (!record) return 0;
@@ -348,31 +349,34 @@ export function BenyuanTheaterExperience() {
 
   return (
     <div className={benyuanUiRecipes.immersiveFlowNarrow}>
-      <ImmersiveTopBar backHref="/collect" progressValue={phaseProgressPercent} />
+      <ImmersiveTopBar backHref="/collect" progressValue={phaseProgressPercent} progressText={phaseTitle} />
 
       {phase === "act1" ? (
-        <GlassPanel className={cx("cosmic-open-stage mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel)}>
-          <div className="relative flex min-h-[60vh] flex-col justify-between px-0 py-1 md:px-3 md:py-3">
+        <GlassPanel
+          data-theater-phase="act1"
+          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--opening mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel)}
+        >
+          <div className="theater-lens-stage__inner relative flex min-h-[60vh] flex-col justify-between px-0 py-1 md:px-3 md:py-3">
             <div className="pt-3">
-              <ImmersiveSigil size="sm" className="mb-6 opacity-85" />
+              <ImmersiveSigil size="sm" className="theater-stage-sigil mb-6 opacity-85" />
             </div>
-            <div className="cosmic-editorial-stage pl-5">
+            <div className="cosmic-editorial-stage theater-scene-copy pl-5">
               <p className={cx("max-w-[23rem] text-[var(--text-primary)] md:max-w-[28rem]", act1SceneClass(act1Scene.lead))}>
                 {act1Scene.lead}
               </p>
             </div>
-            <div className="space-y-4 pl-5">
+            <div className="theater-bottom-intent space-y-4 pl-5">
               {act1Scene.tail ? (
                 <div className="space-y-4">
                   <button
                     type="button"
                     onClick={() => setAct1Expanded((current) => !current)}
-                    className="inline-flex min-h-9 items-center justify-center rounded-full border border-[var(--lunar-border)] bg-[rgba(143,151,232,0.11)] px-4 text-[10px] tracking-[0.12em] text-[var(--text-secondary)] transition duration-150 hover:text-[var(--text-primary)] active:translate-y-px"
+                    className="theater-ghost-trigger inline-flex min-h-9 items-center justify-center rounded-full border border-[var(--lunar-border)] bg-[rgba(143,151,232,0.11)] px-4 text-[10px] tracking-[0.12em] text-[var(--text-secondary)] transition duration-150 hover:text-[var(--text-primary)] active:translate-y-px"
                   >
                     {act1Expanded ? "收起" : "展开场景"}
                   </button>
                   {act1Expanded ? (
-                    <div className="rounded-[1.7rem] border border-[rgba(243,241,234,0.09)] bg-[rgba(255,255,255,0.035)] px-5 py-4 text-left backdrop-blur-[22px]">
+                    <div className="theater-scene-tail rounded-[1.7rem] border border-[rgba(243,241,234,0.09)] bg-[rgba(255,255,255,0.035)] px-5 py-4 text-left backdrop-blur-[22px]">
                       <p className="text-sm leading-7 text-[var(--text-secondary)]">{act1Scene.tail}</p>
                     </div>
                   ) : null}
@@ -387,12 +391,16 @@ export function BenyuanTheaterExperience() {
       ) : null}
 
       {phase === "act2" && currentChoice ? (
-        <GlassPanel className={cx("cosmic-open-stage mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel, "px-0 py-7 md:px-4 md:py-9")}>
-          <div className="mx-auto flex min-h-[59vh] max-w-[25rem] flex-col justify-center md:max-w-[28rem]">
-            <div className="cosmic-editorial-stage pl-5 text-left">
+        <GlassPanel
+          data-theater-phase="act2"
+          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--choice mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel, "px-0 py-7 md:px-4 md:py-9")}
+        >
+          <div className="theater-lens-stage__inner mx-auto flex min-h-[59vh] max-w-[25rem] flex-col justify-center md:max-w-[28rem]">
+            <div className="cosmic-editorial-stage theater-scene-copy pl-5 text-left">
+              <p className="theater-phase-whisper">靠近一个方向</p>
               <h3 className={cx("text-[var(--text-primary)]", theaterHeadingClass(act2SceneLine || "你要走向哪一条轨道？"))}>{act2SceneLine || "你要走向哪一条轨道？"}</h3>
             </div>
-            <div className="mt-8 grid gap-2.5">
+            <div className="theater-choice-stack mt-8 grid gap-2.5">
               {currentChoice.options.map((option, index) => {
                 const active = selectedChoiceId === option.id;
                 return (
@@ -407,7 +415,7 @@ export function BenyuanTheaterExperience() {
                   >
                     <div className="flex items-center gap-4">
                       <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
-                      <p className="min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{option.text}</p>
+                      <p className="theater-option-copy min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{option.text}</p>
                       <span className="cosmic-option-select" aria-hidden />
                     </div>
                   </button>
@@ -419,12 +427,16 @@ export function BenyuanTheaterExperience() {
       ) : null}
 
       {phase === "act3" && currentQuestion ? (
-        <GlassPanel className={cx("cosmic-open-stage mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel, "px-0 py-7 md:px-4 md:py-9")}>
-          <div className="cosmic-editorial-stage mx-auto max-w-[25rem] pl-5 text-left md:max-w-[28rem]">
+        <GlassPanel
+          data-theater-phase="act3"
+          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--mirror mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel, "px-0 py-7 md:px-4 md:py-9")}
+        >
+          <div className="cosmic-editorial-stage theater-scene-copy mx-auto max-w-[25rem] pl-5 text-left md:max-w-[28rem]">
+            <p className="theater-phase-whisper">镜像回声</p>
             <h3 className={cx("text-[var(--text-primary)]", theaterHeadingClass(currentQuestion.question))}>{currentQuestion.question}</h3>
-            {mirrorHint ? <p className="mt-4 max-w-[18rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[22rem]">{mirrorHint}</p> : null}
+            {mirrorHint ? <p className="theater-mirror-hint mt-4 max-w-[18rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[22rem]">{mirrorHint}</p> : null}
           </div>
-          <div className="mx-auto mt-8 grid max-w-[25rem] gap-2.5 md:max-w-[28rem]">
+          <div className="theater-choice-stack mx-auto mt-8 grid max-w-[25rem] gap-2.5 md:max-w-[28rem]">
             {currentQuestion.options.map((option, index) => (
               <button
                 key={option.id}
@@ -434,7 +446,7 @@ export function BenyuanTheaterExperience() {
               >
                 <div className="flex items-center gap-4">
                   <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
-                  <p className="min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{option.text}</p>
+                  <p className="theater-option-copy min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{option.text}</p>
                   <span className="cosmic-option-select" aria-hidden />
                 </div>
               </button>
@@ -444,20 +456,26 @@ export function BenyuanTheaterExperience() {
       ) : null}
 
       {phase === "epilogue" ? (
-        <GlassPanel className={cx("cosmic-open-stage mx-auto min-h-[65vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel)}>
-          <div className="mx-auto flex max-w-3xl flex-col items-center justify-center py-8 text-center">
-            <ImmersiveSigil size="md" />
-            <h3 className="mt-7 text-[2.8rem] font-black leading-[0.94] tracking-[0em] text-[var(--text-primary)] md:text-[4.2rem]">星图正在靠近。</h3>
-            {epilogueLead ? <p className="mt-8 max-w-[20rem] text-lg leading-9 text-[var(--text-primary)] md:max-w-[24rem]">{epilogueLead}</p> : null}
+        <GlassPanel
+          data-theater-phase="epilogue"
+          className={cx("cosmic-open-stage theater-lens-stage theater-epilogue-lens mx-auto min-h-[65vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel)}
+        >
+          <div className="theater-lens-stage__inner mx-auto flex max-w-3xl flex-col items-center justify-center py-8 text-center">
+            <ImmersiveSigil size="md" className="theater-stage-sigil" />
+            <p className="theater-phase-whisper mt-7">最后一镜</p>
+            <h3 className="mt-4 text-[2.55rem] font-black leading-[0.96] tracking-[0em] text-[var(--text-primary)] md:text-[4rem]">星图正在靠近。</h3>
+            {epilogueLead ? <p className="mt-7 max-w-[20rem] text-lg leading-9 text-[var(--text-primary)] md:max-w-[24rem]">{epilogueLead}</p> : null}
             {epilogueClose ? <p className="mt-4 max-w-[20rem] text-base leading-8 text-[var(--text-secondary)] md:max-w-[24rem]">{epilogueClose}</p> : null}
-            <PrimaryButton
-              type="button"
-              onClick={finishJourney}
-              disabled={submitting}
-              className="mt-12 w-full max-w-sm px-6 py-4 disabled:opacity-60"
-            >
-              {submitting ? "星图显影中" : "生成我的星图"}
-            </PrimaryButton>
+            <div className="theater-bottom-intent mt-12 w-full max-w-sm">
+              <PrimaryButton
+                type="button"
+                onClick={finishJourney}
+                disabled={submitting}
+                className="w-full px-6 py-4 disabled:opacity-60"
+              >
+                {submitting ? "星图显影中" : "生成我的星图"}
+              </PrimaryButton>
+            </div>
             {status ? <p className="mt-4 text-sm text-[var(--text-secondary)]">{status}</p> : null}
           </div>
         </GlassPanel>
