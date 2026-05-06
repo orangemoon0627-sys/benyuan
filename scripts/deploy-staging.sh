@@ -266,9 +266,11 @@ wc -c /tmp/benyuan-next-root.html /tmp/benyuan-nginx-root.html"
 
 log "Public smoke checks"
 if [ "$dry_run" = "0" ]; then
+  BENYUAN_BASE_URL="$public_base_url" npm run smoke:runtime:gate
   BENYUAN_BASE_URL="$public_base_url" npm run smoke:runtime:page
   BENYUAN_BASE_URL="$public_base_url" node --input-type=module -e "const base=process.env.BENYUAN_BASE_URL; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); if(!res.ok) throw new Error('runtime API failed: ' + res.status); const data=await res.json(); console.log(JSON.stringify(data.runtime ?? data).slice(0, 500));"
 else
+  echo "+ BENYUAN_BASE_URL=$public_base_url npm run smoke:runtime:gate"
   echo "+ BENYUAN_BASE_URL=$public_base_url npm run smoke:runtime:page"
   echo "+ BENYUAN_BASE_URL=$public_base_url node --input-type=module -e <runtime-api-smoke>"
 fi

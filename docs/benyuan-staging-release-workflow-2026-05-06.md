@@ -127,6 +127,14 @@ npm run deploy:staging:dry -- --allow-dirty
 9. 重启 PM2 进程 `benyuan-staging`。
 10. 运行服务器内部 curl 检查和公网 smoke 检查。
 
+公网 smoke 会先跑：
+
+```bash
+BENYUAN_BASE_URL=<staging-url> npm run smoke:runtime:gate
+```
+
+这个护栏保证没有显式 `BENYUAN_LLM_LIVE=1` 时，Codex 默认模型配置不会把 staging 误切成 live provider。
+
 ### 5. 发布后验证
 
 在 ICP 通过前：

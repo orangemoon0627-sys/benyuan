@@ -5,7 +5,7 @@ import { readCodexProviderDefaults } from "@/lib/codex-runtime";
 export async function GET() {
   const runtime = readAnalysisRuntimeConfig("deep", { provider: "custom" });
   const codexDefaults = readCodexProviderDefaults();
-  const liveProviderEnabled = runtime.liveProviderEnabled || Boolean(codexDefaults.apiKey && codexDefaults.baseUrl);
+  const liveProviderEnabled = runtime.liveProviderEnabled;
   const apiKeyConfigured = runtime.customKeyConfigured || Boolean(codexDefaults.apiKey);
   const defaultBaseUrl = runtime.customBaseUrl ?? codexDefaults.baseUrl;
 

@@ -261,7 +261,7 @@ function resolveRuntime(override?: AgentRuntimeOverride) {
     codexDefaults.reasoningEffort ??
     "xhigh";
   const disableStorage = override?.disable_response_storage ?? codexDefaults.disableResponseStorage ?? true;
-  const live = override?.live ?? (runtime.liveProviderEnabled || Boolean(apiKey && baseUrl));
+  const live = override?.live ?? runtime.liveProviderEnabled;
   const available = Boolean(live && apiKey && baseUrl);
   const timeoutMs = Math.max(runtime.providerSoftTimeoutMs, Math.min(runtime.providerTimeoutMs, 120000));
 

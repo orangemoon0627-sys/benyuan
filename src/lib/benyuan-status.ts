@@ -538,7 +538,7 @@ export async function getBenyuanStatusSnapshot() {
       provider: runtime.customProviderName ?? codexDefaults.providerName ?? "custom",
       model: runtime.customModel ?? codexDefaults.model ?? "gpt-5.5",
       baseUrl: runtime.customBaseUrl ?? codexDefaults.baseUrl ?? null,
-      liveProviderEnabled: runtime.liveProviderEnabled || Boolean(codexDefaults.apiKey && codexDefaults.baseUrl),
+      liveProviderEnabled: runtime.liveProviderEnabled,
       softTimeoutMs: runtime.providerSoftTimeoutMs,
       wireApi: codexDefaults.wireApi ?? "responses",
       source: codexDefaults.apiKey && codexDefaults.baseUrl ? "codex-config" : "environment",
