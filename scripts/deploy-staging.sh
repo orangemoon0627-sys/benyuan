@@ -256,7 +256,17 @@ pm2 delete '$process_name' >/dev/null 2>&1 || true
 pm2 start ./node_modules/next/dist/bin/next --name '$process_name' -- start -p '$app_port' -H 127.0.0.1
 pm2 save
 pm2 startup systemd -u '$staging_user' --hp '/$staging_user' >/dev/null || true
-find '$app_root/releases' -mindepth 1 -maxdepth 1 -type d | sort -r | tail -n +$((keep_releases + 1)) | xargs -r rm -rf"
+current_release=\"\$(readlink -f '$app_root/current')\"
+find '$app_root/releases' -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\\n' \
+  | sort -rn \
+  | tail -n +$((keep_releases + 1)) \
+  | cut -d' ' -f2- \
+  | while IFS= read -r old_release; do
+      if [ \"\$old_release\" = \"\$current_release\" ]; then
+        continue
+      fi
+      rm -rf \"\$old_release\"
+    done"
 
 log "Remote verification"
 remote_run "set -euo pipefail
