@@ -1,154 +1,412 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { ReportCard } from "@/components/report-card";
 import { InternalLabNav } from "@/components/internal-lab-nav";
-import { DetailCard, GlassPanel, SectionTitle } from "@/components/framework-primitives";
-import { benyuanUiRecipes, cx } from "@/config/benyuan-ui-recipes";
-import { benyuanBetaFreezeCurrent } from "@/lib/benyuan-beta-freeze";
-import { getBenyuanStatusSnapshot } from "@/lib/benyuan-status";
+import { LabRouteDraftPanel } from "@/components/lab-route-draft-panel";
+import {
+  buildAssessmentContentWorkbench,
+  buildAssessmentSchemaMigrationLedger,
+  diffAssessmentNativeBlueprintSnapshots,
+  getAssessmentDefinition,
+  listAssessmentDefinitionSnapshots,
+  listAssessmentVersions,
+  serializeAssessmentQuestion,
+} from "@/features/assessment";
+import { buildAnalysisWorkbenchCatalog } from "@/lib/analysis";
+import { buildAssessmentFlowContract, buildAssessmentNativeScreenMap } from "@/lib/assessment-client-contract";
+import { getReleaseChainSnapshot } from "@/lib/release-chain";
+import { buildNativeMigrationChecklist, buildNativeReferenceKit } from "@/lib/native-reference";
+import { listDraftSessionsForRoute, syncWorkbenchDraftSessions } from "@/lib/store";
 
-export const dynamic = "force-dynamic";
+function Capsule({ children, className = "bg-white/[0.04] text-stone-300 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]" }: { children: ReactNode; className?: string }) {
+  return <span className={`rounded-full px-3 py-2 text-[11px] uppercase tracking-[0.18em] ${className}`}>{children}</span>;
+}
 
-function toneClass(ok: boolean) {
-  return ok
-    ? "border-[rgba(212,175,55,0.24)] bg-[rgba(212,175,55,0.06)]"
-    : "border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]";
+function SectionLabel({ children }: { children: ReactNode }) {
+  return <p className="text-[11px] uppercase tracking-[0.32em] text-stone-500">{children}</p>;
+}
+
+function CountPill({ label, value, emphasis = "normal" }: { label: string; value: string | number; emphasis?: "normal" | "alert" | "good" }) {
+  const tone =
+    emphasis === "alert"
+      ? "bg-rose-400/10 text-rose-200 shadow-[0_0_0_1px_rgba(251,113,133,0.18)]"
+      : emphasis === "good"
+        ? "bg-emerald-400/10 text-emerald-200 shadow-[0_0_0_1px_rgba(74,222,128,0.18)]"
+        : "bg-white/[0.04] text-stone-300 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]";
+
+  return <span className={`rounded-full px-3 py-2 text-[11px] uppercase tracking-[0.18em] ${tone}`}>{label} {value}</span>;
+}
+
+function riskTone(riskLevel: string) {
+  if (riskLevel === "high") return "bg-rose-400/10 text-rose-200 shadow-[0_0_0_1px_rgba(251,113,133,0.18)]";
+  if (riskLevel === "medium") return "bg-amber-300/10 text-amber-100 shadow-[0_0_0_1px_rgba(252,211,77,0.16)]";
+  return "bg-emerald-400/10 text-emerald-200 shadow-[0_0_0_1px_rgba(74,222,128,0.18)]";
+}
+
+function ChecklistCard({
+  title,
+  detail,
+  ownerType,
+  riskLevel,
+  verificationStep,
+}: {
+  title: string;
+  detail: string;
+  ownerType: string;
+  riskLevel: string;
+  verificationStep: string;
+}) {
+  return (
+    <div className="rounded-[24px] bg-black/16 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="text-sm uppercase tracking-[0.16em] text-stone-100">{title}</p>
+        <div className="flex flex-wrap gap-2">
+          <Capsule>{ownerType}</Capsule>
+          <Capsule className={riskTone(riskLevel)}>{riskLevel}</Capsule>
+        </div>
+      </div>
+      <p className="mt-3 text-sm leading-7 text-stone-300/82">{detail}</p>
+      <p className="mt-3 text-sm leading-7 text-stone-400">验证：{verificationStep}</p>
+    </div>
+  );
+}
+
+function buildNativeHandoff(mode: "lite" | "deep", version?: string | null) {
+  const definition = getAssessmentDefinition(mode, version);
+  const flow = buildAssessmentFlowContract({
+    totalSteps: definition.totalSteps,
+    phases: definition.phases,
+    questions: definition.questions.map((question) => serializeAssessmentQuestion(question)),
+    validation: definition.validation,
+    moduleLabels: definition.moduleLabels,
+  });
+  const native = buildAssessmentNativeScreenMap(flow);
+
+  return {
+    mode: definition.mode,
+    version: definition.version,
+    title: definition.title,
+    description: definition.description,
+    totalSteps: definition.totalSteps,
+    native,
+    referenceKit: buildNativeReferenceKit(native),
+  };
 }
 
 export default async function NativeHandoffPage() {
-  const snapshot = await getBenyuanStatusSnapshot();
-  const shellBaseUrl = snapshot.ios.nativeSmoke?.baseUrl ?? snapshot.ios.regression?.baseUrl ?? "http://127.0.0.1:3015";
-  const manual = snapshot.ios.manualRealDevice;
+  const contentWorkbench = buildAssessmentContentWorkbench();
+  const analysisWorkbench = buildAnalysisWorkbenchCatalog(contentWorkbench.draftBlueprints);
+  await syncWorkbenchDraftSessions(contentWorkbench.draftBlueprints, analysisWorkbench.impactMatrix);
+  const routeDrafts = await listDraftSessionsForRoute("/lab/native-handoff");
+  const migrationLedger = buildAssessmentSchemaMigrationLedger(contentWorkbench.draftBlueprints, analysisWorkbench.impactMatrix);
+  const releaseSnapshot = await getReleaseChainSnapshot();
+  const releaseLaneMap = new Map(releaseSnapshot.unifiedLanes.map((lane) => [lane.draftId, lane]));
+
+  const snapshots = listAssessmentDefinitionSnapshots();
+  const modes = [...new Set(snapshots.map((item) => item.mode))] as Array<"lite" | "deep">;
+  const modeGroups = modes.map((mode) => {
+    const versions = listAssessmentVersions(mode);
+    const defaultVersion = versions.find((version) => version.isDefault)?.version ?? versions[0]?.version;
+    const handoffs = versions.map((version) => buildNativeHandoff(mode, version.version));
+
+    return {
+      mode,
+      versions,
+      defaultVersion,
+      handoffs,
+      diffs: versions
+        .filter((version) => version.version !== defaultVersion)
+        .map((version) => {
+          const diff = diffAssessmentNativeBlueprintSnapshots(mode, version.version, defaultVersion);
+          return {
+            version: version.version,
+            diff,
+            checklist: buildNativeMigrationChecklist(diff),
+            handoff: buildNativeHandoff(mode, version.version),
+          };
+        }),
+    };
+  });
+
+  const nativeImpactRows = migrationLedger
+    .filter((item) => item.migrationCounts.nativeContractChanges > 0 || item.linkedAnalysisDrafts.length > 0)
+    .sort((left, right) => right.migrationCounts.nativeContractChanges - left.migrationCounts.nativeContractChanges);
+
+  const totalBlueprints = modeGroups.reduce((sum, group) => sum + group.handoffs.reduce((inner, handoff) => inner + handoff.native.blueprintCatalog.length, 0), 0);
+  const totalScreens = modeGroups.reduce((sum, group) => sum + group.handoffs.reduce((inner, handoff) => inner + handoff.native.screenMap.length, 0), 0);
 
   return (
-    <main className={benyuanUiRecipes.pageShell}>
-      <div className={benyuanUiRecipes.pageAura} />
-      <div className="noise-overlay pointer-events-none absolute inset-0 opacity-20" />
-      <div className={benyuanUiRecipes.pageContent}>
-        <section className={benyuanUiRecipes.heroPanel}>
-          <div className="h-px w-20 bg-[var(--accent-gold)]" />
-          <p className={cx("mt-6", benyuanUiRecipes.sectionEyebrow)}>lab / native handoff</p>
-          <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-4xl">
-              <h1 className="max-w-4xl text-[2.5rem] leading-[1.04] text-[var(--text-primary)] md:text-[3.6rem] lg:text-[4.4rem]">iOS shell 与真机闭环。</h1>
-              <p className="mt-6 max-w-3xl text-base leading-8 text-[var(--text-secondary)] md:text-lg">
-                这里专门收口 shell base URL、回归脚本、native smoke、真机相机 / 相册验收，以及调试入口。主产品页已经不再展示这些交接细节，只把它们留在内部页复核。
+    <main className="relative overflow-hidden bg-[#08080a] px-6 pb-20 pt-10 text-stone-100 md:pb-24 md:pt-14">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(189,218,255,0.12),transparent_23%),radial-gradient(circle_at_82%_18%,rgba(109,80,131,0.12),transparent_26%),radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.03),transparent_42%)]" />
+      <div className="relative mx-auto max-w-7xl">
+        <section className="rounded-[40px] bg-[linear-gradient(135deg,rgba(120,138,176,0.18),rgba(185,215,246,0.1),rgba(255,255,255,0.02))] px-7 py-8 shadow-[0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-2xl md:px-10 md:py-10">
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.46em] text-stone-300/65">internal / native handoff</p>
+              <h1 className="mt-5 text-4xl leading-[1.08] text-stone-50 md:text-6xl">原生交接面板</h1>
+              <p className="mt-5 max-w-4xl text-base leading-8 text-stone-300/82 md:text-lg">
+                这里把 schema 变化真正落到 iOS/RN blueprint：你不仅能看到每个版本该怎么搭 screen，还能看到版本变更具体会改动哪些 blueprint contract、哪些 screen sequence、以及它会牵动哪些 analysis 与验证路由。
               </p>
             </div>
-            <div className="flex flex-wrap gap-3 text-sm text-[var(--text-secondary)]">
-              <span className={cx("px-4 py-3", benyuanUiRecipes.metaPill)}>{snapshot.ios.manualRealDevicePending ? "pending real device" : "real device ready"}</span>
-              <span className={cx("px-4 py-3", benyuanUiRecipes.metaPill)}>{shellBaseUrl}</span>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/lab/schema" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm uppercase tracking-[0.18em] text-stone-200 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                schema 面板
+                <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+              </Link>
+              <Link href="/lab/delivery" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm uppercase tracking-[0.18em] text-stone-200 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                交付调度台
+                <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+              </Link>
+              <Link href="/lab/release-chain" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm uppercase tracking-[0.18em] text-stone-200 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                发布链路台
+                <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+              </Link>
+              <Link href="/api/internal/native-handoff" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-6 py-3 text-sm uppercase tracking-[0.18em] text-stone-200 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                native api
+                <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+              </Link>
             </div>
           </div>
-          <InternalLabNav current="/lab/native-handoff" className="mt-8" />
+          <InternalLabNav current="/lab/native-handoff" className="mt-6" />
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <DetailCard
-            label="shell regression"
-            title={snapshot.ios.regression ? `${snapshot.ios.regression.passed}/${snapshot.ios.regression.total} passed` : "--"}
-            description={snapshot.ios.regression?.generatedAt ?? "未找到回归输出"}
-            tone="accent"
-          />
-          <DetailCard
-            label="native smoke"
-            title={snapshot.ios.nativeSmoke?.deviceName ?? "--"}
-            description={snapshot.ios.nativeSmoke?.generatedAt ?? "未找到 native smoke 输出"}
-          />
-          <DetailCard
-            label="real device"
-            title={manual ? `${manual.completedChecks}/${manual.totalChecks}` : "--"}
-            description={manual ? `${manual.pendingChecks} 项待补` : "尚未读取到验收板"}
-          />
-          <DetailCard
-            label="pilot handoff"
-            title={snapshot.pilotReadiness.status}
-            description={snapshot.pilotReadiness.summary}
-          />
+        <LabRouteDraftPanel routeTitle="原生交接面板" items={routeDrafts} />
+
+        <section className="mt-10 grid gap-6 xl:grid-cols-4">
+          <ReportCard eyebrow="native" title="总览">
+            <div className="space-y-2 text-sm leading-7 text-stone-300/82">
+              <p>snapshots：{snapshots.length}</p>
+              <p>mode groups：{modeGroups.length}</p>
+              <p>native-impact drafts：{nativeImpactRows.length}</p>
+            </div>
+          </ReportCard>
+          <ReportCard eyebrow="native" title="blueprints">
+            <div className="space-y-2 text-sm leading-7 text-stone-300/82">
+              <p>all blueprints：{totalBlueprints}</p>
+              <p>all screens：{totalScreens}</p>
+              <p>default versions：{modeGroups.map((item) => `${item.mode}:${item.defaultVersion ?? "-"}`).join(" · ")}</p>
+            </div>
+          </ReportCard>
+          <ReportCard eyebrow="native" title="contract drift">
+            <div className="space-y-2 text-sm leading-7 text-stone-300/82">
+              <p>sequence changes：{nativeImpactRows.reduce((sum, item) => sum + item.nativeDiff.changedSequenceSteps.length, 0)}</p>
+              <p>contract changes：{nativeImpactRows.reduce((sum, item) => sum + item.nativeDiff.changedBlueprintContracts.length, 0)}</p>
+              <p>linked analysis drafts：{nativeImpactRows.reduce((sum, item) => sum + item.linkedAnalysisDrafts.length, 0)}</p>
+            </div>
+          </ReportCard>
+          <ReportCard eyebrow="native" title="handoff status">
+            <div className="space-y-2 text-sm leading-7 text-stone-300/82">
+              <p>route drafts：{routeDrafts.length}</p>
+              <p>blocking validations：{nativeImpactRows.reduce((sum, item) => sum + item.validationSummary.blocking, 0)}</p>
+              <p>top route：{nativeImpactRows[0]?.linkedRoutes[0] ?? "-"}</p>
+              <p>release lanes：{releaseSnapshot.summary.actionableDrafts}</p>
+            </div>
+          </ReportCard>
         </section>
 
-        <GlassPanel>
-          <SectionTitle label="shell environment" title="当前壳层环境与恢复入口" description="Mac / 模拟器默认走 127.0.0.1，真机需要切换到当前可达的 LAN 地址。" />
-          <div className="grid gap-4 xl:grid-cols-2">
-            <DetailCard label="base url" title={shellBaseUrl} description="当前 regression / native smoke 读取到的最近一条 base URL。" tone="accent">
-              <div className="space-y-2 text-sm leading-7 text-[var(--text-secondary)]">
-                <p>shell manifest：{benyuanBetaFreezeCurrent.shell.manifest}</p>
-                <p>shell config：{benyuanBetaFreezeCurrent.shell.config}</p>
-                <p>freeze map：{benyuanBetaFreezeCurrent.docs.iosMapDoc}</p>
-              </div>
-            </DetailCard>
-            <DetailCard
-              label="handoff routes"
-              title="测试 / 状态 / 调试入口"
-              description="这些入口继续保留在 lab，用于真机复测和 handoff。"
-            >
-              <div className="mt-2 flex flex-wrap gap-3">
-                <a href="/lab/status" className={benyuanUiRecipes.secondaryLink}>状态页</a>
-                <a href="/lab/native-handoff/smoke?autorun=1&source=library" className={benyuanUiRecipes.secondaryLink}>相册 smoke</a>
-                <a href="/lab/native-handoff/smoke?autorun=1&source=camera" className={benyuanUiRecipes.secondaryLink}>相机 smoke</a>
-                <a href="/collect?debug=1" className={benyuanUiRecipes.secondaryLink}>collect 调试入口</a>
-              </div>
-            </DetailCard>
-          </div>
-        </GlassPanel>
-
-        <GlassPanel>
-          <SectionTitle label="acceptance board" title="真机验收板" description="以验收板和对应 evidence 作为唯一手工事实来源。" />
-          {manual ? (
-            <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr]">
-              <div className={cx("border p-5", toneClass(manual.ready))}>
-                <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">board</p>
-                <p className="mt-3 text-base text-[var(--text-primary)]">{manual.boardPath}</p>
-                <div className="mt-4 space-y-2 text-sm leading-7 text-[var(--text-secondary)]">
-                  <p>updated：{manual.boardUpdatedAt}</p>
-                  <p>completed：{manual.completedChecks}</p>
-                  <p>pending：{manual.pendingChecks}</p>
-                </div>
-              </div>
-              <div className="grid gap-4">
-                {manual.latestCompletedItem ? (
-                  <DetailCard
-                    label="latest evidence"
-                    title={manual.latestCompletedItem.label}
-                    description={`${manual.latestCompletedItem.route} · ${manual.latestCompletedItem.evidence}`}
-                    tone="accent"
-                  >
-                    <div className="space-y-2 text-sm leading-7 text-[var(--text-secondary)]">
-                      <p>{manual.latestCompletedItem.notes}</p>
-                      <p>{manual.latestCompletedItem.filePath ?? "--"}</p>
+        <section className="mt-10 grid gap-6 xl:grid-cols-[0.56fr_0.44fr]">
+          <ReportCard eyebrow="native / migration" title="Schema → Native 迁移账本">
+            <div className="space-y-4">
+              {nativeImpactRows.length === 0 ? (
+                <p className="text-sm leading-7 text-stone-500">当前没有显式 native contract drift。</p>
+              ) : (
+                nativeImpactRows.map((item) => {
+                  const lane = releaseLaneMap.get(item.draftId);
+                  return (
+                  <div key={`${item.draftId}-native-ledger`} className="rounded-[24px] bg-black/16 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm uppercase tracking-[0.18em] text-stone-100">{item.title}</p>
+                        <p className="mt-2 text-sm leading-7 text-stone-400">{item.baseVersion} → {item.targetVersion}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <CountPill label="seq" value={item.nativeDiff.changedSequenceSteps.length} emphasis={item.nativeDiff.changedSequenceSteps.length > 0 ? "alert" : "good"} />
+                        <CountPill label="contracts" value={item.nativeDiff.changedBlueprintContracts.length} emphasis={item.nativeDiff.changedBlueprintContracts.length > 0 ? "alert" : "good"} />
+                        <CountPill label="analysis" value={item.linkedAnalysisDrafts.length} emphasis={item.linkedAnalysisDrafts.length > 0 ? "alert" : "good"} />
+                      </div>
                     </div>
-                  </DetailCard>
-                ) : null}
-                <div className="grid gap-3 md:grid-cols-2">
-                  {manual.pendingItems.map((item) => (
-                    <div key={`${item.label}-${item.route}`} className={cx("border p-4", toneClass(false))}>
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">pending</p>
-                      <p className="mt-3 text-base text-[var(--text-primary)]">{item.label}</p>
-                      <p className="mt-2 text-sm leading-7 text-[var(--text-secondary)]">{item.route}</p>
-                      <p className="text-sm leading-7 text-[var(--text-tertiary)]">{item.target}</p>
+                    <div className="mt-4 space-y-2 text-sm leading-7 text-stone-300/82">
+                      <p>release owner：{lane?.recommendedOwner ?? "-"}</p>
+                      <p>next best：{lane?.nextBestAction ?? "-"}</p>
+                      <p>primary route：{lane?.primaryRoute?.title ?? "-"}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Link href="/lab/schema" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-stone-200 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                        schema 回跳
+                        <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+                      </Link>
+                      <Link href="/lab/release-chain" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-stone-200 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.07]">
+                        release lane
+                        <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
+                      </Link>
+                    </div>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2 text-sm leading-7 text-stone-300/82">
+                      <div className="rounded-[18px] bg-white/[0.03] px-4 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]">
+                        <p className="text-stone-100">sequence drift</p>
+                        <div className="mt-3 space-y-2">
+                          {item.nativeDiff.changedSequenceSteps.length === 0 ? <p className="text-stone-500">no sequence drift</p> : item.nativeDiff.changedSequenceSteps.slice(0, 4).map((entry) => <p key={`${item.draftId}-seq-${entry.step}`}>step {entry.step + 1}：{entry.from} → {entry.to}</p>)}
+                        </div>
+                      </div>
+                      <div className="rounded-[18px] bg-white/[0.03] px-4 py-4 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]">
+                        <p className="text-stone-100">blueprint contract drift</p>
+                        <div className="mt-3 space-y-2">
+                          {item.nativeDiff.changedBlueprintContracts.length === 0 ? <p className="text-stone-500">no contract drift</p> : item.nativeDiff.changedBlueprintContracts.slice(0, 4).map((entry) => <p key={`${item.draftId}-contract-${entry.blueprint}`}>{entry.blueprint}：{entry.changedKeys.join(" · ")}</p>)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  );
+                })
+              )}
             </div>
-          ) : (
-            <div className={cx("border p-5", toneClass(false))}>
-              <p className="text-base text-[var(--text-primary)]">尚未读取到真机验收板。</p>
-            </div>
-          )}
-        </GlassPanel>
+          </ReportCard>
 
-        <GlassPanel>
-          <SectionTitle label="automation" title="iOS 护栏状态" description="这里只保留对 shell handoff 真正有用的脚本结果与说明。" />
-          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-            {snapshot.pilotReadiness.checklist
-              .filter((item) => item.label.includes("iOS") || item.label.includes("真机"))
-              .map((item) => (
-                <div key={item.label} className={cx("border p-5", toneClass(item.ok))}>
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-tertiary)]">check</p>
-                  <p className="mt-3 text-base text-[var(--text-primary)]">{item.label}</p>
-                  <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">{item.detail}</p>
+          <ReportCard eyebrow="native / checklist" title="原生迁移动作池">
+            <div className="space-y-4">
+              {modeGroups.flatMap((group) => group.diffs).map((item) => {
+                const linkedLane = releaseSnapshot.unifiedLanes.find((lane) => lane.schemaLedger?.targetVersion === item.version && lane.schemaLedger?.mode === item.handoff.mode);
+                return (
+                <div key={`${item.handoff.mode}-${item.version}-checklist`} className="rounded-[24px] bg-black/16 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.18em] text-stone-100">{item.handoff.mode} · {item.version}</p>
+                      <p className="mt-2 text-sm leading-7 text-stone-400">{item.diff.baseVersion} → {item.diff.targetVersion}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Capsule>{item.handoff.native.blueprintCatalog.length} blueprints</Capsule>
+                      <Capsule>{item.handoff.native.screenMap.length} screens</Capsule>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm leading-7 text-stone-300/82">
+                    <p>linked release lane：{linkedLane?.title ?? "-"}</p>
+                    <p>lane blockers：{linkedLane?.blockers.map((blocker) => blocker.title).join(" · ") || "-"}</p>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {item.checklist.map((check) => (
+                      <ChecklistCard
+                        key={`${item.version}-${check.key}`}
+                        title={check.title}
+                        detail={check.detail}
+                        ownerType={check.ownerType}
+                        riskLevel={check.riskLevel}
+                        verificationStep={check.verificationStep}
+                      />
+                    ))}
+                  </div>
                 </div>
-              ))}
-          </div>
-        </GlassPanel>
+                );
+              })}
+            </div>
+          </ReportCard>
+        </section>
+
+        <section className="mt-10 grid gap-6">
+          {modeGroups.map((group) => (
+            <ReportCard key={`${group.mode}-handoff`} eyebrow={`${group.mode} / handoff`} title={`${group.mode} Native Blueprint Catalog`}>
+              <div className="space-y-6">
+                {group.handoffs.map((handoff) => (
+                  <div key={`${handoff.mode}-${handoff.version}`} className="rounded-[28px] bg-black/16 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm uppercase tracking-[0.18em] text-stone-100">{handoff.version}</p>
+                        <p className="mt-2 text-sm leading-7 text-stone-400">{handoff.title}</p>
+                        <p className="mt-2 text-sm leading-7 text-stone-300/82">{handoff.description}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {group.defaultVersion === handoff.version ? <Capsule className="bg-emerald-400/10 text-emerald-200 shadow-[0_0_0_1px_rgba(74,222,128,0.18)]">default</Capsule> : null}
+                        <Capsule>{handoff.native.blueprintCatalog.length} blueprints</Capsule>
+                        <Capsule>{handoff.native.screenMap.length} screens</Capsule>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 grid gap-6 xl:grid-cols-[0.48fr_0.52fr]">
+                      <div>
+                        <SectionLabel>blueprint catalog</SectionLabel>
+                        <div className="mt-3 space-y-3">
+                          {handoff.native.blueprintCatalog.map((contract) => (
+                            <div key={`${handoff.version}-${contract.blueprint}`} className="rounded-[24px] bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm uppercase tracking-[0.18em] text-stone-100">{contract.blueprint}</p>
+                                  <p className="mt-2 text-sm leading-7 text-stone-400">{contract.recommendedComponentName}</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Capsule>{contract.recommendedContainer}</Capsule>
+                                  <Capsule>{contract.primaryInputSlot}</Capsule>
+                                </div>
+                              </div>
+                              <div className="mt-4 space-y-2 text-sm leading-7 text-stone-300/82">
+                                <p>footer：{contract.footerSlot}</p>
+                                <p>required：{contract.requiredBlocks.join(" · ")}</p>
+                                <p>optional：{contract.optionalBlocks.join(" · ") || "-"}</p>
+                              </div>
+                              <div className="mt-4">
+                                <SectionLabel>implementation checklist</SectionLabel>
+                                <div className="mt-2 space-y-2 text-sm leading-7 text-stone-300/82">
+                                  {contract.implementationChecklist.map((item) => (
+                                    <p key={`${handoff.version}-${contract.blueprint}-${item.key}`}>{item.label}：{item.doneWhen}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div>
+                          <SectionLabel>screen handoff list</SectionLabel>
+                          <div className="mt-3 grid gap-3">
+                            {handoff.native.screenMap.map((screen) => (
+                              <div key={`${handoff.version}-${screen.screenId}`} className="rounded-[24px] bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                  <div>
+                                    <p className="text-sm uppercase tracking-[0.18em] text-stone-100">step {screen.step + 1} · {screen.blueprint}</p>
+                                    <p className="mt-2 text-sm leading-7 text-stone-400">{screen.primaryPrompt}</p>
+                                  </div>
+                                  <Capsule>{screen.primaryActionLabel}</Capsule>
+                                </div>
+                                <div className="mt-4 grid gap-2 text-sm leading-7 text-stone-300/78 md:grid-cols-2">
+                                  <p>component：{screen.componentTokens.topBarStyle} / {screen.componentTokens.primaryActionStyle}</p>
+                                  <p>interaction：{screen.interactionTokens.control} / {screen.interactionTokens.layout}</p>
+                                  <p>transition：{screen.interactionTokens.transition} / {screen.interactionTokens.haptics}</p>
+                                  <p>content：{screen.contentBlocks.join(" · ")}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <SectionLabel>reference component kit</SectionLabel>
+                          <div className="mt-3 rounded-[24px] bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]">
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                              <div className="text-sm leading-7 text-stone-300/82">
+                                <p>generated at：{handoff.referenceKit.generatedAt}</p>
+                                <p>platform：{handoff.referenceKit.summary.platform}</p>
+                                <p>router：{handoff.referenceKit.summary.router}</p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Capsule>{handoff.referenceKit.files.length} files</Capsule>
+                                <Capsule>{handoff.referenceKit.summary.blueprintCount} blueprints</Capsule>
+                                <Capsule>{handoff.referenceKit.summary.screenCount} screens</Capsule>
+                              </div>
+                            </div>
+                            <div className="mt-4 space-y-2 text-sm leading-7 text-stone-300/82">
+                              <p>directories：{handoff.referenceKit.summary.recommendedDirectories.join(" · ")}</p>
+                              <p>categories：{handoff.referenceKit.summary.categories.map((item) => `${item.category}:${item.count}`).join(" · ")}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ReportCard>
+          ))}
+        </section>
       </div>
     </main>
   );

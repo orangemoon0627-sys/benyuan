@@ -31,7 +31,7 @@ function ResultSectionHeading({ label, title }: { label: string; title: string }
   return (
     <div className="mb-5">
       <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">{label}</p>
-      <h3 className="mt-2 text-[1.25rem] font-semibold tracking-[-0.04em] text-[var(--text-primary)] md:text-[1.45rem]">{title}</h3>
+      <h3 className="mt-2 text-[1.25rem] font-semibold tracking-[0em] text-[var(--text-primary)] md:text-[1.45rem]">{title}</h3>
     </div>
   );
 }
@@ -359,7 +359,7 @@ export function BenyuanConstellationView() {
         topProgressValue={84}
         eyebrow="星图装载"
         title="星图显形"
-        description="结果一旦返回，原型会直接出现。"
+        description="原型一旦显形，就直接抵达这一页。"
       />
     );
   }
@@ -385,14 +385,14 @@ export function BenyuanConstellationView() {
     <div className={benyuanUiRecipes.immersiveFlowNarrow}>
       <ImmersiveTopBar backHref="/theater" progressValue={100} />
 
-      <GlassPanel className={cx(benyuanUiRecipes.heroAccentPanel, "cosmic-result-hero mx-auto w-full max-w-[44rem]")}>
-        <div className="mx-auto flex min-h-[58vh] max-w-[22rem] flex-col items-center justify-center text-center md:max-w-[28rem]">
-          <ImmersiveSigil size="lg" />
-          <h2 className="mt-6 max-w-[18rem] text-[4.1rem] font-black leading-[0.88] tracking-[-0.09em] text-[var(--text-primary)] md:max-w-none md:text-[6.4rem]">{data.archetype.name}</h2>
-          <p className="mt-5 text-[11px] uppercase tracking-[0.34em] text-[var(--accent-gold)]">{data.archetype.english_name}</p>
-          <div className="mt-6 h-px w-16 bg-[linear-gradient(90deg,transparent,rgba(212,175,55,0.95),transparent)]" />
-          <p className="mt-8 max-w-[18rem] text-[1.22rem] leading-[1.65] text-[var(--text-primary)] md:max-w-[24rem] md:text-[1.7rem]">{data.archetype.core_essence}</p>
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+      <GlassPanel className={cx(benyuanUiRecipes.heroAccentPanel, "cosmic-result-hero mx-auto w-full max-w-[30rem]")}>
+        <div className="mx-auto flex min-h-[52vh] max-w-[21rem] flex-col items-center justify-center text-center md:max-w-[25rem]">
+          <ImmersiveSigil size="md" />
+          <h2 className="mt-6 max-w-[18rem] text-[3.35rem] font-black leading-[0.9] tracking-[0em] text-[var(--text-primary)] md:max-w-none md:text-[5.2rem]">{data.archetype.name}</h2>
+          <p className="mt-4 text-[10px] uppercase tracking-[0.32em] text-[var(--text-tertiary)]">{data.archetype.english_name}</p>
+          <div className="mt-6 h-px w-16 bg-[linear-gradient(90deg,transparent,rgba(217,214,223,0.54),transparent)]" />
+          <p className="mt-7 max-w-[18.5rem] text-[1.12rem] leading-[1.62] text-[var(--text-primary)] md:max-w-[23rem] md:text-[1.48rem]">{data.archetype.core_essence}</p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-2.5">
             <SecondaryButton type="button" onClick={() => void handleShare()} className="min-h-11 px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50">
               {shareState === "done" ? "已分享" : shareState === "error" ? "分享失败" : "分享"}
             </SecondaryButton>
@@ -404,18 +404,18 @@ export function BenyuanConstellationView() {
         </div>
       </GlassPanel>
 
-      <div className="mx-auto grid w-full max-w-[44rem] grid-cols-3 gap-3">
+      <div className="mx-auto grid w-full max-w-[30rem] grid-cols-1 gap-2.5">
         <button
           type="button"
           onClick={() => activeDimension && setActiveDimensionKey(activeDimension.key)}
           className="cosmic-result-card"
           data-benyuan-pressable="true"
         >
-          <span className="cosmic-result-star" aria-hidden />
-          <span className="text-[1.08rem] font-black tracking-[-0.05em] text-[var(--text-primary)] md:text-[1.35rem]">本质</span>
+          <span className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">ESSENCE</span>
+          <span className="mt-2 text-[1.22rem] font-black tracking-[0em] text-[var(--text-primary)] md:text-[1.5rem]">本质</span>
           <span className="mt-1 text-[10px] text-[var(--text-secondary)]">为什么出发</span>
-          <span className="mt-5 text-[0.82rem] leading-5 text-[var(--text-primary)]">{essenceLead}</span>
-          <span className="mt-2 text-[0.7rem] leading-5 text-[var(--text-tertiary)]">{essenceSupport}</span>
+          <span className="mt-5 text-[0.95rem] leading-7 text-[var(--text-primary)]">{essenceLead}</span>
+          <span className="mt-2 text-[0.82rem] leading-6 text-[var(--text-tertiary)]">{essenceSupport}</span>
         </button>
         <button
           type="button"
@@ -423,24 +423,24 @@ export function BenyuanConstellationView() {
           className="cosmic-result-card"
           data-benyuan-pressable="true"
         >
-          <span className="cosmic-result-star" aria-hidden />
-          <span className="text-[1.08rem] font-black tracking-[-0.05em] text-[var(--text-primary)] md:text-[1.35rem]">结构</span>
+          <span className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">STRUCTURE</span>
+          <span className="mt-2 text-[1.22rem] font-black tracking-[0em] text-[var(--text-primary)] md:text-[1.5rem]">结构</span>
           <span className="mt-1 text-[10px] text-[var(--text-secondary)]">如何前行</span>
-          <span className="mt-5 text-[0.82rem] leading-5 text-[var(--text-primary)]">
+          <span className="mt-5 text-[0.95rem] leading-7 text-[var(--text-primary)]">
             {topStructureDimensions.map((item) => item.label).join(" · ") || "--"}
           </span>
-          <span className="mt-2 text-[0.7rem] leading-5 text-[var(--text-tertiary)]">{activeStructureSummary || "--"}</span>
+          <span className="mt-2 text-[0.82rem] leading-6 text-[var(--text-tertiary)]">{activeStructureSummary || "--"}</span>
         </button>
         <div className="cosmic-result-card">
-          <span className="cosmic-result-star" aria-hidden />
-          <span className="text-[1.08rem] font-black tracking-[-0.05em] text-[var(--text-primary)] md:text-[1.35rem]">此刻</span>
+          <span className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">NOW</span>
+          <span className="mt-2 text-[1.22rem] font-black tracking-[0em] text-[var(--text-primary)] md:text-[1.5rem]">此刻</span>
           <span className="mt-1 text-[10px] text-[var(--text-secondary)]">你的当下指引</span>
-          <span className="mt-5 text-[0.82rem] leading-5 text-[var(--text-primary)]">{shortFlow?.moment.tension?.name ?? "--"}</span>
-          <span className="mt-2 text-[0.7rem] leading-5 text-[var(--text-tertiary)]">{primaryActionStep || shortFlow?.moment.path?.title || "--"}</span>
+          <span className="mt-5 text-[0.95rem] leading-7 text-[var(--text-primary)]">{shortFlow?.moment.tension?.name ?? "--"}</span>
+          <span className="mt-2 text-[0.82rem] leading-6 text-[var(--text-tertiary)]">{primaryActionStep || shortFlow?.moment.path?.title || "--"}</span>
         </div>
       </div>
 
-      <details className={cx(benyuanUiRecipes.collapsiblePanel, "mx-auto w-full max-w-[44rem]")}>
+      <details className={cx(benyuanUiRecipes.collapsiblePanel, "mx-auto w-full max-w-[30rem]")}>
         <summary className="cursor-pointer list-none px-5 py-5 text-left md:px-6">
           <p className="text-sm font-medium tracking-[0em] text-[var(--text-primary)]">继续阅读全部结果</p>
         </summary>
@@ -464,7 +464,7 @@ export function BenyuanConstellationView() {
                         <span className="font-mono text-sm text-[var(--text-secondary)]">{dimension.score}%</span>
                       </div>
                       <div className="mt-3 h-[3px] w-full rounded-full bg-[rgba(255,255,255,0.1)]">
-                        <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,rgba(247,244,236,0.95),rgba(231,194,122,0.5))]" style={{ width: `${dimension.score}%` }} />
+                        <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,rgba(243,241,234,0.9),rgba(217,214,223,0.44))]" style={{ width: `${dimension.score}%` }} />
                       </div>
                     </button>
                   );
@@ -517,7 +517,7 @@ export function BenyuanConstellationView() {
                 {recommendationMeta.map((group) => (
                   <div key={group.key} className={cx("p-5", benyuanUiRecipes.sectionPanel)}>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(212,175,55,0.22)] bg-[rgba(212,175,55,0.06)] text-[var(--accent-gold)]">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(243,241,234,0.12)] bg-[rgba(255,255,255,0.035)] text-[var(--text-secondary)]">
                         <group.Icon className="h-5 w-5" />
                       </div>
                       <h3 className="text-lg text-[var(--text-primary)]">{group.label}</h3>

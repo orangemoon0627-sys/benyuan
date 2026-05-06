@@ -45,6 +45,21 @@ function cleanNarrative(value: string | null | undefined) {
     .join("\n\n");
 }
 
+function normalizeDimensions(constellation: PsycheConstellation) {
+  return Object.fromEntries(
+    Object.entries(constellation.seven_dimensions).map(([key, value]) => {
+      const legacyValue = value as typeof value & { analysis?: string; description?: string };
+      return [
+        key,
+        {
+          score: Number.isFinite(value.score) ? value.score : 0,
+          interpretation: cleanText(value.interpretation ?? legacyValue.analysis ?? legacyValue.description),
+        },
+      ];
+    }),
+  ) as PsycheConstellation["seven_dimensions"];
+}
+
 function splitArtistAlbum(value: string) {
   const cleaned = cleanText(value);
   const match = cleaned.match(/^(.+?)\s[-–—]\s(.+)$/u);
@@ -163,6 +178,7 @@ export function normalizePsycheConstellation(constellation: PsycheConstellation)
       visual_prompt: cleanText(constellation.archetype.visual_prompt),
     },
     narrative_overview: cleanNarrative(constellation.narrative_overview),
+    seven_dimensions: normalizeDimensions(constellation),
     core_tensions: tensions,
     growth_suggestions: [...growthMap.values()],
     recommendations: {

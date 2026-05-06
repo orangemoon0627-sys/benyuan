@@ -9,7 +9,7 @@ function TheaterFallback() {
       topProgressValue={24}
       eyebrow="剧场装载"
       title="剧场就位"
-      description="场景一旦返回，就直接进入第一幕。"
+      description="场景一旦抵达，就直接进入第一幕。"
     />
   );
 }

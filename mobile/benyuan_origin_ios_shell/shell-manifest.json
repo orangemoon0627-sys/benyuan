@@ -1,0 +1,98 @@
+{
+  "app": {
+    "name": "Benyuan Origin",
+    "displayName": "本源",
+    "shellStrategy": "hybrid-webview-first",
+    "statusBarStyle": "light-content",
+    "safeAreaBackground": "#000000"
+  },
+  "entry": {
+    "initialRoute": "/",
+    "primaryFlow": [
+      "/collect",
+      "/processing/benyuan",
+      "/theater",
+      "/constellation"
+    ],
+    "preferredLocalBaseURL": "http://127.0.0.1:3015"
+  },
+  "storageKeys": {
+    "part1": "benyuan-v3-part1-answers",
+    "runtime": "benyuan-v3-runtime-override",
+    "session": "benyuan-v3-last-session",
+    "part1Started": "benyuan-v3-part1-started-at",
+    "pendingPart1": "benyuan-v3-pending-part1",
+    "pendingPart2": "benyuan-v3-pending-part2"
+  },
+  "apiEndpoints": [
+    "/api/agent/runtime",
+    "/api/part1/schema",
+    "/api/part1/upload",
+    "/api/part1/submit",
+    "/api/analyze/multimodal",
+    "/api/theater/generate",
+    "/api/theater/:theaterScriptId",
+    "/api/part2/submit",
+    "/api/constellation/generate",
+    "/api/constellation/:constellationId"
+  ],
+  "demoRoutes": [
+    {
+      "pack": "A",
+      "label": "孤独求索者",
+      "theater": "/theater?part1_id=part1_ebc4el2y&theater_script_id=theater_fcm6q0k8",
+      "constellation": "/constellation?constellation_id=const_qaub8gcl"
+    },
+    {
+      "pack": "B",
+      "label": "理性建构者",
+      "theater": "/theater?part1_id=part1_s575l1t7&theater_script_id=theater_003qj9px",
+      "constellation": "/constellation?constellation_id=const_h572ny90"
+    },
+    {
+      "pack": "C",
+      "label": "温柔守护者",
+      "theater": "/theater?part1_id=part1_pydb5on7&theater_script_id=theater_di7oz5x2",
+      "constellation": "/constellation?constellation_id=const_lufzlqfx"
+    }
+  ],
+  "frozenReferences": {
+    "betaFreezeDoc": "/Users/fanhao/Documents/Playground/docs/benyuan-beta-freeze-2026-03-11-r2.md",
+    "iosShellMap": "/Users/fanhao/Documents/Playground/docs/benyuan-ios-web-shell-map-v0.2.md",
+    "baselineArchive": "/Users/fanhao/Documents/Playground/archive/benyuan-beta-freeze-2026-03-11-r2.tar.gz",
+    "baselineFolder": "/Users/fanhao/Documents/Playground/archive/benyuan-beta-freeze-2026-03-11-r2",
+    "benchmarkSnapshot": "/Users/fanhao/Documents/Playground/output/benyuan-pack-benchmark-a-b-c-2026-03-11T09-15-53.json",
+    "designTokens": "/Users/fanhao/Documents/Playground/src/config/benyuan-design-tokens.ts",
+    "migrationChecklist": "/Users/fanhao/Documents/Playground/docs/benyuan-ios-safe-migration-checklist.md"
+  },
+  "safeRules": [
+    "Do not change API contracts in shell phase.",
+    "Preserve checkpoint resume behavior before redesigning flows.",
+    "Use A/B/C benchmark packs as mobile regression baseline.",
+    "Keep black-gold tokens as the default visual language."
+  ],
+  "nativeBridge": {
+    "globalInfoObject": "window.__BENYUAN_SHELL_INFO__",
+    "globalAPI": "window.BenyuanNativeShell",
+    "messages": [
+      "share",
+      "openExternal",
+      "pickImages"
+    ]
+  },
+  "capabilities": {
+    "phase1": [
+      "webview-shell",
+      "route-recovery",
+      "offline-banner",
+      "native-share-sheet-bridge",
+      "external-link-handoff"
+    ],
+    "phase15": [
+      "photo-picker-bridge",
+      "network-retry",
+      "result-share-entry",
+      "camera-capture-bridge"
+    ]
+  }
+}

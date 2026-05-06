@@ -52,7 +52,7 @@ async function main() {
   const archiveArgs = [...buildArgs, "archive", "-archivePath", archivePath];
 
   if (teamId) {
-    archiveArgs.push(`DEVELOPMENT_TEAM=${teamId}`, "CODE_SIGN_STYLE=Automatic");
+    archiveArgs.push("-allowProvisioningUpdates", `DEVELOPMENT_TEAM=${teamId}`, "CODE_SIGN_STYLE=Automatic");
   } else if (allowUnsigned) {
     archiveArgs.push("CODE_SIGNING_ALLOWED=NO");
   } else {

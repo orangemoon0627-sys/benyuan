@@ -1,159 +1,72 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { PrimaryButton } from "@/components/framework-primitives";
 
-const HOLD_MS = 3000;
-const TRANSITION_MS = 3200;
-
-const particles = Array.from({ length: 28 }, (_, index) => {
-  const angle = (Math.PI * 2 * index) / 28;
-  const radius = 34 + (index % 4) * 12;
-  const x = Math.cos(angle) * radius;
-  const y = Math.sin(angle) * radius;
-  const delay = (index % 7) * 0.08;
-  return { id: index, x, y, delay };
-});
+const TRANSITION_MS = 780;
 
 export function OriginLanding() {
   const router = useRouter();
-  const rafRef = useRef<number | null>(null);
-  const pressStartRef = useRef<number | null>(null);
-  const [phase, setPhase] = useState<"idle" | "pressing" | "awakening">("idle");
-  const [progress, setProgress] = useState(0);
+  const [awakening, setAwakening] = useState(false);
 
   useEffect(() => {
-    if (phase !== "awakening") return;
+    if (!awakening) return;
     const timer = window.setTimeout(() => router.push("/collect"), TRANSITION_MS);
     return () => window.clearTimeout(timer);
-  }, [phase, router]);
-
-  useEffect(() => {
-    return () => {
-      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  function stopLoop() {
-    if (rafRef.current) {
-      window.cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-  }
-
-  function resetPress() {
-    stopLoop();
-    pressStartRef.current = null;
-    setPhase("idle");
-    setProgress(0);
-  }
-
-  function beginAwakening() {
-    stopLoop();
-    pressStartRef.current = null;
-    setProgress(1);
-    setPhase("awakening");
-  }
-
-  function tick(now: number) {
-    if (pressStartRef.current === null) return;
-    const next = Math.min(1, (now - pressStartRef.current) / HOLD_MS);
-    setProgress(next);
-    if (next >= 1) {
-      beginAwakening();
-      return;
-    }
-    rafRef.current = window.requestAnimationFrame(tick);
-  }
-
-  function handlePressStart() {
-    if (phase === "awakening") return;
-    stopLoop();
-    const now = performance.now();
-    pressStartRef.current = now;
-    setPhase("pressing");
-    setProgress(0);
-    rafRef.current = window.requestAnimationFrame(tick);
-  }
-
-  function handlePressEnd() {
-    if (phase !== "pressing") return;
-    resetPress();
-  }
+  }, [awakening, router]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[var(--bg-void)] text-[var(--text-primary)]">
-      <div className="noise-overlay pointer-events-none absolute inset-0 opacity-20" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.08),transparent_32%)]" />
+    <main className="generative-page postmodern-landing benyuan-mainflow relative min-h-screen min-h-dvh overflow-hidden px-6 text-[var(--text-primary)]">
+      <div className="postmodern-cosmic-field pointer-events-none absolute inset-0" />
+      <div className="postmodern-landing__ghost" aria-hidden>
+        本源
+      </div>
 
-      <div className="relative flex min-h-screen flex-col items-center justify-center px-6 text-center">
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-[calc(100vw_-_3rem)] flex-col justify-between pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] pt-[calc(1.15rem_+_env(safe-area-inset-top))] md:max-w-[34rem]">
+        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(246,247,252,0.72)]">
+          <span>BENYUAN</span>
+          <span className="rounded-full border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.055)] px-3 py-2 backdrop-blur-[24px]">ORIGIN</span>
+        </div>
         <motion.div
-          animate={phase === "awakening" ? { opacity: 0, scale: 0.94 } : { opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-          className="relative flex flex-col items-center"
+          animate={awakening ? { opacity: 0, y: -16, scale: 0.98 } : { opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.52, ease: [0.4, 0, 0.2, 1] }}
+          className="relative flex flex-1 flex-col justify-center py-5"
         >
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[rgba(212,175,55,0.24)]"
-            animate={phase === "pressing" ? { scale: 1 + progress * 2.2, opacity: 0.8 - progress * 0.8 } : { scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.12, ease: "linear" }}
-          />
-          <div className="mb-8 h-px w-16 bg-[var(--accent-gold)]" />
-          <h1 className="text-[3.5rem] font-light tracking-[0.18em] text-[var(--text-primary)] md:text-[4.6rem]">本源</h1>
-          <p className="mt-4 text-[12px] tracking-[0.42em] text-[var(--text-tertiary)]">THE ORIGIN</p>
+          <div className="pointer-events-none absolute left-1/2 top-[42%] -z-10 flex w-[118vw] -translate-x-1/2 justify-center" aria-hidden>
+            <div className="postmodern-landing__moon" />
+          </div>
 
-          <button
-            type="button"
-            onPointerDown={handlePressStart}
-            onPointerUp={handlePressEnd}
-            onPointerLeave={handlePressEnd}
-            onPointerCancel={handlePressEnd}
-            onTouchStart={handlePressStart}
-            onTouchEnd={handlePressEnd}
-            className="mt-20 min-h-11 min-w-[220px] border border-[var(--border)] px-8 py-4 text-sm tracking-[0.22em] text-[var(--text-secondary)] transition hover:border-[var(--accent-gold-dim)] hover:text-[var(--text-primary)]"
-          >
-            {phase === "pressing" ? `继续按住 ${Math.max(0, Math.ceil((1 - progress) * 3))}s` : "[ 长按开始探索 ]"}
-          </button>
+          <div className="mt-8 flex items-start justify-between gap-6">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--accent-gold)]">心理自我探索应用</p>
+              <h1 className="mt-4 flex flex-col text-[5.65rem] font-black leading-[0.88] tracking-[0em] text-[var(--text-primary)] md:text-[7rem]">
+                <span>本</span>
+                <span>源</span>
+              </h1>
+            </div>
+            <p className="mt-12 max-w-[5.4rem] text-right text-[0.82rem] font-semibold leading-6 tracking-[0.08em] text-[rgba(246,247,252,0.72)] [writing-mode:vertical-rl]">
+              回到本源 探索内在宇宙
+            </p>
+          </div>
 
-          <div className="mt-6 h-px w-[220px] overflow-hidden bg-[rgba(255,255,255,0.08)]">
-            <motion.div
-              className="h-full bg-[var(--accent-gold)]"
-              animate={{ width: `${progress * 100}%` }}
-              transition={{ duration: 0.08, ease: "linear" }}
-            />
+          <p className="mt-8 max-w-[18rem] text-[1.06rem] font-semibold leading-8 text-[rgba(250,250,255,0.86)]">
+            让问题、审美与选择在同一片黑月场里显影。
+          </p>
+          <div className="mt-6 grid max-w-[18rem] gap-2 text-[0.78rem] font-semibold leading-5 tracking-[0.08em] text-[rgba(246,247,252,0.52)]">
+            <span>内在宇宙</span>
+            <span>心理剧场</span>
+            <span>星象映射</span>
           </div>
         </motion.div>
 
-        {phase === "awakening" ? (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <div className="relative h-72 w-72 md:h-96 md:w-96">
-              {particles.map((particle) => (
-                <motion.div
-                  key={particle.id}
-                  className="absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full bg-[var(--accent-gold)] shadow-[0_0_12px_var(--glow)]"
-                  initial={{ x: particle.x * 5.5, y: particle.y * 5.5, opacity: 0, scale: 0.7 }}
-                  animate={{ x: particle.x, y: particle.y, opacity: [0, 1, 0.9], scale: [0.7, 1.1, 1] }}
-                  transition={{ duration: 2.4, delay: particle.delay, ease: [0.25, 0.1, 0.25, 1] }}
-                />
-              ))}
-              <motion.div
-                className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent-gold)] shadow-[0_0_24px_var(--glow)]"
-                initial={{ scale: 0.2, opacity: 0 }}
-                animate={{ scale: [0.2, 1.2, 1], opacity: [0, 1, 0.9] }}
-                transition={{ duration: 1.6, ease: [0.25, 0.1, 0.25, 1] }}
-              />
-            </div>
-            <motion.p
-              className="mt-4 text-sm tracking-[0.28em] text-[var(--text-secondary)]"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-            >
-              正在唤醒你的星图...
-            </motion.p>
-          </div>
-        ) : null}
+        <div className="grid gap-4">
+          <PrimaryButton type="button" onClick={() => setAwakening(true)} disabled={awakening} className="w-full justify-center pr-16">
+            {awakening ? "正在进入" : "开始探索"}
+          </PrimaryButton>
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(246,247,252,0.38)]">generative psyche interface</p>
+        </div>
       </div>
     </main>
   );

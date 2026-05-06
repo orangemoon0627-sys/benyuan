@@ -9,7 +9,7 @@ function ConstellationFallback() {
       topProgressValue={84}
       eyebrow="星图装载"
       title="星图显形"
-      description="结果一旦返回，原型会直接出现。"
+      description="原型一旦显形，就直接抵达这一页。"
     />
   );
 }

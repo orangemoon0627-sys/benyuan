@@ -58,9 +58,10 @@ function createInitialAnswers(): Part1AnswerMap {
 
 function createInitialRuntime(): AgentRuntimeOverride {
   return {
-    provider_name: "crs",
-    model: "gpt-5.4",
-    reasoning_effort: "medium",
+    provider_name: "qingyan",
+    model: "gpt-5.5",
+    base_url: "https://zyz.qingyanzhiying.top/v1",
+    reasoning_effort: "xhigh",
     disable_response_storage: true,
     live: true,
   };
@@ -141,12 +142,12 @@ function visualUnits(text: string) {
 function questionPromptClass(prompt: string) {
   const units = visualUnits(prompt);
   if (units > 34) {
-    return "text-[1.82rem] font-black leading-[1.12] tracking-[-0.04em] md:text-[2.72rem] md:leading-[1.04]";
+    return "text-[1.42rem] font-black leading-[1.18] tracking-[0em] md:text-[2.05rem] md:leading-[1.08]";
   }
   if (units > 24) {
-    return "text-[2.06rem] font-black leading-[1.08] tracking-[-0.045em] md:text-[3.18rem] md:leading-[1.0]";
+    return "text-[1.62rem] font-black leading-[1.12] tracking-[0em] md:text-[2.34rem] md:leading-[1.04]";
   }
-  return "text-[2.38rem] font-black leading-[1.02] tracking-[-0.05em] md:text-[3.86rem] md:leading-[0.96]";
+  return "text-[1.92rem] font-black leading-[1.04] tracking-[0em] md:text-[2.7rem] md:leading-[0.99]";
 }
 
 function formatUploadOriginLabel(origin?: string) {
@@ -162,6 +163,10 @@ function formatUploadOriginLabel(origin?: string) {
     default:
       return "已上传";
   }
+}
+
+function optionIndexLabel(index: number) {
+  return String.fromCharCode(65 + index);
 }
 
 type PreparedUpload = {
@@ -279,14 +284,14 @@ function QuestionBlock({
   const remainingUploads = Math.max(0, uploadMax - uploadedAssets.length);
   const showHelperText = Boolean(question.helperText && question.kind === "distribution");
   const uploadHint = uploading
-    ? "正在整理素材。"
+    ? "正在整理这条线索。"
     : dragActive
-      ? "松开即可完成加入。"
+      ? "松开，它会进入当前问题。"
       : uploadedAssets.length > 0
         ? remainingUploads > 0
           ? `还可补充 ${remainingUploads} 张。`
-          : "这一题的数量已经足够。"
-        : "点击选择图片，或直接拖进来。";
+          : "这一题的素材已经足够。"
+        : "选择一张图，交出一条审美线索。";
   const questionStep = `${String(questionNumber).padStart(2, "0")} / ${String(totalQuestions).padStart(2, "0")}`;
   const uploadCountLine =
     uploadedAssets.length > 0
@@ -296,28 +301,24 @@ function QuestionBlock({
   return (
     <section
       className={cx(
-        "relative mx-auto flex min-h-[calc(100svh-12rem)] w-full max-w-[31rem] flex-col justify-center px-1 py-5 md:min-h-[calc(100svh-12.5rem)] md:max-w-[38rem] md:px-2 md:py-7",
+        "relative mx-auto flex min-h-[calc(100svh_-_11rem)] w-full max-w-full flex-col justify-start px-0 pb-4 pt-[clamp(1.15rem,4.5svh,3rem)] md:min-h-[calc(100svh_-_11.5rem)] md:max-w-[30rem] md:py-5",
       )}
     >
-      <div className="cosmic-question-horizon pointer-events-none" />
-      <div className="pointer-events-none absolute inset-x-4 top-[14%] h-56 rounded-full bg-[radial-gradient(circle,rgba(247,244,236,0.14),rgba(127,106,168,0.12)_34%,transparent_72%)] blur-3xl" />
-      <div className="relative mx-auto w-full max-w-[30rem] text-center">
-        <div className="flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.24em] text-[var(--accent-gold)]">
-          <span className="h-px w-10 bg-[linear-gradient(90deg,transparent,rgba(231,194,122,0.72))]" />
+      <div className="postmodern-question-stage relative mx-auto w-full max-w-full text-left md:max-w-[30rem]">
+        <div className="postmodern-question-kicker">
           <span>{questionStep}</span>
-          <span className="text-[var(--text-tertiary)]">{moduleKey}</span>
-          <span className="h-px w-10 bg-[linear-gradient(90deg,rgba(231,194,122,0.72),transparent)]" />
+          <span>MODULE {moduleKey}</span>
         </div>
-        <h3 className={cx("mt-5 text-[var(--text-primary)] drop-shadow-[0_0_24px_rgba(247,244,236,0.1)]", questionPromptClass(question.prompt))}>{question.prompt}</h3>
-        {showHelperText ? <p className="mx-auto mt-4 max-w-[22rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[26rem]">{question.helperText}</p> : null}
+        <h3 className={cx("postmodern-question-title mt-5 max-w-[22.5rem] text-[var(--text-primary)] md:max-w-[26rem]", questionPromptClass(question.prompt))}>{question.prompt}</h3>
+        {showHelperText ? <p className="mt-4 max-w-[22rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[26rem]">{question.helperText}</p> : null}
         {question.kind === "upload" ? (
-          <p className="mt-4 text-xs tracking-[0.14em] text-[var(--text-tertiary)]">{uploadCountLine}</p>
+          <p className="mt-4 text-xs font-semibold tracking-[0.12em] text-[var(--text-tertiary)]">{uploadCountLine}</p>
         ) : null}
       </div>
 
       {question.kind === "single" ? (
-        <div className="mx-auto mt-8 grid max-h-[36svh] w-full max-w-[30rem] gap-4 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-10 md:max-h-[38svh]">
-          {question.options?.map((option) => {
+        <div className="mx-auto mt-4 grid max-h-[45svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
+          {question.options?.map((option, index) => {
             const active = value === option.id;
             return (
               <button
@@ -325,11 +326,11 @@ function QuestionBlock({
                 type="button"
                 onClick={() => onSingle(option.id)}
                 data-active={active ? "true" : "false"}
-                className={cx(benyuanUiRecipes.interactiveCard(active, "accent"), "cosmic-choice-card group min-h-[6.15rem] cursor-pointer px-4 py-4 text-left md:px-5 md:py-5")}
+                className={cx(benyuanUiRecipes.interactiveCard(active, "accent"), "group min-h-[4.35rem] cursor-pointer px-4 py-3.5 text-left md:px-5 md:py-4")}
               >
                 <div className="flex items-center gap-4">
-                  <div className="cosmic-option-glyph" aria-hidden />
-                  <div className="min-w-0 flex-1 text-[1.05rem] font-semibold leading-7 text-[var(--text-primary)]">{formatOptionText(option.text)}</div>
+                  <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
+                  <div className="min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{formatOptionText(option.text)}</div>
                   <div className="cosmic-option-select" aria-hidden />
                 </div>
               </button>
@@ -339,8 +340,8 @@ function QuestionBlock({
       ) : null}
 
       {question.kind === "multi" ? (
-        <div className="mx-auto mt-8 grid max-h-[36svh] w-full max-w-[30rem] gap-4 overflow-y-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-10 md:max-h-[38svh]">
-          {question.options?.map((option) => {
+        <div className="mx-auto mt-4 grid max-h-[45svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
+          {question.options?.map((option, index) => {
             const selected = Array.isArray(value) && value.includes(option.id);
             return (
               <button
@@ -348,11 +349,11 @@ function QuestionBlock({
                 type="button"
                 onClick={() => onToggleMulti(option.id)}
                 data-active={selected ? "true" : "false"}
-                className={cx(benyuanUiRecipes.interactiveCard(selected, "accent"), "cosmic-choice-card min-h-[6.15rem] cursor-pointer px-4 py-4 text-left md:px-5 md:py-5")}
+                className={cx(benyuanUiRecipes.interactiveCard(selected, "accent"), "min-h-[4.35rem] cursor-pointer px-4 py-3.5 text-left md:px-5 md:py-4")}
               >
                 <div className="flex items-center gap-4">
-                  <div className="cosmic-option-glyph" aria-hidden />
-                  <div className="min-w-0 flex-1 text-[1.05rem] font-semibold leading-7 text-[var(--text-primary)]">{formatOptionText(option.text)}</div>
+                  <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
+                  <div className="min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{formatOptionText(option.text)}</div>
                   <div className="cosmic-option-select" aria-hidden />
                 </div>
               </button>
@@ -362,11 +363,11 @@ function QuestionBlock({
       ) : null}
 
       {question.kind === "distribution" ? (
-        <div className="mx-auto mt-9 grid max-w-5xl gap-4 md:grid-cols-3">
+        <div className="mx-auto mt-5 grid w-full max-w-full gap-3 md:grid-cols-3">
           {question.distributionKeys?.map((item) => {
             const distribution = isRecord(value) ? (value as { past: number; present: number; future: number }) : { past: 34, present: 33, future: 33 };
             return (
-              <DetailCard key={item.key} label={item.label} title={<span className="text-3xl text-[var(--text-primary)]">{distribution[item.key]}%</span>} className="p-6">
+              <DetailCard key={item.key} label={item.label} title={<span className="text-3xl font-black tracking-[0em] text-[var(--text-primary)]">{distribution[item.key]}%</span>} className="postmodern-meter-card rounded-[2rem] p-6">
                 <input className="mt-6 w-full accent-[var(--accent-gold)]" type="range" min={0} max={100} value={distribution[item.key]} onChange={(event) => onDistribution(item.key, Number(event.target.value))} />
               </DetailCard>
             );
@@ -375,7 +376,7 @@ function QuestionBlock({
       ) : null}
 
       {question.kind === "upload" ? (
-        <div className="mx-auto mt-8 flex w-full max-w-[30rem] flex-col gap-4 md:mt-10">
+        <div className="mx-auto mt-5 flex w-full max-w-full flex-col gap-3.5 md:mt-6 md:max-w-[30rem]">
           <div className="space-y-4">
             <input
               id={uploadInputId}
@@ -390,10 +391,10 @@ function QuestionBlock({
               }}
             />
             <div
-              className={`rounded-[2.4rem] border p-5 transition md:p-7 ${
+              className={`postmodern-upload-stage rounded-[2rem] p-4 transition md:p-6 ${
                 dragActive
-                  ? "border-[rgba(247,244,236,0.48)] bg-[rgba(247,244,236,0.08)] shadow-[0_0_36px_rgba(247,244,236,0.16)]"
-                  : `${benyuanUiRecipes.sectionPanel} hover:border-[rgba(216,204,255,0.24)] hover:bg-[rgba(127,106,168,0.06)]`
+                  ? "border-[rgba(196,177,122,0.44)] bg-[rgba(232,228,208,0.12)] shadow-[0_0_28px_rgba(196,177,122,0.13)]"
+                  : "hover:border-[rgba(196,177,122,0.28)] hover:bg-[rgba(238,241,255,0.08)]"
               } ${uploading ? "opacity-80" : ""}`}
               onDragOver={(event) => {
                 event.preventDefault();
@@ -412,11 +413,11 @@ function QuestionBlock({
               }}
             >
               <div className="flex items-start gap-4 text-[var(--text-primary)]">
-                <div className="rounded-[1.5rem] border border-[rgba(247,244,236,0.22)] bg-[rgba(247,244,236,0.08)] p-3 text-[var(--starlight-white)] shadow-[0_0_24px_rgba(247,244,236,0.12)]">
+                    <div className="rounded-full border border-[rgba(196,177,122,0.22)] bg-[rgba(246,248,255,0.08)] p-3 text-[var(--starlight-white)] shadow-[0_0_14px_rgba(196,177,122,0.08)]">
                   <UploadCloud className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-lg font-black tracking-[-0.04em] text-[var(--text-primary)]">加入你的素材</p>
+                  <p className="text-lg font-black tracking-[0em] text-[var(--text-primary)]">上传你的审美线索</p>
                   <p className="mt-2 text-sm leading-7 text-[var(--text-secondary)]">{uploadHint}</p>
                 </div>
               </div>
@@ -424,13 +425,13 @@ function QuestionBlock({
                 <label
                   htmlFor={uploadInputId}
                   data-benyuan-pressable="true"
-                  className={`inline-flex min-h-[3.4rem] items-center justify-center rounded-full border border-[rgba(247,244,236,0.26)] px-5 py-3 text-sm text-[var(--text-primary)] transition ${
-                    uploading ? "pointer-events-none opacity-50" : "cursor-pointer duration-150 will-change-transform hover:bg-[rgba(247,244,236,0.06)] active:translate-y-px active:scale-[0.985]"
+                  className={`inline-flex min-h-[3.4rem] items-center justify-center rounded-full border border-[var(--border)] px-5 py-3 text-sm text-[var(--text-primary)] transition ${
+                    uploading ? "pointer-events-none opacity-50" : "cursor-pointer duration-150 will-change-transform hover:bg-[rgba(255,255,255,0.055)] active:translate-y-px active:scale-[0.985]"
                   }`}
                 >
-                  选择图片
+                  选择线索
                 </label>
-                <div className="flex min-h-[3.4rem] flex-1 items-center rounded-full border border-[var(--border)] bg-black/12 px-4 py-3 text-sm text-[var(--text-secondary)]">{uploadCountLine}</div>
+                <div className="flex min-h-[3.4rem] flex-1 items-center rounded-full border border-[rgba(225,230,255,0.12)] bg-[rgba(8,10,18,0.28)] px-4 py-3 text-sm text-[var(--text-secondary)]">{uploadCountLine}</div>
               </div>
               {nativeUploadEnabled ? (
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -466,8 +467,8 @@ function QuestionBlock({
                   </button>
                 </div>
               ) : null}
-              {uploadError ? <p className="mt-4 rounded-[1rem] border border-[rgba(231,194,122,0.28)] bg-[rgba(231,194,122,0.08)] px-4 py-3 text-sm text-[var(--text-primary)]">{uploadError}</p> : null}
-              {uploading ? <p className="mt-5 text-sm text-[var(--text-secondary)] animate-pulse">正在把素材写回当前问题。</p> : null}
+              {uploadError ? <p className="mt-4 rounded-[1rem] border border-[rgba(240,238,244,0.16)] bg-[rgba(240,238,244,0.045)] px-4 py-3 text-sm text-[var(--text-primary)]">{uploadError}</p> : null}
+              {uploading ? <p className="mt-5 text-sm text-[var(--text-secondary)] animate-pulse">正在让这条线索归位。</p> : null}
               {uploadedAssets.length > 0 ? (
                 <div className="mt-5">
                   <div className={benyuanUiRecipes.thumbnailRail}>
@@ -485,8 +486,7 @@ function QuestionBlock({
                         ) : (
                           <div className="flex h-28 w-full items-center justify-center rounded-[1.1rem] border border-[var(--border)] text-xs text-[var(--text-tertiary)]">FILE</div>
                         )}
-                        <p className="mt-3 truncate text-sm text-[var(--text-primary)]">{file.name ?? `文件 ${index + 1}`}</p>
-                        <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">{formatUploadOriginLabel(file.upload_origin)}</p>
+                        <p className="mt-3 text-center text-[11px] tracking-[0.14em] text-[var(--text-tertiary)]">线索 {String(index + 1).padStart(2, "0")}</p>
                       </div>
                     ))}
                   </div>
@@ -886,30 +886,29 @@ export function BenyuanPart1Workflow({
       <ImmersiveTopBar
         backHref={moduleFilter ? "/collect" : "/"}
         progressValue={overallProgressPercent}
-        trailing={
-          !moduleFilter ? (
-            <div className="scale-[0.94] origin-right">
-              <MicroSwitch
-                items={moduleOrder.map((module) => {
-                  const total = benyuanQuestionsByModule[module].length;
-                  const progress = moduleProgress[module];
-                  const active = activeModule === module;
-                  return {
-                    id: module,
-                    label: `${module}`,
-                    tone: active ? "active" : progress >= total ? "done" : "idle",
-                    onClick: () => {
-                      clearAutoAdvanceTimer();
-                      setActiveModule(module);
-                      setRitualQuestionIndex(findFirstIncompleteQuestionIndex(module, answers));
-                    },
-                  };
-                })}
-              />
-            </div>
-          ) : undefined
-        }
       />
+
+      {!moduleFilter ? (
+        <div className="-mt-1 flex justify-center">
+          <MicroSwitch
+            items={moduleOrder.map((module) => {
+              const total = benyuanQuestionsByModule[module].length;
+              const progress = moduleProgress[module];
+              const active = activeModule === module;
+              return {
+                id: module,
+                label: `${module}`,
+                tone: active ? "active" : progress >= total ? "done" : "idle",
+                onClick: () => {
+                  clearAutoAdvanceTimer();
+                  setActiveModule(module);
+                  setRitualQuestionIndex(findFirstIncompleteQuestionIndex(module, answers));
+                },
+              };
+            })}
+          />
+        </div>
+      ) : null}
 
       {ritualQuestion ? (
         <QuestionBlock
@@ -942,15 +941,15 @@ export function BenyuanPart1Workflow({
       )}
 
       {errors.length > 0 ? (
-        <div className="rounded-[1.5rem] border border-[rgba(231,194,122,0.3)] bg-[rgba(231,194,122,0.08)] px-5 py-4 text-sm leading-7 text-[var(--text-primary)]">
+        <div className="rounded-[1.5rem] border border-[rgba(240,238,244,0.16)] bg-[rgba(240,238,244,0.045)] px-5 py-4 text-sm leading-7 text-[var(--text-primary)]">
           {errors.map((error) => (
             <div key={error}>{error}</div>
           ))}
         </div>
       ) : null}
 
-      <BottomActionBar className="bottom-1 px-3 py-3 md:px-4">
-        <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] gap-3 md:mx-auto md:min-w-[22rem] md:grid-cols-[8.5rem_minmax(0,1fr)]">
+      <BottomActionBar className="bottom-1 px-1 py-3 md:px-4">
+        <div className="mx-auto grid w-full max-w-full grid-cols-[5.7rem_minmax(0,1fr)] gap-1.5 rounded-full border border-[rgba(225,230,255,0.12)] bg-[rgba(4,5,14,0.72)] p-1.5 shadow-[0_18px_52px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[30px] md:min-w-[20rem] md:max-w-[30rem] md:grid-cols-[7.8rem_minmax(0,1fr)]">
           <button
             type="button"
             onClick={() => {
@@ -966,9 +965,9 @@ export function BenyuanPart1Workflow({
             type="button"
             onClick={handlePrimaryAction}
             disabled={primaryAction.disabled}
-            className={cx(benyuanUiRecipes.primaryLink, "w-full disabled:opacity-40")}
+            className={cx(benyuanUiRecipes.primaryLink, "w-full pr-14 disabled:opacity-40")}
           >
-            {submitting ? "进入中" : primaryAction.label}
+            {submitting ? "正在显影" : primaryAction.label}
           </button>
         </div>
       </BottomActionBar>
@@ -1038,8 +1037,8 @@ export function BenyuanPart1Workflow({
                   <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">runtime override</p>
                   <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">正常体验不需要改 provider / model / base url；这里只为排查 live provider 或多模态问题保留。</p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <MetaPill>{runtimeOverride.provider_name ?? runtimeStatus?.provider ?? "crs"}</MetaPill>
-                    <MetaPill>{runtimeOverride.model ?? runtimeStatus?.model ?? "gpt-5.4"}</MetaPill>
+                    <MetaPill>{runtimeOverride.provider_name ?? runtimeStatus?.provider ?? "qingyan"}</MetaPill>
+                    <MetaPill>{runtimeOverride.model ?? runtimeStatus?.model ?? "gpt-5.5"}</MetaPill>
                     <MetaPill>{runtimeStatus?.wireApi ?? "responses"}</MetaPill>
                     <MetaPill>{runtimeAvailabilityLabel}</MetaPill>
                     {runtimeStatus?.apiKeyConfigured && runtimeStatus?.liveProviderEnabled ? <MetaPill>api ready</MetaPill> : null}

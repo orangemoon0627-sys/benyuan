@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-03-10T06:16:50.952659Z",
+  "baselineName": "benyuan-ios-safe-baseline-2026-03-10",
+  "purpose": "Freeze current Benyuan web baseline before iOS migration and UI refactor.",
+  "files": [
+    "src/app/page.tsx",
+    "src/app/collect/page.tsx",
+    "src/app/theater/page.tsx",
+    "src/app/constellation/page.tsx",
+    "src/app/processing/benyuan/page.tsx",
+    "src/components/origin-landing.tsx",
+    "src/components/benyuan-part1-workflow.tsx",
+    "src/components/benyuan-processing-ritual.tsx",
+    "src/components/benyuan-theater-experience.tsx",
+    "src/components/benyuan-constellation-view.tsx",
+    "src/components/framework-primitives.tsx",
+    "src/components/site-header.tsx",
+    "src/lib/benyuan-v3-prompts.ts",
+    "src/lib/benyuan-v3-schema.ts",
+    "src/lib/benyuan-v3-types.ts",
+    "src/lib/benyuan-v3-test-packs.ts",
+    "src/lib/benyuan-v3-demo-links.ts",
+    "src/lib/benyuan-v3-demo-links-server.ts",
+    "src/lib/codex-runtime.ts",
+    "src/app/api/agent/runtime/route.ts",
+    "scripts/benyuan-pack-benchmark.mjs",
+    "docs/benyuan-test-packs.md",
+    "output/benyuan-pack-benchmark.json"
+  ]
+}

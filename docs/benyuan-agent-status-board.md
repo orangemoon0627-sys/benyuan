@@ -1,6 +1,6 @@
 # "Benyuan" Agent Status Board
 
-Last updated: 2026-03-14
+Last updated: 2026-05-02
 
 ## Visibility Note
 
@@ -20,6 +20,14 @@ If you keep working with me in this same conversation, I can keep this board upd
 - `review_ready`
 - `done`
 - `blocked`
+
+## Current Snapshot
+
+- Working tree: `/Users/fanhao/Documents/Playground-benyuan`
+- Branch: `codex/benyuan-parallel`
+- Current stage: 深月场 UI 与 iOS pilot 收口
+- Latest self-check: `npm run build`, `npm run lint`, `smoke:benyuan:golden`, `smoke:benyuan:test-packs`, `ios:shell:regression`, `ios:shell:native-smoke`
+- Bug found in this pass: stale TradeWise npm scripts remained after the Benyuan worktree split; fixed by narrowing `package.json` scripts to Benyuan entry points.
 
 ## Agent Board
 
@@ -133,7 +141,9 @@ If you keep working with me in this same conversation, I can keep this board upd
 
 ## In Progress
 
-- Compare future report iterations against the current beta freeze after pilot feedback
+- Deep-moon field UI polish across `/`, `/collect`, `/processing/benyuan`, `/theater`, and `/constellation`
+- iOS shell pilot readiness, including simulator smoke plus real-device manual evidence
+- Guided pilot feedback loop and follow-up result-expression refinements
 - Historical baseline accumulation beyond the current freeze
 
 ## Review Ready
@@ -153,13 +163,15 @@ If you keep working with me in this same conversation, I can keep this board upd
 
 ## Up Next
 
-1. Run at least 2 guided pilot sessions and keep all findings inside the new pilot feedback log
-2. Decide whether the next report iteration stays controlled-hybrid or upgrades toward prompt-native generation
-3. Consider PNG export or richer visual share-card variants
-4. Keep localized safety/help fallback copy current
+1. Tighten typography, spacing, and section rhythm so "minimal" still feels designed.
+2. Re-check the iPhone real-device route with the current local/staging URL and update the real-device record.
+3. Run at least 2 guided pilot sessions and keep all findings inside the pilot feedback log.
+4. Decide whether the next report iteration stays controlled-hybrid or upgrades toward prompt-native generation.
+5. Consider PNG export or richer visual share-card variants.
 
 ## Risks Right Now
 
-- Product scope can expand too fast if seven dimensions are reintroduced before MVP validation.
-- Rule-based / controlled-hybrid dynamic reporting is good enough for pilot, but it may feel repetitive if not diversified after pilot feedback.
-- Safety flags exist, but report-page wording for higher-risk states still needs a tailored pass.
+- Product scope can expand too fast if seven dimensions are reintroduced before pilot feedback.
+- UI may drift back into "too plain" if typography, layout rhythm, and interaction continuity are not treated as product work.
+- Controlled-hybrid dynamic reporting is stable for pilot, but may feel repetitive if not diversified after feedback.
+- Real-device evidence must stay current with the active Web URL; stale Railway/local targets can make the app look like an older build.

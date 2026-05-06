@@ -62,13 +62,18 @@ async function ensureStoreFile() {
   try {
     await readFile(STORE_FILE, "utf8");
   } catch {
-    await writeFile(STORE_FILE, JSON.stringify(defaultStore(), null, 2), "utf8");
+    await writeStore(defaultStore());
   }
 }
 
 async function readStore() {
   await ensureStoreFile();
   const raw = await readFile(STORE_FILE, "utf8");
+  if (!raw.trim()) {
+    const store = defaultStore();
+    await writeStore(store);
+    return store;
+  }
   const parsed = JSON.parse(raw) as Partial<PersistedStore>;
   return {
     ...defaultStore(),

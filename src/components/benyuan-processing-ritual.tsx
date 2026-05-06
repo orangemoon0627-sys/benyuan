@@ -17,15 +17,15 @@ import {
 
 const stageLabels = {
   part1: [
-    { key: "part1_submit", title: "收束特征", detail: "正在写回这一轮回答。", estimateSec: 6 },
-    { key: "multimodal", title: "解析线索", detail: "正在整理你的素材线索。", estimateSec: 90 },
-    { key: "director", title: "构建剧场", detail: "正在生成接下来的剧场。", estimateSec: 95 },
-    { key: "handoff", title: "剧场已就绪", detail: "准备带你进入下一幕。", estimateSec: 4 },
+    { key: "part1_submit", title: "收束线索", detail: "正在把你的回答合拢。", estimateSec: 6 },
+    { key: "multimodal", title: "解析光谱", detail: "审美线索正在显出纹理。", estimateSec: 90 },
+    { key: "director", title: "构建剧场", detail: "正在把你的线索折成一幕剧场。", estimateSec: 95 },
+    { key: "handoff", title: "剧场就位", detail: "下一幕正在靠近。", estimateSec: 4 },
   ],
   constellation: [
-    { key: "part2_submit", title: "记录选择", detail: "正在写回你的剧场轨迹。", estimateSec: 6 },
-    { key: "analyst", title: "精神分析", detail: "正在把这些线索显影成星图。", estimateSec: 120 },
-    { key: "handoff", title: "星图显形", detail: "准备进入结果页。", estimateSec: 4 },
+    { key: "part2_submit", title: "记录选择", detail: "正在收束你的剧场轨迹。", estimateSec: 6 },
+    { key: "analyst", title: "折成星图", detail: "星图正在从暗处浮现。", estimateSec: 120 },
+    { key: "handoff", title: "原型显形", detail: "准备进入结果页。", estimateSec: 4 },
   ],
 } as const;
 
@@ -385,8 +385,6 @@ function RitualRunner({ phase, onRetry }: { phase: RitualPhase; onRetry: () => v
       eyebrow={presentation.eyebrow}
       title={presentation.title}
       description={presentation.description}
-      meterLabel={visibleStageTitle}
-      meterValue={presentation.progress}
       actions={
         error ? (
           <div className="flex flex-wrap items-center justify-center gap-3">

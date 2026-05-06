@@ -17,19 +17,13 @@ Default paths:
 
 ## Bootstrap
 
-Create both isolated worktrees without starting servers:
+Create and start both isolated lanes in one command:
 
 ```bash
 npm run lane:bootstrap
 ```
 
-If you want bootstrap to also start both lanes:
-
-```bash
-npm run lane:bootstrap:start
-```
-
-The explicit no-start variant is still available:
+If you only want to prepare worktrees without starting servers:
 
 ```bash
 npm run lane:bootstrap:no-start
@@ -49,7 +43,7 @@ npm run lane:worktrees:status
 
 ## Start each lane
 
-The default bootstrap is now intentionally lightweight. Manual starts stay available when you only want one lane.
+The bootstrap command is the default. Manual starts stay available when you only want one lane.
 
 Benyuan lane:
 

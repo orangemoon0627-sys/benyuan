@@ -10,6 +10,10 @@ const dimensionLabels: Record<string, string> = {
   relationship_need: "关系需求",
 };
 
+function cleanResultCopy(value: string) {
+  return value.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, "").replace(/\s+/g, " ").trim();
+}
+
 type CollectPrimaryActionIntent = "submit" | "next-module" | "return-overview" | "next-question";
 type ProcessingPhase = "part1" | "constellation";
 type ProcessingKind = "empty" | "running" | "error" | "complete";
@@ -36,7 +40,7 @@ export function buildCollectPrimaryActionModel(input: {
 
   if (!input.moduleFilter && input.activeModuleComplete && input.nextActionableModule) {
     return {
-      label: `进入 ${input.nextActionableModule}`,
+      label: "进入下一章",
       disabled: input.primaryActionDisabled,
       intent: "next-module",
     };
@@ -79,7 +83,7 @@ export function buildProcessingPresentation(input: {
     return {
       backHref,
       eyebrow: "显影",
-      title: "等待开始",
+      title: "这一页暂时没有抵达",
       description: input.phase === "part1" ? "先回到当前问题。" : "先回到剧场。",
       progress: 0,
     };
@@ -89,8 +93,8 @@ export function buildProcessingPresentation(input: {
     return {
       backHref,
       eyebrow: "已暂停",
-      title: "显影暂停",
-      description: input.errorMessage ?? "可以重试，或先回到上一步。",
+      title: "显影暂时停住",
+      description: input.errorMessage ?? "可以再试一次，或先回到上一步。",
       progress: Math.max(14, input.progress),
     };
   }
@@ -98,8 +102,8 @@ export function buildProcessingPresentation(input: {
   if (input.kind === "complete") {
     return {
       backHref,
-      eyebrow: "即将完成",
-      title: input.phase === "part1" ? "剧场就位" : "星图就位",
+      eyebrow: "即将抵达",
+      title: input.phase === "part1" ? "剧场就位" : "星图显形",
       description: "下一步会自动打开。",
       progress: 100,
     };
@@ -108,8 +112,8 @@ export function buildProcessingPresentation(input: {
   return {
     backHref,
     eyebrow: `第 ${Math.min(input.doneCount + 1, input.totalCount)} 段 / ${input.totalCount}`,
-    title: input.activeStageTitle ?? "处理中",
-    description: input.activeStageDetail ?? "正在整理当前阶段。",
+    title: input.activeStageTitle ?? "正在显影",
+    description: input.activeStageDetail ?? "线索正在从暗处浮现。",
     progress: input.progress,
   };
 }
@@ -130,11 +134,13 @@ export function buildConstellationShortFlow(data: PsycheConstellation) {
   const primaryPath = data.growth_suggestions[0] ?? null;
   const secondaryPaths = data.growth_suggestions.slice(1);
   const narrativeParagraphs = data.narrative_overview.split(/\n\n+/).filter((item) => item.trim().length > 0);
+  const firstNarrative = cleanResultCopy(narrativeParagraphs[0] ?? "");
+  const essenceSupport = firstNarrative.length > 54 ? `${firstNarrative.slice(0, 54)}……` : firstNarrative;
 
   return {
     essence: {
-      lead: topDimensions[0] ? `${topDimensions[0].label} ${topDimensions[0].score}%` : "--",
-      support: topDimensions[1] ? `${topDimensions[1].label} ${topDimensions[1].score}%` : "--",
+      lead: data.archetype.core_essence,
+      support: essenceSupport || topDimensions[0]?.interpretation || "--",
     },
     structure: {
       topDimensions,

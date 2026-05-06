@@ -6,6 +6,8 @@ import process from 'node:process';
 const root = process.cwd();
 const baseUrl = (process.env.BENYUAN_BASE_URL ?? 'http://127.0.0.1:3015').replace(/\/$/, '');
 const manifestPath = path.join(root, 'mobile', 'benyuan_origin_ios_shell', 'shell-manifest.json');
+const shellConfigPath = path.join(root, 'mobile', 'benyuan_origin_ios_shell', 'swiftui-starter', 'BenyuanShellConfig.swift');
+const webDemoLinksPath = path.join(root, 'src', 'lib', 'benyuan-v3-demo-links.ts');
 const benchmarkPath = path.join(root, 'output', 'benyuan-pack-benchmark.json');
 const outputPath = path.join(root, 'output', 'benyuan-ios-regression.json');
 
@@ -15,6 +17,62 @@ function now() {
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
+}
+
+function readWebDemoRoutes(source) {
+  const matches = [...source.matchAll(/pack:\s*"([ABC])"[\s\S]*?theaterHref:\s*"([^"]+)"[\s\S]*?constellationHref:\s*"([^"]+)"/g)];
+  return matches.map((match) => ({
+    pack: match[1],
+    theater: match[2],
+    constellation: match[3],
+  }));
+}
+
+function readSwiftDemoRoutes(source) {
+  const blockMatch = source.match(/static let demoRoutes = \[([\s\S]*?)\n\s*\]/);
+  if (!blockMatch) return [];
+  return [...blockMatch[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+}
+
+function routeContractChecks(manifest, webSource, shellConfigSource) {
+  const webDemoRoutes = readWebDemoRoutes(webSource);
+  const manifestRoutes = new Map((manifest.demoRoutes ?? []).map((item) => [item.pack, item]));
+  const swiftRoutes = readSwiftDemoRoutes(shellConfigSource);
+  const checks = [];
+
+  for (const webRoute of webDemoRoutes) {
+    const manifestRoute = manifestRoutes.get(webRoute.pack);
+    checks.push({
+      label: `contract:manifest:${webRoute.pack}:theater`,
+      route: webRoute.theater,
+      ok: manifestRoute?.theater === webRoute.theater,
+      status: manifestRoute?.theater === webRoute.theater ? 200 : 500,
+      durationMs: 0,
+      snippet: manifestRoute?.theater ?? 'missing',
+    });
+    checks.push({
+      label: `contract:manifest:${webRoute.pack}:constellation`,
+      route: webRoute.constellation,
+      ok: manifestRoute?.constellation === webRoute.constellation,
+      status: manifestRoute?.constellation === webRoute.constellation ? 200 : 500,
+      durationMs: 0,
+      snippet: manifestRoute?.constellation ?? 'missing',
+    });
+  }
+
+  const expectedSwiftRoutes = webDemoRoutes.flatMap((item) => [item.theater, item.constellation]);
+  for (const route of expectedSwiftRoutes) {
+    checks.push({
+      label: `contract:swift-demo:${route}`,
+      route,
+      ok: swiftRoutes.includes(route),
+      status: swiftRoutes.includes(route) ? 200 : 500,
+      durationMs: 0,
+      snippet: swiftRoutes.includes(route) ? 'present' : `missing from Swift demoRoutes (${swiftRoutes.length} configured)`,
+    });
+  }
+
+  return checks;
 }
 
 async function probe(label, route) {
@@ -33,9 +91,11 @@ async function probe(label, route) {
 
 async function main() {
   const manifest = await readJson(manifestPath);
+  const webDemoLinks = await readFile(webDemoLinksPath, 'utf8');
+  const shellConfig = await readFile(shellConfigPath, 'utf8');
   const benchmark = await readJson(benchmarkPath);
 
-  const checks = [];
+  const checks = routeContractChecks(manifest, webDemoLinks, shellConfig);
 
   for (const route of manifest.entry?.primaryFlow ?? []) {
     checks.push(await probe(`flow:${route}`, route));

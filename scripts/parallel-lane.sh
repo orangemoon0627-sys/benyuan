@@ -10,7 +10,7 @@ lane_screen_name() {
 }
 
 lane_screen_exists() {
-  (screen -list 2>/dev/null || true) | grep -Fq "$(lane_screen_name "$1")"
+  screen -list 2>/dev/null | grep -q "$(lane_screen_name "$1")"
 }
 
 usage() {

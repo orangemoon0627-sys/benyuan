@@ -297,12 +297,14 @@ export type ConstellationRecord = {
   archetype_image_url?: string;
 };
 
+export type AgentReasoningEffort = "low" | "medium" | "high" | "xhigh";
+
 export type AgentRuntimeOverride = {
   api_key?: string;
   base_url?: string;
   model?: string;
   provider_name?: string;
-  reasoning_effort?: "low" | "medium" | "high";
+  reasoning_effort?: AgentReasoningEffort;
   disable_response_storage?: boolean;
   live?: boolean;
 };

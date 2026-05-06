@@ -20,6 +20,7 @@ import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { readCodexProviderDefaults } from "@/lib/codex-runtime";
 import type {
   AgentRuntimeOverride,
+  AgentReasoningEffort,
   AgentRuntimeResult,
   MultimodalInputItem,
   MusicAnalysis,
@@ -252,15 +253,15 @@ function resolveRuntime(override?: AgentRuntimeOverride) {
   const codexDefaults = readCodexProviderDefaults();
   const apiKey = override?.api_key ?? process.env.OPENAI_API_KEY ?? codexDefaults.apiKey;
   const baseUrl = override?.base_url ?? runtime.customBaseUrl ?? codexDefaults.baseUrl;
-  const model = override?.model ?? runtime.customModel ?? codexDefaults.model ?? "gpt-5.4";
+  const model = override?.model ?? runtime.customModel ?? codexDefaults.model ?? "gpt-5.5";
   const providerName = override?.provider_name ?? runtime.customProviderName ?? codexDefaults.providerName ?? "custom";
   const reasoningEffort =
     override?.reasoning_effort ??
-    (process.env.BENYUAN_CUSTOM_REASONING_EFFORT as "low" | "medium" | "high" | undefined) ??
+    (process.env.BENYUAN_CUSTOM_REASONING_EFFORT as AgentReasoningEffort | undefined) ??
     codexDefaults.reasoningEffort ??
-    "high";
+    "xhigh";
   const disableStorage = override?.disable_response_storage ?? codexDefaults.disableResponseStorage ?? true;
-  const live = override?.live ?? (runtime.liveProviderEnabled || Boolean(codexDefaults.apiKey && codexDefaults.baseUrl));
+  const live = override?.live ?? runtime.liveProviderEnabled;
   const available = Boolean(live && apiKey && baseUrl);
   const timeoutMs = Math.max(runtime.providerSoftTimeoutMs, Math.min(runtime.providerTimeoutMs, 120000));
 
@@ -351,7 +352,7 @@ async function attemptResponsesStreamJson(params: {
   }
 }
 
-async function requestAgentJson(params: { system: string; user: string; runtimeOverride?: AgentRuntimeOverride; maxOutputTokens?: number; reasoningEffort?: "low" | "medium" | "high" }) {
+async function requestAgentJson(params: { system: string; user: string; runtimeOverride?: AgentRuntimeOverride; maxOutputTokens?: number; reasoningEffort?: AgentReasoningEffort }) {
   const runtime = resolveRuntime(params.runtimeOverride);
   if (!runtime.available || !runtime.apiKey || !runtime.baseUrl) {
     return { data: null, runtime: { provider: runtime.providerName, model: runtime.model, mode: "fallback" as const } };
@@ -366,7 +367,7 @@ async function requestAgentJson(params: { system: string; user: string; runtimeO
   const chatCompatibilityKey = getChatCompatibilityKey({ providerName: runtime.providerName, model: runtime.model, baseUrl: liveRuntime.baseUrl });
   const chatUnsupported = chatUnsupportedRuntimes.has(chatCompatibilityKey) || isKnownChatUnsupportedRuntime(liveRuntime);
 
-  const buildResponsesBody = (stream: boolean, overrides?: { maxOutputTokens?: number; reasoningEffort?: "low" | "medium" | "high" }) => ({
+  const buildResponsesBody = (stream: boolean, overrides?: { maxOutputTokens?: number; reasoningEffort?: AgentReasoningEffort }) => ({
     model: runtime.model,
     stream,
     store: !runtime.disableStorage,
@@ -583,7 +584,7 @@ async function requestMultimodalJson(params: {
   photoInput?: MultimodalInputItem;
   runtimeOverride?: AgentRuntimeOverride;
   maxOutputTokens?: number;
-  reasoningEffort?: "low" | "medium" | "high";
+  reasoningEffort?: AgentReasoningEffort;
 }) {
   const runtime = resolveRuntime(params.runtimeOverride);
   if (!runtime.available || !runtime.apiKey || !runtime.baseUrl) {
@@ -625,7 +626,7 @@ async function requestMultimodalJson(params: {
     stream: boolean,
     overrides?: {
       maxOutputTokens?: number;
-      reasoningEffort?: "low" | "medium" | "high";
+      reasoningEffort?: AgentReasoningEffort;
       systemText?: string;
       userText?: string;
     },
@@ -1446,7 +1447,7 @@ export async function runMultimodalAnalysis(
     photoInput: input.precious_photo_input,
     runtimeOverride,
     maxOutputTokens: 1600,
-    reasoningEffort: runtimeOverride?.reasoning_effort ?? "low",
+    reasoningEffort: runtimeOverride?.reasoning_effort ?? "xhigh",
   });
 
   const normalized = normalizeMultimodalResult(request.data, fallback);
@@ -1467,7 +1468,7 @@ export async function generateTheaterScriptWithAgent(record: Part1Record, runtim
     user: buildDirectorUserPrompt(record),
     runtimeOverride,
     maxOutputTokens: 4200,
-    reasoningEffort: runtimeOverride?.reasoning_effort ?? "medium",
+    reasoningEffort: runtimeOverride?.reasoning_effort ?? "xhigh",
   });
 
   const normalized = normalizeTheaterScript(request.data, fallback);
@@ -1485,7 +1486,7 @@ export async function generateConstellationWithAgent(part1: Part1Record, part2: 
     user: buildAnalystUserPrompt(part1, part2, fallback),
     runtimeOverride,
     maxOutputTokens: 5600,
-    reasoningEffort: runtimeOverride?.reasoning_effort ?? "medium",
+    reasoningEffort: runtimeOverride?.reasoning_effort ?? "xhigh",
   });
 
   const normalized = normalizeConstellation(request.data, fallback);

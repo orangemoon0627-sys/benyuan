@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -63,12 +64,83 @@ async function fileExists(filePath) {
   }
 }
 
+function readPlistJson(filePath) {
+  const script = `
+import datetime
+import json
+import plistlib
+import sys
+
+def normalize(value):
+    if isinstance(value, dict):
+        return {str(k): normalize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [normalize(v) for v in value]
+    if isinstance(value, bytes):
+        return value.hex()
+    if isinstance(value, datetime.datetime):
+        return value.isoformat()
+    return value
+
+with open(sys.argv[1], "rb") as handle:
+    print(json.dumps(normalize(plistlib.load(handle))))
+`;
+  return JSON.parse(execFileSync("python3", ["-c", script, filePath], { encoding: "utf8" }));
+}
+
+async function readProvisioningProfile(profilePath) {
+  try {
+    const profilePlist = execFileSync("security", ["cms", "-D", "-i", profilePath], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const decodedPath = path.join(outputDir, "benyuan-ios-embedded-profile.plist");
+    await writeFile(decodedPath, profilePlist);
+    return readPlistJson(decodedPath);
+  } catch {
+    return null;
+  }
+}
+
+async function collectArchiveDistributionStatus(archive) {
+  const archiveDir = archive?.archivePath;
+  if (!archiveDir) return null;
+
+  const archiveInfoPath = path.join(archiveDir, "Info.plist");
+  if (!(await fileExists(archiveInfoPath))) return null;
+
+  try {
+    const archiveInfo = readPlistJson(archiveInfoPath);
+    const appPath = archiveInfo?.ApplicationProperties?.ApplicationPath ?? "Applications/BenyuanOriginShell.app";
+    const appBundlePath = path.join(archiveDir, "Products", appPath);
+    const embeddedProfilePath = path.join(appBundlePath, "embedded.mobileprovision");
+    const embeddedProfile = (await fileExists(embeddedProfilePath)) ? await readProvisioningProfile(embeddedProfilePath) : null;
+    const signingIdentity = archiveInfo?.ApplicationProperties?.SigningIdentity ?? null;
+    const entitlements = embeddedProfile?.Entitlements ?? {};
+    const provisionedDevices = embeddedProfile?.ProvisionedDevices;
+    const isDistributionIdentity = typeof signingIdentity === "string" && /Apple Distribution|iPhone Distribution/.test(signingIdentity);
+    const isAppStoreProfile = entitlements["beta-reports-active"] === true && !Array.isArray(provisionedDevices);
+
+    return {
+      signingIdentity,
+      profileName: embeddedProfile?.Name ?? null,
+      profileTeam: embeddedProfile?.TeamIdentifier?.[0] ?? null,
+      betaReportsActive: entitlements["beta-reports-active"] === true,
+      provisionedDeviceCount: Array.isArray(provisionedDevices) ? provisionedDevices.length : 0,
+      isDistributionIdentity,
+      isAppStoreProfile,
+      readyForAppStoreConnect: isDistributionIdentity && isAppStoreProfile,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
+  await mkdir(outputDir, { recursive: true });
   const projectYml = await readFile(projectYmlPath, "utf8");
   const iconContents = JSON.parse(await readFile(appIconContentsPath, "utf8"));
   const shellBuild = await readJsonIfPresent(shellBuildPath);
   const nativeSmoke = await readJsonIfPresent(nativeSmokePath);
   const archive = await readJsonIfPresent(archivePath);
+  const archiveDistribution = await collectArchiveDistributionStatus(archive);
 
   const displayName = matchFirst(projectYml, /INFOPLIST_KEY_CFBundleDisplayName:\s*(.+)/);
   const marketingVersion = matchFirst(projectYml, /MARKETING_VERSION:\s*(.+)/);
@@ -110,6 +182,8 @@ async function main() {
     blockers.push("release_archive_missing");
   } else if (archive.signing?.mode !== "automatic" || !archive.signing?.teamId) {
     blockers.push("signed_release_archive_missing");
+  } else if (!archiveDistribution?.readyForAppStoreConnect) {
+    blockers.push("app_store_distribution_archive_missing");
   }
 
   const summary = {
@@ -149,14 +223,16 @@ async function main() {
             configuration: archive.configuration ?? null,
             archivePath: archive.archivePath ?? null,
             signing: archive.signing ?? null,
+            distribution: archiveDistribution,
           }
         : null,
     },
     blockers,
     readyForTestFlightUpload: blockers.length === 0,
     nextManualSteps: [
-      "在 project.yml 中填入真实 staging / production base URL",
-      "设置 BENYUAN_IOS_DEVELOPMENT_TEAM 并完成一次 signed Release archive",
+      "在 Apple Developer / App Store Connect 中确认当前账号属于可发布 App 的 provider",
+      "为 com.fanhao.benyuan.origin.shell 准备 Apple Distribution 证书与 App Store Connect provisioning profile",
+      "用 BENYUAN_IOS_EXPORT_METHOD=app-store-connect npm run ios:shell:export 生成 TestFlight 可上传包",
       "完成一轮真机回归：相机、相册、分享、外链、冷启动、后台恢复",
       "上传 TestFlight 并记录首轮内部安装验证",
     ],

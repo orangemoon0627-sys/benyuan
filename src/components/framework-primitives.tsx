@@ -42,8 +42,7 @@ export function PageScaffold({ children, phase = "collect" }: { children: ReactN
   return (
     <main className={cx(benyuanUiRecipes.pageShell, "benyuan-mainflow", `benyuan-phase-${phase}`)}>
       <div className={cx(benyuanUiRecipes.pageAura, `cosmic-field--${phase}`)} />
-      <div className="cosmic-arc" />
-      <div className="noise-overlay pointer-events-none absolute inset-0 opacity-20" />
+      <div className="noise-overlay pointer-events-none absolute inset-0 opacity-[0.025]" />
       <div className={benyuanUiRecipes.pageContent}>{children}</div>
     </main>
   );
@@ -63,12 +62,10 @@ export function ImmersiveSigil({
   const sizeClass = size === "sm" ? "h-16 w-16" : size === "lg" ? "h-36 w-36" : "h-24 w-24";
 
   return (
-    <div className={cx("relative mx-auto", sizeClass, className)} aria-hidden>
-      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(247,244,236,0.26),rgba(127,106,168,0.12)_34%,rgba(0,0,0,0.78)_58%,transparent_76%)] blur-[2px]" />
-      <div className="absolute inset-[4%] rounded-full border border-[rgba(247,244,236,0.18)] shadow-[0_0_24px_rgba(127,106,168,0.14)]" />
-      <div className="absolute inset-[18%] rounded-full border border-[rgba(216,204,255,0.14)]" />
-      <div className="absolute inset-[32%] rounded-full border border-[rgba(231,194,122,0.22)] bg-[rgba(0,0,0,0.62)] shadow-[0_0_34px_rgba(247,244,236,0.16)]" />
-      <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgba(247,244,236,0.9)] shadow-[0_0_22px_rgba(247,244,236,0.42)]" />
+    <div className={cx("cosmic-sigil relative mx-auto", sizeClass, className)} aria-hidden>
+      <div className="cosmic-sigil__halo" />
+      <div className="cosmic-sigil__core" />
+      <div className="cosmic-sigil__spark" />
     </div>
   );
 }

@@ -1,26 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --void-black: #030305;
-  --singularity-black: #07070b;
-  --aubergine-black: #15111f;
-  --bg-void: #030305;
-  --bg-abyss: #07070b;
-  --bg-surface: #15111f;
-  --text-primary: #f7f4ec;
-  --text-secondary: #d8d6de;
-  --text-tertiary: #8f8899;
-  --text-whisper: #3f394a;
-  --moon-silver: #d8d6de;
-  --starlight-white: #f7f4ec;
-  --nebula-violet: #7f6aa8;
-  --nebula-violet-dim: rgba(127, 106, 168, 0.22);
-  --cosmic-lilac: #b9add8;
-  --accent-gold: #e7c27a;
-  --accent-gold-dim: #bfa16a;
-  --border: rgba(247, 244, 236, 0.1);
+  --void-black: #050611;
+  --singularity-black: #02030a;
+  --aubergine-black: #090816;
+  --bg-void: #050611;
+  --bg-abyss: #090b1f;
+  --bg-surface: #101431;
+  --surface-glass: rgba(190, 196, 228, 0.082);
+  --surface-glass-strong: rgba(210, 215, 242, 0.115);
+  --surface-ink: rgba(9, 11, 30, 0.68);
+  --surface-veil: rgba(238, 241, 255, 0.045);
+  --text-primary: #f7f8ff;
+  --text-secondary: #b7bbd6;
+  --text-tertiary: #7f849f;
+  --text-whisper: #2b304e;
+  --moon-silver: #e4e8f7;
+  --starlight-white: #fbfbff;
+  --nebula-violet: #191638;
+  --nebula-violet-dim: rgba(25, 22, 56, 0.44);
+  --cosmic-lilac: #a1a5c4;
+  --accent-gold: #b8a879;
+  --accent-gold-dim: #746a52;
+  --border: rgba(225, 230, 255, 0.125);
+  --lunar-blue: #171d4a;
+  --lunar-blue-deep: #0c102c;
+  --lunar-blue-night: #060817;
+  --lunar-border: rgba(205, 213, 255, 0.18);
+  --lunar-shadow: rgba(3, 4, 14, 0.46);
   --overlay: rgba(0, 0, 0, 0.9);
-  --glow: rgba(231, 194, 122, 0.2);
+  --glow: rgba(213, 219, 255, 0.12);
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
@@ -59,15 +68,19 @@ html {
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
   -webkit-text-size-adjust: 100%;
+  min-height: 100%;
+  background: var(--void-black);
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background:
-    radial-gradient(circle at 52% 0%, rgba(183, 162, 255, 0.08), transparent 28%),
-    radial-gradient(circle at 50% 78%, rgba(231, 194, 122, 0.08), transparent 34%),
-    linear-gradient(180deg, #030305 0%, #0b0910 46%, #030305 100%);
+    radial-gradient(ellipse at 76% -10%, rgba(91, 96, 162, 0.15), transparent 42%),
+    radial-gradient(ellipse at 18% 88%, rgba(44, 35, 80, 0.22), transparent 48%),
+    linear-gradient(180deg, #0d1232 0%, #090d25 45%, #050714 78%, #02030a 100%);
   color: var(--text-primary);
   font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   line-height: 1.8;
@@ -75,10 +88,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
   font-synthesis-weight: none;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
 }
 
 .benyuan-mainflow {
   font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.benyuan-mainflow * {
+  min-width: 0;
 }
 
 .benyuan-mainflow h1,
@@ -87,9 +107,11 @@ body {
 .benyuan-mainflow h4 {
   font-family: "SF Pro Display", "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   font-weight: 780;
-  letter-spacing: -0.065em;
+  letter-spacing: 0;
   line-height: 0.96;
   text-wrap: balance;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .benyuan-mainflow p,
@@ -107,7 +129,7 @@ h3,
 h4 {
   font-family: ui-serif, Georgia, "Times New Roman", "Noto Serif SC", serif;
   font-weight: 300;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
   text-wrap: balance;
 }
 
@@ -233,22 +255,310 @@ textarea:focus-visible,
 select:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 1px rgba(247, 244, 236, 0.78),
-    0 0 0 4px rgba(127, 106, 168, 0.14);
+    0 0 0 1px rgba(240, 238, 244, 0.72),
+    0 0 0 4px rgba(87, 75, 110, 0.14);
 }
 
 .generative-page {
   isolation: isolate;
 }
 
+.postmodern-page,
+.postmodern-landing {
+  --postmodern-bg: url("/benyuan/generated/postmodern-cosmic-field-1.png");
+  background:
+    radial-gradient(ellipse at 50% -16%, rgba(255, 255, 255, 0.09), transparent 42%),
+    linear-gradient(180deg, rgba(2, 2, 8, 0.28), rgba(2, 2, 8, 0.96)),
+    #020208;
+}
+
+.postmodern-page::before {
+  content: "本源";
+  position: absolute;
+  left: 50%;
+  top: 4.8rem;
+  z-index: 1;
+  pointer-events: none;
+  color: rgba(240, 242, 248, 0.05);
+  font-family: "SF Pro Display", "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  font-size: min(30vw, 10.5rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.78;
+  transform: translateX(-50%) scaleX(1.16);
+  white-space: nowrap;
+}
+
+.postmodern-page::after,
+.postmodern-landing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0%, transparent 26%, rgba(0, 0, 0, 0.64) 100%),
+    radial-gradient(ellipse at 50% 48%, transparent 0 28%, rgba(2, 3, 10, 0.25) 58%, rgba(1, 1, 6, 0.64) 100%);
+}
+
+.postmodern-cosmic-field {
+  z-index: 0;
+  background-image:
+    linear-gradient(180deg, rgba(3, 3, 10, 0.16), rgba(3, 3, 10, 0.84)),
+    var(--postmodern-bg);
+  background-position: center top;
+  background-size: cover;
+  opacity: 0.78;
+  filter: saturate(0.84) contrast(1.08);
+}
+
+.postmodern-cosmic-field::before,
+.postmodern-cosmic-field::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.postmodern-cosmic-field::before {
+  left: 50%;
+  top: 8.2rem;
+  width: min(122vw, 33rem);
+  aspect-ratio: 1 / 1;
+  border: 1px solid rgba(196, 177, 122, 0.22);
+  border-radius: 999px;
+  opacity: 0.45;
+  transform: translateX(-50%) rotate(-16deg) scaleX(1.22);
+  mask-image: linear-gradient(180deg, transparent 0%, black 20%, black 68%, transparent 90%);
+}
+
+.postmodern-cosmic-field::after {
+  left: -18%;
+  bottom: 8%;
+  width: 58vw;
+  max-width: 18rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12), rgba(82, 67, 108, 0.08) 38%, transparent 68%);
+  filter: blur(1px);
+  opacity: 0.55;
+}
+
+.postmodern-landing .postmodern-cosmic-field {
+  opacity: 0.94;
+  background-position: center top;
+}
+
+.postmodern-landing__ghost {
+  position: absolute;
+  inset: 8.2rem -1rem auto auto;
+  z-index: 2;
+  pointer-events: none;
+  color: rgba(240, 242, 248, 0.06);
+  font-family: "SF Pro Display", "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  font-size: clamp(7.5rem, 44vw, 13rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 0.78;
+  writing-mode: vertical-rl;
+}
+
+.postmodern-landing__moon {
+  position: relative;
+  width: min(98vw, 24rem);
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.08) 0 2%, transparent 3%),
+    radial-gradient(circle at 63% 62%, rgba(255, 255, 255, 0.04) 0 9%, transparent 10%),
+    radial-gradient(circle at 48% 48%, rgba(70, 62, 82, 0.5), rgba(4, 4, 10, 0.98) 54%, rgba(0, 0, 0, 1) 70%);
+  box-shadow:
+    0 0 0 1px rgba(247, 246, 238, 0.09),
+    0 0 72px rgba(184, 169, 123, 0.14),
+    inset -18px -20px 42px rgba(255, 255, 255, 0.035),
+    inset 24px 18px 34px rgba(0, 0, 0, 0.62);
+}
+
+.postmodern-landing__moon::before {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  border: 1px solid rgba(196, 177, 122, 0.22);
+  border-radius: 999px;
+  transform: rotate(-18deg) scaleX(1.35);
+  mask-image: linear-gradient(90deg, transparent 0%, black 18%, black 68%, transparent 100%);
+}
+
+.postmodern-landing__moon::after {
+  content: "";
+  position: absolute;
+  right: 13%;
+  top: 31%;
+  width: 0.62rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background: rgba(196, 177, 122, 0.92);
+  box-shadow: 0 0 18px rgba(196, 177, 122, 0.54);
+}
+
+.postmodern-question-stage {
+  position: relative;
+  min-height: 15rem;
+  overflow: visible;
+  padding: 1rem 0.5rem 0.5rem;
+}
+
+.postmodern-question-stage::before {
+  content: "";
+  position: absolute;
+  right: -22%;
+  top: -5.6rem;
+  width: min(92vw, 23rem);
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 45% 45%, rgba(1, 1, 5, 0.98) 0 47%, rgba(232, 228, 208, 0.13) 49%, transparent 68%);
+  opacity: 0.78;
+  filter: drop-shadow(0 0 48px rgba(141, 116, 164, 0.16));
+}
+
+.postmodern-question-stage::after {
+  content: "";
+  position: absolute;
+  right: -8%;
+  top: -2.2rem;
+  width: min(82vw, 21rem);
+  aspect-ratio: 1 / 1;
+  border: 1px solid rgba(196, 177, 122, 0.18);
+  border-radius: 999px;
+  transform: rotate(-15deg) scaleX(1.28);
+  mask-image: linear-gradient(90deg, transparent 0%, black 16%, black 72%, transparent 100%);
+}
+
+.postmodern-question-stage > * {
+  position: relative;
+  z-index: 1;
+}
+
+.postmodern-question-kicker {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(225, 230, 255, 0.12);
+  background: rgba(8, 8, 18, 0.34);
+  padding: 0.38rem 0.78rem;
+  color: var(--text-tertiary);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  backdrop-filter: blur(24px);
+}
+
+.postmodern-question-kicker::before {
+  content: "";
+  width: 0.38rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background: rgba(196, 177, 122, 0.86);
+  box-shadow: 0 0 16px rgba(196, 177, 122, 0.28);
+}
+
+.postmodern-question-title {
+  text-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+.postmodern-choice-card {
+  position: relative;
+}
+
+.postmodern-choice-card::after {
+  content: "";
+  position: absolute;
+  inset: 0.08rem;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.055), transparent 62%),
+    radial-gradient(circle at 88% 50%, rgba(196, 177, 122, 0.08), transparent 25%);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.postmodern-choice-card[data-active="true"]::after,
+.postmodern-choice-card:hover::after {
+  opacity: 1;
+}
+
+.postmodern-option-index {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(225, 230, 255, 0.12);
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(240, 242, 248, 0.8);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.postmodern-choice-card[data-active="true"] .postmodern-option-index {
+  border-color: rgba(196, 177, 122, 0.55);
+  color: rgba(255, 248, 224, 0.96);
+  box-shadow: 0 0 20px rgba(196, 177, 122, 0.16);
+}
+
+.postmodern-meter-card,
+.postmodern-upload-stage {
+  border: 1px solid rgba(225, 230, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(238, 241, 255, 0.07), rgba(14, 15, 28, 0.42)),
+    rgba(5, 6, 16, 0.38);
+  box-shadow:
+    0 18px 52px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(28px);
+}
+
+.postmodern-meter-card input[type="range"] {
+  accent-color: var(--accent-gold);
+}
+
+.postmodern-primary-action::after {
+  content: "";
+  position: absolute;
+  right: 0.82rem;
+  top: 50%;
+  width: 1.88rem;
+  height: 1.88rem;
+  border-radius: 999px;
+  border: 1px solid rgba(196, 177, 122, 0.68);
+  background:
+    radial-gradient(circle, rgba(196, 177, 122, 0.88) 0 11%, transparent 13%),
+    rgba(255, 255, 255, 0.035);
+  box-shadow:
+    0 0 18px rgba(196, 177, 122, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transform: translateY(-50%);
+}
+
+.postmodern-primary-action > * {
+  position: relative;
+  z-index: 1;
+}
+
+.postmodern-topbar {
+  filter: drop-shadow(0 16px 34px rgba(0, 0, 0, 0.22));
+}
+
 .cosmic-field {
   background:
-    radial-gradient(ellipse at 50% 41%, rgba(247, 244, 236, 0.2), transparent 7%),
-    radial-gradient(ellipse at 50% 44%, rgba(231, 194, 122, 0.22), transparent 18%),
-    radial-gradient(ellipse at 50% 70%, rgba(0, 0, 0, 0.96), transparent 20%),
-    radial-gradient(ellipse at 28% 12%, rgba(127, 106, 168, 0.24), transparent 34%),
-    radial-gradient(ellipse at 74% 18%, rgba(247, 244, 236, 0.07), transparent 28%),
-    linear-gradient(180deg, #030305 0%, #0a0810 42%, #030305 100%);
+    radial-gradient(ellipse at 72% -8%, rgba(118, 126, 190, 0.13), transparent 40%),
+    radial-gradient(ellipse at 16% 72%, rgba(43, 34, 82, 0.2), transparent 48%),
+    linear-gradient(180deg, #0e1437 0%, #0a0e29 44%, #060817 78%, #02030a 100%);
 }
 
 .cosmic-field::before,
@@ -259,57 +569,46 @@ select:focus-visible {
 }
 
 .cosmic-field::before {
-  left: 50%;
-  top: 32%;
-  width: min(124vw, 48rem);
-  aspect-ratio: 1.65 / 1;
+  right: max(-15rem, -38vw);
+  top: -12rem;
+  width: min(96vw, 34rem);
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
-  transform: translateX(-50%) rotate(-6deg);
   background:
-    radial-gradient(ellipse at 50% 53%, #000 0 30%, transparent 31%),
-    conic-gradient(from 208deg, transparent 0 14%, rgba(247,244,236,0.12) 18%, rgba(231,194,122,0.76) 30%, rgba(247,244,236,0.35) 42%, rgba(127,106,168,0.2) 56%, transparent 70% 100%);
+    radial-gradient(circle at 42% 38%, rgba(248,249,255,0.48) 0 2%, transparent 3%),
+    radial-gradient(circle at 65% 58%, rgba(248,249,255,0.2) 0 7%, transparent 8%),
+    radial-gradient(circle at 43% 56%, rgba(8,10,33,0.8) 0 31%, rgba(111,117,177,0.2) 47%, rgba(235,238,255,0.055) 62%, transparent 74%);
+  opacity: 0.34;
   filter: blur(0.2px);
-  opacity: 0.86;
-  mask-image: radial-gradient(ellipse, black 40%, transparent 76%);
-  animation: horizonDrift 16s ease-in-out infinite alternate;
+  mask-image: radial-gradient(circle, black 32%, transparent 74%);
+  animation: horizonDrift 28s ease-in-out infinite alternate;
 }
 
 .cosmic-field::after {
-  inset: 0;
-  opacity: 0.42;
-  background-image:
-    radial-gradient(circle at 14% 24%, rgba(247,244,236,0.65) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 72% 18%, rgba(216,204,255,0.5) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 86% 44%, rgba(231,194,122,0.48) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 38% 72%, rgba(247,244,236,0.44) 0 1px, transparent 1.5px);
-  background-size: 190px 230px, 260px 310px, 220px 250px, 320px 360px;
-  mix-blend-mode: screen;
-  animation: starfieldRise 26s linear infinite;
+  left: 50%;
+  top: 8%;
+  width: min(106vw, 32rem);
+  height: min(106vw, 32rem);
+  border: 1px solid rgba(205, 213, 255, 0.095);
+  border-radius: 50%;
+  transform: translateX(-50%) rotate(-13deg) scaleX(1.32);
+  opacity: 0.35;
+  box-shadow:
+    inset 0 0 28px rgba(194, 203, 255, 0.045),
+    0 0 48px rgba(129, 139, 255, 0.05);
+  mask-image: linear-gradient(180deg, transparent 0%, black 22%, black 58%, transparent 76%);
 }
 
 .cosmic-field--processing {
-  background:
-    linear-gradient(90deg, transparent 48.5%, rgba(247,244,236,0.24) 50%, transparent 51.5%),
-    radial-gradient(ellipse at 50% 38%, rgba(247,244,236,0.22), transparent 10%),
-    radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.98), transparent 19%),
-    radial-gradient(ellipse at 52% 14%, rgba(127,106,168,0.24), transparent 42%),
-    linear-gradient(180deg, #030305 0%, #0a0810 52%, #030305 100%);
+  background: inherit;
 }
 
 .cosmic-field--theater {
-  background:
-    radial-gradient(ellipse at 52% 24%, rgba(247,244,236,0.1), transparent 18%),
-    radial-gradient(ellipse at 64% 40%, rgba(127,106,168,0.18), transparent 34%),
-    radial-gradient(ellipse at 50% 78%, rgba(231,194,122,0.12), transparent 32%),
-    linear-gradient(180deg, #030305 0%, #0a0810 52%, #030305 100%);
+  background: inherit;
 }
 
 .cosmic-field--constellation {
-  background:
-    radial-gradient(circle at 64% 42%, rgba(247,244,236,0.2), transparent 10%),
-    radial-gradient(ellipse at 62% 44%, rgba(127,106,168,0.18), transparent 38%),
-    radial-gradient(ellipse at 22% 80%, rgba(231,194,122,0.08), transparent 30%),
-    linear-gradient(180deg, #030305 0%, #090810 50%, #030305 100%);
+  background: inherit;
 }
 
 .benyuan-phase-processing .cosmic-arc {
@@ -327,38 +626,78 @@ select:focus-visible {
 }
 
 .cosmic-arc {
-  position: absolute;
-  pointer-events: none;
-  inset: auto -18% 11% -18%;
-  height: 42vh;
-  border-radius: 50%;
-  border-top: 1px solid rgba(247, 244, 236, 0.18);
-  background:
-    radial-gradient(ellipse at 50% 62%, rgba(0,0,0,0.98) 0 21%, transparent 22%),
-    conic-gradient(from 210deg, transparent 0 16%, rgba(231,194,122,0.18) 24%, rgba(247,244,236,0.28) 34%, rgba(127,106,168,0.18) 48%, transparent 66% 100%);
-  filter: blur(0.3px);
-  opacity: 0.68;
+  display: none;
 }
 
 .cosmic-option-glyph {
   position: relative;
   display: grid;
   place-items: center;
-  width: 3.75rem;
-  height: 3.75rem;
+  width: 2.9rem;
+  height: 2.9rem;
   flex: 0 0 auto;
   border-radius: 999px;
   background:
-    radial-gradient(circle, rgba(247,244,236,0.18), rgba(127,106,168,0.08) 36%, transparent 70%);
+    radial-gradient(circle, rgba(217,214,223,0.16), rgba(49,36,63,0.08) 42%, transparent 72%);
 }
 
 .cosmic-passive-panel {
-  border-color: transparent !important;
+  border-color: var(--lunar-border) !important;
   background:
-    radial-gradient(circle at 50% 28%, rgba(247,244,236,0.1), transparent 20%),
-    linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.08)) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
+    radial-gradient(ellipse at 50% 10%, rgba(225,229,255,0.058), transparent 38%),
+    linear-gradient(180deg, rgba(166,174,220,0.095), rgba(29,34,82,0.075) 48%, rgba(8,10,30,0.16)) !important;
+  box-shadow:
+    0 28px 80px rgba(3,4,13,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.12) !important;
+  backdrop-filter: blur(28px) !important;
+}
+
+.cosmic-open-stage {
+  border-color: var(--lunar-border) !important;
+  background:
+    radial-gradient(ellipse at 50% 26%, rgba(234,237,255,0.055), transparent 34%),
+    linear-gradient(180deg, rgba(166,174,220,0.092), rgba(31,36,88,0.082) 58%, rgba(10,12,36,0.16)) !important;
+  box-shadow:
+    0 26px 78px rgba(2,3,12,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.12) !important;
+  backdrop-filter: blur(28px) !important;
+}
+
+.cosmic-editorial-stage {
+  position: relative;
+}
+
+.cosmic-editorial-stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -2.4rem;
+  width: 8.5rem;
+  height: 8.5rem;
+  border: 1px solid rgba(220,225,255,0.1);
+  border-radius: 50%;
+  transform: translateX(-50%) rotate(-18deg) scaleX(1.25);
+  opacity: 0.6;
+}
+
+.cosmic-editorial-stage::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -1rem;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 999px;
+  background: rgba(223,227,255,0.045);
+  filter: blur(46px);
+  transform: translateX(-50%);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.cosmic-editorial-stage > * {
+  position: relative;
+  z-index: 1;
 }
 
 .cosmic-passive-panel .cosmic-option-glyph {
@@ -371,74 +710,60 @@ select:focus-visible {
   display: grid;
   place-items: center;
   width: min(100%, 22rem);
-  height: 5.25rem;
+  height: 3.25rem;
   margin-inline: auto;
   color: var(--text-primary);
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  letter-spacing: -0.04em;
-  text-shadow: 0 0 18px rgba(247,244,236,0.28);
+  letter-spacing: 0;
+  text-shadow: 0 0 14px rgba(215,211,222,0.16);
 }
 
 .cosmic-orbit-meter::before,
 .cosmic-orbit-meter::after {
   content: "";
   position: absolute;
-  inset: 0.8rem 0;
-  border-radius: 999px / 50%;
+  left: 0;
+  top: 50%;
+  height: 2px;
+  border-radius: 999px;
+  transform: translateY(-50%);
 }
 
 .cosmic-orbit-meter::before {
-  background:
-    conic-gradient(from 92deg, rgba(231,194,122,0.88) 0 var(--meter-value), rgba(247,244,236,0.16) var(--meter-value) 100%);
-  filter: drop-shadow(0 0 16px rgba(231,194,122,0.2));
-  transform: rotate(-2deg);
-  mask: radial-gradient(ellipse at center, transparent 54%, black 56% 62%, transparent 64%);
+  width: 100%;
+  background: rgba(221,226,255,0.18);
 }
 
 .cosmic-orbit-meter::after {
-  border: 1px solid rgba(247,244,236,0.32);
-  box-shadow:
-    0 0 18px rgba(247,244,236,0.12),
-    inset 0 0 22px rgba(0,0,0,0.36);
-  transform: rotate(-2deg);
+  width: var(--meter-value);
+  background: linear-gradient(90deg, rgba(176,188,255,0.6), rgba(249,250,255,0.88));
+  box-shadow: 0 0 14px rgba(213,219,255,0.22);
 }
 
 .cosmic-question-horizon {
-  position: absolute;
-  left: 50%;
-  top: 4%;
-  width: min(112vw, 34rem);
-  aspect-ratio: 1;
-  border-radius: 999px;
-  transform: translateX(-50%);
-  background:
-    radial-gradient(circle at center, rgba(0,0,0,0.98) 0 48%, transparent 49%),
-    conic-gradient(from 224deg, rgba(127,106,168,0.08), rgba(247,244,236,0.7), rgba(231,194,122,0.82), rgba(127,106,168,0.22), rgba(247,244,236,0.55), rgba(127,106,168,0.08));
-  filter: blur(0.25px);
-  opacity: 0.72;
-  mask-image: radial-gradient(circle, black 0 68%, transparent 76%);
+  display: none;
 }
 
 .cosmic-option-select {
   position: relative;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.55rem;
+  height: 1.55rem;
   flex: 0 0 auto;
   border-radius: 999px;
-  border: 2px solid rgba(247,244,236,0.18);
-  background: rgba(0,0,0,0.18);
-  box-shadow: inset 0 0 18px rgba(0,0,0,0.24);
+  border: 1px solid rgba(220,225,255,0.2);
+  background: rgba(8,10,32,0.28);
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.18);
 }
 
 .cosmic-choice-card[data-active="true"] .cosmic-option-select {
-  border-color: rgba(231,194,122,0.95);
+  border-color: rgba(248,249,255,0.92);
   background:
-    radial-gradient(circle, rgba(231,194,122,0.95) 0 26%, transparent 28%),
-    rgba(231,194,122,0.08);
+    radial-gradient(circle, rgba(248,249,255,0.94) 0 24%, transparent 26%),
+    rgba(209,217,255,0.1);
   box-shadow:
-    0 0 24px rgba(231,194,122,0.28),
-    inset 0 0 16px rgba(231,194,122,0.18);
+    0 0 20px rgba(213,219,255,0.22),
+    inset 0 0 14px rgba(213,219,255,0.14);
 }
 
 .cosmic-option-glyph::before,
@@ -450,14 +775,14 @@ select:focus-visible {
 
 .cosmic-option-glyph::before {
   inset: 18%;
-  border: 1px solid rgba(247,244,236,0.22);
-  transform: rotate(-24deg) scaleX(1.55);
+  border: 1px solid rgba(217,214,223,0.14);
+  transform: rotate(-16deg) scaleX(1.25);
 }
 
 .cosmic-option-glyph::after {
-  inset: 36%;
-  background: rgba(231,194,122,0.72);
-  box-shadow: 0 0 22px rgba(231,194,122,0.35);
+  inset: 42%;
+  background: rgba(217,214,223,0.68);
+  box-shadow: 0 0 18px rgba(217,214,223,0.24);
 }
 
 .cosmic-choice-card {
@@ -470,9 +795,121 @@ select:focus-visible {
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: linear-gradient(120deg, transparent, rgba(247,244,236,0.08), transparent 62%);
+  background: linear-gradient(120deg, transparent, rgba(234,237,255,0.055), transparent 62%);
   opacity: 0;
   transition: opacity 180ms ease;
+}
+
+.cosmic-choice-card::before {
+  content: "";
+  position: absolute;
+  left: 0.95rem;
+  top: 50%;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: rgba(236,239,255,0.42);
+  opacity: 0.52;
+  transform: translateY(-50%);
+  box-shadow: 0 0 14px rgba(213,219,255,0.1);
+  transition: opacity 180ms ease;
+}
+
+.cosmic-choice-card[data-active="true"]::before {
+  opacity: 1;
+  background: rgba(255,255,255,0.96);
+}
+
+.cosmic-question-plate {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--lunar-border);
+  border-radius: 2rem;
+  background:
+    radial-gradient(ellipse at 50% 22%, rgba(239,242,255,0.075), transparent 34%),
+    linear-gradient(180deg, rgba(167,175,222,0.105), rgba(35,40,93,0.08) 58%, rgba(8,10,30,0.16));
+  padding: 1.25rem 1.2rem 1.42rem;
+  box-shadow:
+    0 22px 64px rgba(2,3,12,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.13);
+  backdrop-filter: blur(28px);
+}
+
+.cosmic-question-plate::before {
+  content: "";
+  position: absolute;
+  right: -2.3rem;
+  top: -2.5rem;
+  width: 8.6rem;
+  height: 8.6rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 44% 42%, rgba(247,248,255,0.18) 0 2%, transparent 3%),
+    radial-gradient(circle, rgba(223,227,255,0.09), rgba(61,67,136,0.05) 42%, transparent 70%);
+  opacity: 0.72;
+}
+
+.cosmic-question-plate::after {
+  content: "";
+  position: absolute;
+  left: 1.25rem;
+  right: 1.25rem;
+  bottom: 1rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232,236,255,0.18), transparent);
+}
+
+.cosmic-question-plate > * {
+  position: relative;
+  z-index: 1;
+}
+
+.cosmic-upload-stage {
+  border: 1px solid var(--lunar-border);
+  background:
+    radial-gradient(ellipse at 50% 10%, rgba(239,242,255,0.07), transparent 36%),
+    linear-gradient(180deg, rgba(167,175,222,0.1), rgba(24,30,82,0.105));
+  box-shadow:
+    0 18px 58px rgba(3,4,13,0.16),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+  backdrop-filter: blur(26px);
+}
+
+.cosmic-sigil {
+  filter: drop-shadow(0 18px 42px rgba(5,7,24,0.28));
+}
+
+.cosmic-sigil__halo,
+.cosmic-sigil__core,
+.cosmic-sigil__spark {
+  position: absolute;
+  border-radius: 999px;
+}
+
+.cosmic-sigil__halo {
+  inset: 0;
+  border: 1px solid rgba(218,224,255,0.18);
+  transform: rotate(-16deg) scaleX(1.22);
+  box-shadow: 0 0 30px rgba(167,177,255,0.08);
+}
+
+.cosmic-sigil__core {
+  inset: 16%;
+  background:
+    radial-gradient(circle at 42% 38%, rgba(246,248,255,0.3) 0 4%, transparent 6%),
+    radial-gradient(circle at 62% 58%, rgba(246,248,255,0.14) 0 10%, transparent 11%),
+    radial-gradient(circle, rgba(52,58,122,0.3), rgba(11,15,44,0.88) 62%, rgba(3,4,12,0.98));
+  border: 1px solid rgba(218,224,255,0.15);
+}
+
+.cosmic-sigil__spark {
+  left: 50%;
+  top: 50%;
+  width: 0.42rem;
+  height: 0.42rem;
+  background: rgba(249,250,255,0.92);
+  box-shadow: 0 0 18px rgba(231,235,255,0.42);
+  transform: translate(-50%, -50%);
 }
 
 .cosmic-choice-card:hover::after,
@@ -481,55 +918,55 @@ select:focus-visible {
 }
 
 .cosmic-result-hero {
-  border-color: transparent !important;
+  border-color: var(--lunar-border) !important;
   background:
-    radial-gradient(circle at 50% 68%, rgba(0,0,0,0.96) 0 10%, transparent 12%),
-    radial-gradient(ellipse at 50% 60%, rgba(247,244,236,0.26), transparent 18%),
-    radial-gradient(ellipse at 50% 46%, rgba(127,106,168,0.22), transparent 46%),
-    linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.06)) !important;
-  box-shadow: none !important;
+    radial-gradient(ellipse at 50% 18%, rgba(239,242,255,0.072), transparent 34%),
+    linear-gradient(180deg, rgba(166,174,220,0.096), rgba(28,34,88,0.082) 58%, rgba(7,9,29,0.16)) !important;
+  box-shadow:
+    0 26px 82px rgba(2,3,12,0.2),
+    inset 0 1px 0 rgba(255,255,255,0.12) !important;
 }
 
 .cosmic-result-card {
   position: relative;
   display: flex;
-  min-height: 13.5rem;
+  min-height: 8.4rem;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
+  align-items: flex-start;
+  justify-content: center;
   overflow: hidden;
-  border-radius: 1.7rem;
-  border: 1px solid rgba(247,244,236,0.18);
+  border-radius: 1.65rem;
+  border: 1px solid var(--lunar-border);
   background:
-    radial-gradient(circle at 50% 42%, rgba(247,244,236,0.12), transparent 18%),
-    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(20,16,30,0.44) 52%, rgba(0,0,0,0.34));
-  padding: 1.25rem 0.85rem;
-  text-align: center;
-  box-shadow:
-    0 16px 44px rgba(0,0,0,0.34),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-  backdrop-filter: blur(28px);
+    radial-gradient(ellipse at 84% 12%, rgba(239,242,255,0.045), transparent 38%),
+    linear-gradient(180deg, rgba(188,194,232,0.09), rgba(39,45,103,0.07)),
+    var(--surface-ink);
+  padding: 1.18rem;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  backdrop-filter: blur(24px);
 }
 
 .cosmic-result-card::after {
   content: "";
   position: absolute;
-  inset: auto 16% 1.4rem;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(247,244,236,0.46), transparent);
+  inset: 1.25rem auto 1.25rem 1rem;
+  width: 1px;
+  height: auto;
+  background: linear-gradient(180deg, transparent, rgba(224,229,255,0.22), transparent);
 }
 
 .cosmic-result-star {
   position: relative;
   display: block;
-  width: 4.25rem;
-  height: 4.25rem;
-  margin-bottom: 1rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  margin-bottom: 1.1rem;
   border-radius: 999px;
   background:
-    radial-gradient(circle, rgba(231,194,122,0.95) 0 6%, rgba(247,244,236,0.42) 7% 10%, transparent 12%),
-    repeating-conic-gradient(from 0deg, rgba(247,244,236,0.28) 0 4deg, transparent 4deg 18deg);
-  opacity: 0.9;
+    radial-gradient(circle, rgba(232,236,255,0.82) 0 10%, transparent 18%),
+    radial-gradient(circle, rgba(213,219,255,0.12), transparent 68%);
+  opacity: 0.62;
 }
 
 .cosmic-result-star::before,
@@ -543,16 +980,111 @@ select:focus-visible {
 
 .cosmic-result-star::after {
   inset: 36%;
-  border-color: rgba(231,194,122,0.38);
-  box-shadow: 0 0 22px rgba(231,194,122,0.2);
+  border-color: rgba(240,238,244,0.26);
+  box-shadow: 0 0 18px rgba(215,211,222,0.14);
+}
+
+.cosmic-passive-panel,
+.cosmic-open-stage,
+.cosmic-result-hero {
+  border-color: rgba(225, 230, 255, 0.12) !important;
+  background:
+    linear-gradient(180deg, rgba(238, 241, 255, 0.065), rgba(8, 9, 20, 0.42) 54%, rgba(2, 3, 10, 0.74)),
+    rgba(5, 6, 15, 0.44) !important;
+  box-shadow:
+    0 24px 72px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(30px) !important;
+}
+
+.cosmic-open-stage {
+  border-radius: 2.65rem !important;
+}
+
+.cosmic-editorial-stage::before {
+  border-color: rgba(196, 177, 122, 0.18);
+  transform: translateX(-50%) rotate(-18deg) scaleX(1.34);
+}
+
+.cosmic-editorial-stage::after {
+  background: rgba(196, 177, 122, 0.055);
+  filter: blur(54px);
+}
+
+.cosmic-option-select {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-color: rgba(225, 230, 255, 0.16);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.1) 0 7%, transparent 9%),
+    rgba(7, 8, 18, 0.42);
+}
+
+[data-active="true"] .cosmic-option-select,
+.postmodern-choice-card[data-active="true"] .cosmic-option-select {
+  border-color: rgba(196, 177, 122, 0.72);
+  background:
+    radial-gradient(circle, rgba(196, 177, 122, 0.94) 0 22%, transparent 24%),
+    rgba(196, 177, 122, 0.07);
+  box-shadow:
+    0 0 18px rgba(196, 177, 122, 0.24),
+    inset 0 0 14px rgba(196, 177, 122, 0.12);
+}
+
+.cosmic-sigil {
+  filter: drop-shadow(0 20px 52px rgba(0, 0, 0, 0.42));
+}
+
+.cosmic-sigil__halo {
+  border-color: rgba(196, 177, 122, 0.2);
+  transform: rotate(-16deg) scaleX(1.3);
+  box-shadow: 0 0 34px rgba(196, 177, 122, 0.08);
+}
+
+.cosmic-sigil__core {
+  background:
+    radial-gradient(circle at 42% 38%, rgba(246, 248, 255, 0.18) 0 3%, transparent 5%),
+    radial-gradient(circle at 62% 58%, rgba(196, 177, 122, 0.14) 0 8%, transparent 10%),
+    radial-gradient(circle, rgba(42, 35, 58, 0.42), rgba(6, 7, 18, 0.96) 62%, rgba(0, 0, 0, 1));
+  border-color: rgba(225, 230, 255, 0.12);
+}
+
+.cosmic-sigil__spark {
+  background: rgba(196, 177, 122, 0.96);
+  box-shadow: 0 0 20px rgba(196, 177, 122, 0.38);
+}
+
+.cosmic-result-card {
+  min-height: 8.7rem;
+  border-color: rgba(225, 230, 255, 0.12);
+  border-radius: 2rem;
+  background:
+    radial-gradient(ellipse at 86% 16%, rgba(196, 177, 122, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(238, 241, 255, 0.07), rgba(9, 10, 22, 0.56)),
+    rgba(5, 6, 15, 0.4);
+  box-shadow:
+    0 18px 52px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.cosmic-result-card::after {
+  left: auto;
+  right: 1.15rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  inset-block: auto;
+  top: 1.12rem;
+  border-radius: 999px;
+  background: rgba(196, 177, 122, 0.88);
+  box-shadow: 0 0 16px rgba(196, 177, 122, 0.3);
 }
 
 @keyframes horizonDrift {
   from {
-    transform: translateX(-50%) rotate(-7deg) scale(1);
+    transform: translateX(-50%) scale(1);
   }
   to {
-    transform: translateX(-50%) rotate(-2deg) scale(1.05);
+    transform: translateX(-50%) scale(1.035);
   }
 }
 
@@ -573,8 +1105,8 @@ select:focus-visible {
 }
 
 ::selection {
-  background: rgba(212, 175, 55, 0.88);
-  color: #000000;
+  background: rgba(223, 227, 255, 0.9);
+  color: #070816;
 }
 
 ::-webkit-scrollbar {
@@ -589,12 +1121,12 @@ select:focus-visible {
 ::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(212, 175, 55, 0.64), rgba(212, 175, 55, 0.18));
+  background: linear-gradient(180deg, rgba(213, 219, 255, 0.58), rgba(143, 151, 232, 0.2));
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(212, 175, 55, 0.82), rgba(212, 175, 55, 0.28));
+  background: linear-gradient(180deg, rgba(240, 242, 255, 0.78), rgba(143, 151, 232, 0.28));
   background-clip: padding-box;
 }
 

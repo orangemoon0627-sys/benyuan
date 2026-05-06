@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { GlassPanel, MetaPill, PrimaryButton, SecondaryButton, SectionTitle } from "@/components/framework-primitives";
-import { getBenyuanShellInfo, pickImagesWithBenyuanNativeShell, type BenyuanNativeImageSource, type BenyuanShellInfo } from "@/lib/benyuan-native-shell";
+import { getBenyuanShellInfo, hasBenyuanNativeCapability, pickImagesWithBenyuanNativeShell, type BenyuanNativeImageSource, type BenyuanShellInfo } from "@/lib/benyuan-native-shell";
 import type { BenyuanUploadedAssetRef } from "@/lib/benyuan-v3-types";
 
 async function uploadNativePickedFiles(files: File[], source: BenyuanNativeImageSource) {
@@ -28,7 +28,7 @@ async function uploadNativePickedFiles(files: File[], source: BenyuanNativeImage
 
 export function NativeHandoffSmoke() {
   const searchParams = useSearchParams();
-  const [shellInfo, setShellInfo] = useState<BenyuanShellInfo | null>(null);
+  const [shellInfo] = useState<BenyuanShellInfo | null>(() => getBenyuanShellInfo());
   const [status, setStatus] = useState("等待触发 native smoke...");
   const [pickedFiles, setPickedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -37,11 +37,7 @@ export function NativeHandoffSmoke() {
   const [error, setError] = useState<string | null>(null);
   const autorunRef = useRef(false);
 
-  useEffect(() => {
-    setShellInfo(getBenyuanShellInfo());
-  }, []);
-
-  const canPick = useMemo(() => Boolean(shellInfo?.bridge?.includes("pickImages")), [shellInfo]);
+  const canPick = useMemo(() => hasBenyuanNativeCapability("pickImages"), []);
 
   useEffect(() => {
     const nextPreviewUrls = pickedFiles.map((file) => URL.createObjectURL(file));

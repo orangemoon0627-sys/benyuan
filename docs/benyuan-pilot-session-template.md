@@ -55,5 +55,5 @@
 - 是否达到“有效 session”：`yes` / `no`
 - 是否出现 blocker：`yes` / `no`
 - 下一步：
-  - 
-  - 
+  -
+  -

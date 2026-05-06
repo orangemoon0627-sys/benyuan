@@ -1,8 +1,8 @@
 # 本源 Generative Cosmic UI PRD
 
-> 版本：vNext · Generative Cosmic Edition  
-> 日期：2026-04-25  
-> 范围：主流程 `/collect → /processing/benyuan → /theater → /constellation`  
+> 版本：vNext · Generative Cosmic Edition
+> 日期：2026-04-25
+> 范围：主流程 `/collect → /processing/benyuan → /theater → /constellation`
 > 原则：不改功能、不改 API、不改 schema，只重构视觉语言、信息层级、交互手感与状态表达。
 
 ---
@@ -83,16 +83,16 @@
 
 ### 视觉叙事
 
-1. `/collect`：事件视界  
+1. `/collect`：事件视界
    用户面对第一个引力问题。回答不是选择按钮，而是让自己靠近某条轨道。
 
-2. `/processing/benyuan`：物质显影  
+2. `/processing/benyuan`：物质显影
    用户的线索被吸入、压缩、升空，形成可见结构。
 
-3. `/theater`：轨道偏转  
+3. `/theater`：轨道偏转
    剧场不是说明页，而是一个生成场景。用户每次选择都像一次轨道偏转。
 
-4. `/constellation`：星图成形  
+4. `/constellation`：星图成形
    结果不是报告，而是一个短结果流。原型先显形，完整解释默认折叠。
 
 ### 空间语言
