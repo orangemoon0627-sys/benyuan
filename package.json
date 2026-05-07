@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:staging:dry": "bash scripts/deploy-staging.sh --dry-run",
+    "test:product:gate": "node scripts/benyuan-product-test-gate.mjs",
+    "smoke:product:gate:contract": "node scripts/benyuan-product-test-gate-contract-smoke.mjs",
     "smoke:deploy:artifact": "node scripts/benyuan-deploy-artifact-smoke.mjs",
     "smoke:flow": "node --experimental-strip-types scripts/smoke-flow.mjs",
     "smoke:flow:deep": "BENYUAN_MODE=deep node --experimental-strip-types scripts/smoke-flow.mjs",
