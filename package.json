@@ -17,6 +17,7 @@
     "smoke:runtime:hybrid": "node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL??'http://localhost:3000'; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); const data=await res.json(); if(!data.runtime.fallbackActive) throw new Error('expected fallback'); console.log(JSON.stringify(data.runtime));\"",
     "smoke:runtime:page": "node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL??'http://localhost:3000'; const res=await fetch(base + '/lab/runtime'); if(!res.ok) throw new Error('runtime page not reachable'); console.log('runtime-page:ok');\"",
     "smoke:runtime:gate": "node scripts/benyuan-runtime-gate-smoke.mjs",
+    "smoke:processing:ui": "node scripts/benyuan-processing-ui-contract-smoke.mjs",
     "smoke:theater:ui": "node scripts/benyuan-theater-ui-contract-smoke.mjs",
     "smoke:store:empty": "node scripts/benyuan-store-empty-smoke.mjs",
     "ios:shell:regression": "node scripts/benyuan-ios-regression.mjs",

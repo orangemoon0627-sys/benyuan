@@ -52,9 +52,9 @@ test("processing presentation collapses empty state to a single waiting message"
   });
 
   assert.equal(view.backHref, "/collect");
-  assert.equal(view.eyebrow, "等待开始");
-  assert.equal(view.title, "当前还没有待继续的显影任务。");
-  assert.equal(view.description, "先回到特征收集页。");
+  assert.equal(view.eyebrow, "等待显影");
+  assert.equal(view.title, "线索未至");
+  assert.equal(view.description, "先回到问题。");
 });
 
 test("processing presentation keeps only one stage sentence while running", () => {

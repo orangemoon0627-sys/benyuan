@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, RefreshCcw } from "lucide-react";
-import { ImmersivePassiveState, PrimaryButton, SecondaryButton } from "@/components/framework-primitives";
+import { GlassPanel, ImmersiveSigil, ImmersiveTopBar, PrimaryButton, SecondaryButton } from "@/components/framework-primitives";
+import { benyuanUiRecipes, cx } from "@/config/benyuan-ui-recipes";
 import { buildProcessingPresentation } from "@/lib/benyuan-mainflow-presentation";
 import {
   BENYUAN_PENDING_PART1_KEY,
@@ -17,30 +18,32 @@ import {
 
 const stageLabels = {
   part1: [
-    { key: "part1_submit", title: "收束线索", detail: "正在把你的回答合拢。", estimateSec: 6 },
-    { key: "multimodal", title: "解析光谱", detail: "审美线索正在显出纹理。", estimateSec: 90 },
-    { key: "director", title: "构建剧场", detail: "正在把你的线索折成一幕剧场。", estimateSec: 95 },
-    { key: "handoff", title: "剧场就位", detail: "下一幕正在靠近。", estimateSec: 4 },
+    { key: "part1_submit", title: "收束线索", detail: "正在把你的回答合拢。", paceSec: 6 },
+    { key: "multimodal", title: "解析光谱", detail: "审美线索正在显出纹理。", paceSec: 90 },
+    { key: "director", title: "构建剧场", detail: "正在把你的线索折成一幕剧场。", paceSec: 95 },
+    { key: "handoff", title: "剧场就位", detail: "下一幕正在靠近。", paceSec: 4 },
   ],
   constellation: [
-    { key: "part2_submit", title: "记录选择", detail: "正在收束你的剧场轨迹。", estimateSec: 6 },
-    { key: "analyst", title: "折成星图", detail: "星图正在从暗处浮现。", estimateSec: 120 },
-    { key: "handoff", title: "原型显形", detail: "准备进入结果页。", estimateSec: 4 },
+    { key: "part2_submit", title: "记录选择", detail: "正在收束你的剧场轨迹。", paceSec: 6 },
+    { key: "analyst", title: "折成星图", detail: "星图正在从暗处浮现。", paceSec: 120 },
+    { key: "handoff", title: "原型显形", detail: "准备进入结果页。", paceSec: 4 },
   ],
 } as const;
 
 type RitualPhase = keyof typeof stageLabels;
 type StageStatus = "pending" | "running" | "done" | "failed";
-type StageRuntime = { label?: string; provider?: string; model?: string; mode?: string; request_id?: string; error?: string };
+type StageRuntime = { label?: string; error?: string };
 
 type StageState = {
   key: string;
   title: string;
   detail: string;
-  estimateSec: number;
+  paceSec: number;
   status: StageStatus;
   runtime?: StageRuntime;
 };
+
+type ProcessingState = "empty" | "running" | "error" | "complete";
 
 function readJson<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -123,11 +126,22 @@ function updatePendingPart2(patch: Partial<BenyuanPendingPart2>) {
   writeJson(BENYUAN_PENDING_PART2_KEY, { ...current, ...patch, checkpoint: { ...current.checkpoint, ...patch.checkpoint } });
 }
 
+function processingPhaseLabel(phase: RitualPhase) {
+  return phase === "part1" ? "剧场显影" : "星图显影";
+}
+
+function processingStateLabel(state: ProcessingState) {
+  if (state === "empty") return "等待开始";
+  if (state === "error") return "显影暂停";
+  if (state === "complete") return "即将抵达";
+  return "显影中";
+}
+
 function RitualRunner({ phase, onRetry }: { phase: RitualPhase; onRetry: () => void }) {
   const router = useRouter();
-  const [stages, setStages] = useState<StageState[]>(() => buildResumedStages(phase));
+  const [stages, setStages] = useState<StageState[]>(() => buildInitialStages(phase));
   const [stageClock, setStageClock] = useState(() => Date.now());
-  const [activeStageStartedAt, setActiveStageStartedAt] = useState<number | null>(() => readActiveStageStartedAt(phase));
+  const [activeStageStartedAt, setActiveStageStartedAt] = useState<number | null>(null);
   const [headline, setHeadline] = useState(phase === "part1" ? "正在把你的输入折叠成下一幕。" : "正在把这段旅程显影成星图。");
   const [body, setBody] = useState(
     phase === "part1"
@@ -323,6 +337,8 @@ function RitualRunner({ phase, onRetry }: { phase: RitualPhase; onRetry: () => v
         setError(null);
         setEmptyStateHref(null);
         setEmptyStateLabel(null);
+        setStages(buildResumedStages(phase));
+        setActiveStageStartedAt(readActiveStageStartedAt(phase));
         if (phase === "part1") {
           await runPart1Flow();
         } else {
@@ -357,7 +373,7 @@ function RitualRunner({ phase, onRetry }: { phase: RitualPhase; onRetry: () => v
     if (!runningStage) return Math.max(10, Math.min(96, Math.round((done / stages.length) * 100)));
 
     const elapsedMs = activeStageStartedAt ? Math.max(0, stageClock - activeStageStartedAt) : 0;
-    const estimatedMs = Math.max((runningStage.estimateSec ?? 1) * 1000, 1);
+    const estimatedMs = Math.max((runningStage.paceSec ?? 1) * 1000, 1);
     const stageFraction = activeStageStartedAt ? Math.max(0.16, Math.min(0.82, (elapsedMs / estimatedMs) * 0.82)) : 0.38;
 
     return Math.max(10, Math.min(96, Math.round(((done + stageFraction) / stages.length) * 100)));
@@ -377,33 +393,69 @@ function RitualRunner({ phase, onRetry }: { phase: RitualPhase; onRetry: () => v
     activeStageDetail: visibleStageDetail,
     errorMessage: error ?? undefined,
   });
+  const processingState: ProcessingState = emptyStateHref ? "empty" : error ? "error" : running ? "running" : "complete";
+  const activeStageIndex = Math.max(0, stages.findIndex((item) => item.status === "running" || item.status === "failed"));
+  const visualStageIndex = processingState === "complete" ? stages.length - 1 : activeStageIndex;
+  const actionBlock = error ? (
+    <div className="flex flex-wrap items-center justify-center gap-3">
+      <PrimaryButton type="button" onClick={onRetry} className="min-h-12 gap-2 px-6 py-3 text-sm">
+        <RefreshCcw className="h-4 w-4" strokeWidth={1.5} />
+        重新显影
+      </PrimaryButton>
+      <SecondaryButton type="button" onClick={() => router.push(phase === "part1" ? "/collect" : "/theater")} className="min-h-12 px-6 py-3 text-sm">
+        回到上一步
+      </SecondaryButton>
+    </div>
+  ) : emptyStateHref ? (
+    <PrimaryButton type="button" onClick={() => router.push(emptyStateHref)} className="min-h-12 gap-2 px-6 py-3 text-sm">
+      <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
+      {emptyStateLabel ?? "返回上一步"}
+    </PrimaryButton>
+  ) : null;
 
   return (
-    <ImmersivePassiveState
-      backHref={presentation.backHref}
-      topProgressValue={presentation.progress}
-      eyebrow={presentation.eyebrow}
-      title={presentation.title}
-      description={presentation.description}
-      actions={
-        error ? (
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <PrimaryButton type="button" onClick={onRetry} className="min-h-12 gap-2 px-6 py-3 text-sm">
-              <RefreshCcw className="h-4 w-4" strokeWidth={1.5} />
-              重试当前阶段
-            </PrimaryButton>
-            <SecondaryButton type="button" onClick={() => router.push(phase === "part1" ? "/collect" : "/theater")} className="min-h-12 px-6 py-3 text-sm">
-              回到上一步
-            </SecondaryButton>
+    <div className={benyuanUiRecipes.immersiveFlowNarrow}>
+      <ImmersiveTopBar backHref={presentation.backHref} progressValue={presentation.progress} progressText={processingPhaseLabel(phase)} />
+
+      <GlassPanel
+        data-processing-phase={phase}
+        data-processing-state={processingState}
+        className={cx(
+          "cosmic-passive-panel processing-lens-stage mx-auto min-h-[67vh] w-full max-w-[30rem]",
+          processingState === "empty" && "processing-lens-stage--empty",
+          processingState === "error" && "processing-lens-stage--error",
+          processingState === "complete" && "processing-lens-stage--complete",
+        )}
+      >
+        <div className="processing-lens-stage__inner">
+          <div className="processing-core-singularity" aria-hidden>
+            <div className="processing-core-beam" />
+            <ImmersiveSigil size="md" className="processing-core-sigil" />
           </div>
-        ) : emptyStateHref ? (
-          <PrimaryButton type="button" onClick={() => router.push(emptyStateHref)} className="min-h-12 gap-2 px-6 py-3 text-sm">
-            <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
-            {emptyStateLabel ?? "返回上一步"}
-          </PrimaryButton>
-        ) : null
-      }
-    />
+
+          <p className="processing-ritual-eyebrow">{processingStateLabel(processingState)}</p>
+          <h2 className="processing-ritual-title">{presentation.title}</h2>
+          <p className="processing-ritual-body">{presentation.description}</p>
+
+          <div className="processing-stage-rail" aria-label={`显影进度 ${presentation.progress}%`}>
+            <div className="processing-stage-rail__track">
+              <div className="processing-stage-rail__fill" style={{ width: `${presentation.progress}%` }} />
+            </div>
+            <div className="processing-stage-rail__dots" aria-hidden>
+              {stages.map((stage, index) => (
+                <span
+                  key={stage.key}
+                  data-state={stage.status}
+                  data-active={index === visualStageIndex ? "true" : "false"}
+                />
+              ))}
+            </div>
+          </div>
+
+          {actionBlock ? <div className="processing-bottom-intent">{actionBlock}</div> : null}
+        </div>
+      </GlassPanel>
+    </div>
   );
 }
 

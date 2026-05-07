@@ -82,9 +82,9 @@ export function buildProcessingPresentation(input: {
   if (input.kind === "empty") {
     return {
       backHref,
-      eyebrow: "显影",
-      title: "这一页暂时没有抵达",
-      description: input.phase === "part1" ? "先回到当前问题。" : "先回到剧场。",
+      eyebrow: "等待显影",
+      title: "线索未至",
+      description: input.phase === "part1" ? "先回到问题。" : "先回到剧场。",
       progress: 0,
     };
   }
@@ -92,9 +92,9 @@ export function buildProcessingPresentation(input: {
   if (input.kind === "error") {
     return {
       backHref,
-      eyebrow: "已暂停",
-      title: "显影暂时停住",
-      description: input.errorMessage ?? "可以再试一次，或先回到上一步。",
+      eyebrow: "显影暂停",
+      title: "显影被中断",
+      description: "线索仍在，可以重新进入。",
       progress: Math.max(14, input.progress),
     };
   }
