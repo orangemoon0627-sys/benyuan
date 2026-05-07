@@ -4,6 +4,8 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
+import { collectIosProjectConfig } from "./benyuan-ios-testflight-preflight-lib.mjs";
+
 const root = process.cwd();
 const outputDir = path.join(root, "output");
 const outputPath = path.join(outputDir, "benyuan-ios-testflight-preflight.json");
@@ -19,22 +21,6 @@ const appIconContentsPath = path.join(
 const shellBuildPath = path.join(outputDir, "benyuan-ios-shell-build.json");
 const nativeSmokePath = path.join(outputDir, "benyuan-ios-native-smoke.json");
 const archivePath = path.join(outputDir, "benyuan-ios-shell-archive.json");
-
-function matchFirst(text, pattern) {
-  const match = text.match(pattern);
-  return match?.[1]?.trim() ?? null;
-}
-
-function collectConfigBlock(text, configName) {
-  const escaped = configName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`\\n\\s{8}${escaped}:\\n([\\s\\S]*?)(?=\\n\\s{8}[A-Za-z]|\\n\\s{4}[A-Za-z]|$)`);
-  return text.match(pattern)?.[1] ?? "";
-}
-
-function extractInfoValue(block, key) {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return matchFirst(block, new RegExp(`${escaped}:\\s*(.+)`));
-}
 
 function isPlaceholderReleaseUrl(raw) {
   if (!raw) return true;
@@ -141,16 +127,9 @@ async function main() {
   const nativeSmoke = await readJsonIfPresent(nativeSmokePath);
   const archive = await readJsonIfPresent(archivePath);
   const archiveDistribution = await collectArchiveDistributionStatus(archive);
-
-  const displayName = matchFirst(projectYml, /INFOPLIST_KEY_CFBundleDisplayName:\s*(.+)/);
-  const marketingVersion = matchFirst(projectYml, /MARKETING_VERSION:\s*(.+)/);
-  const buildNumber = matchFirst(projectYml, /CURRENT_PROJECT_VERSION:\s*(.+)/);
-  const bundleId = matchFirst(projectYml, /PRODUCT_BUNDLE_IDENTIFIER:\s*(.+)/);
-
-  const stagingBlock = collectConfigBlock(projectYml, "Staging");
-  const releaseBlock = collectConfigBlock(projectYml, "Release");
-  const stagingUrl = extractInfoValue(stagingBlock, "INFOPLIST_KEY_BenyuanShellStagingBaseURL");
-  const releaseUrl = extractInfoValue(releaseBlock, "INFOPLIST_KEY_BenyuanShellProductionBaseURL");
+  const projectConfig = collectIosProjectConfig(projectYml);
+  const { displayName, marketingVersion, buildNumber, bundleId } = projectConfig.shell;
+  const { stagingBaseUrl: stagingUrl, productionBaseUrl: releaseUrl } = projectConfig.releaseConfig;
 
   const iconImages = Array.isArray(iconContents.images) ? iconContents.images : [];
   const iconFiles = iconImages.map((image) => image.filename).filter(Boolean);
