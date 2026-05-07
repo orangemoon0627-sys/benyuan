@@ -61,3 +61,39 @@ export function collectIosProjectConfig(projectYml) {
     },
   };
 }
+
+export function collectTestFlightExportStatus(distributionSummary, exportSummary) {
+  const ipaName = Object.keys(distributionSummary ?? {})[0];
+  const entries = ipaName ? distributionSummary[ipaName] : null;
+  const app = Array.isArray(entries) ? entries[0] : null;
+  if (!app) return null;
+
+  const certificateType = app.certificate?.type ?? null;
+  const profileName = app.profile?.name ?? null;
+  const entitlements = app.entitlements ?? {};
+  const isDistributionCertificate =
+    typeof certificateType === "string" &&
+    /Apple Distribution|iPhone Distribution|Cloud Managed Apple Distribution/.test(certificateType);
+  const isAppStoreProfile =
+    entitlements["beta-reports-active"] === true &&
+    entitlements["get-task-allow"] === false &&
+    typeof profileName === "string" &&
+    /Store Provisioning Profile|App Store/i.test(profileName);
+  const readyForAppStoreConnect =
+    exportSummary?.method === "app-store-connect" && isDistributionCertificate && isAppStoreProfile;
+
+  return {
+    ipaPath: exportSummary?.ipaPath ?? null,
+    method: exportSummary?.method ?? null,
+    certificateType,
+    certificateSha1: app.certificate?.SHA1 ?? null,
+    profileName,
+    profileUuid: app.profile?.UUID ?? null,
+    teamId: app.team?.id ?? entitlements["com.apple.developer.team-identifier"] ?? null,
+    betaReportsActive: entitlements["beta-reports-active"] === true,
+    getTaskAllow: entitlements["get-task-allow"] ?? null,
+    isDistributionCertificate,
+    isAppStoreProfile,
+    readyForAppStoreConnect,
+  };
+}

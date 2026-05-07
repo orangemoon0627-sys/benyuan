@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { collectIosProjectConfig } from "./benyuan-ios-testflight-preflight-lib.mjs";
+import {
+  collectIosProjectConfig,
+  collectTestFlightExportStatus,
+} from "./benyuan-ios-testflight-preflight-lib.mjs";
 
 test("collectIosProjectConfig reads direct XcodeGen shell base URL settings", () => {
   const config = collectIosProjectConfig(`
@@ -64,5 +67,49 @@ targets:
   assert.deepEqual(config.releaseConfig, {
     stagingBaseUrl: "https://staging-benyuan.orangemoonai.cn",
     productionBaseUrl: "https://benyuan.orangemoonai.cn",
+  });
+});
+
+test("collectTestFlightExportStatus accepts Cloud Managed Apple Distribution exports", () => {
+  const status = collectTestFlightExportStatus(
+    {
+      "BenyuanOriginShell.ipa": [
+        {
+          certificate: {
+            SHA1: "2948BD146774A8187BBF02719E451A9188F6C815",
+            type: "Cloud Managed Apple Distribution",
+          },
+          entitlements: {
+            "application-identifier": "CY3DD3J5CU.com.fanhao.benyuan.origin.shell",
+            "beta-reports-active": true,
+            "com.apple.developer.team-identifier": "CY3DD3J5CU",
+            "get-task-allow": false,
+          },
+          profile: {
+            name: "iOS Team Store Provisioning Profile: com.fanhao.benyuan.origin.shell",
+            UUID: "80ddd1ca-155c-48cd-be33-eb627c14a9a2",
+          },
+          team: {
+            id: "CY3DD3J5CU",
+          },
+        },
+      ],
+    },
+    { ipaPath: "/tmp/BenyuanOriginShell.ipa", method: "app-store-connect" },
+  );
+
+  assert.deepEqual(status, {
+    ipaPath: "/tmp/BenyuanOriginShell.ipa",
+    method: "app-store-connect",
+    certificateType: "Cloud Managed Apple Distribution",
+    certificateSha1: "2948BD146774A8187BBF02719E451A9188F6C815",
+    profileName: "iOS Team Store Provisioning Profile: com.fanhao.benyuan.origin.shell",
+    profileUuid: "80ddd1ca-155c-48cd-be33-eb627c14a9a2",
+    teamId: "CY3DD3J5CU",
+    betaReportsActive: true,
+    getTaskAllow: false,
+    isDistributionCertificate: true,
+    isAppStoreProfile: true,
+    readyForAppStoreConnect: true,
   });
 });

@@ -4,7 +4,10 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
-import { collectIosProjectConfig } from "./benyuan-ios-testflight-preflight-lib.mjs";
+import {
+  collectIosProjectConfig,
+  collectTestFlightExportStatus,
+} from "./benyuan-ios-testflight-preflight-lib.mjs";
 
 const root = process.cwd();
 const outputDir = path.join(root, "output");
@@ -21,6 +24,8 @@ const appIconContentsPath = path.join(
 const shellBuildPath = path.join(outputDir, "benyuan-ios-shell-build.json");
 const nativeSmokePath = path.join(outputDir, "benyuan-ios-native-smoke.json");
 const archivePath = path.join(outputDir, "benyuan-ios-shell-archive.json");
+const exportSummaryPath = path.join(outputDir, "benyuan-ios-shell-export.json");
+const distributionSummaryPath = path.join(outputDir, "testflight-export", "DistributionSummary.plist");
 
 function isPlaceholderReleaseUrl(raw) {
   if (!raw) return true;
@@ -127,6 +132,10 @@ async function main() {
   const nativeSmoke = await readJsonIfPresent(nativeSmokePath);
   const archive = await readJsonIfPresent(archivePath);
   const archiveDistribution = await collectArchiveDistributionStatus(archive);
+  const exportSummary = await readJsonIfPresent(exportSummaryPath);
+  const exportDistribution = (await fileExists(distributionSummaryPath))
+    ? collectTestFlightExportStatus(readPlistJson(distributionSummaryPath), exportSummary)
+    : null;
   const projectConfig = collectIosProjectConfig(projectYml);
   const { displayName, marketingVersion, buildNumber, bundleId } = projectConfig.shell;
   const { stagingBaseUrl: stagingUrl, productionBaseUrl: releaseUrl } = projectConfig.releaseConfig;
@@ -157,11 +166,12 @@ async function main() {
   if (!nativeSmoke) {
     blockers.push("native_smoke_artifact_missing");
   }
+  const hasReadyExport = exportDistribution?.readyForAppStoreConnect === true;
   if (!archive) {
     blockers.push("release_archive_missing");
   } else if (archive.signing?.mode !== "automatic" || !archive.signing?.teamId) {
     blockers.push("signed_release_archive_missing");
-  } else if (!archiveDistribution?.readyForAppStoreConnect) {
+  } else if (!archiveDistribution?.readyForAppStoreConnect && !hasReadyExport) {
     blockers.push("app_store_distribution_archive_missing");
   }
 
@@ -203,6 +213,15 @@ async function main() {
             archivePath: archive.archivePath ?? null,
             signing: archive.signing ?? null,
             distribution: archiveDistribution,
+          }
+        : null,
+      export: exportSummary
+        ? {
+            generatedAt: exportSummary.generatedAt ?? null,
+            exportDir: exportSummary.exportDir ?? null,
+            ipaPath: exportSummary.ipaPath ?? null,
+            method: exportSummary.method ?? null,
+            distribution: exportDistribution,
           }
         : null,
     },
