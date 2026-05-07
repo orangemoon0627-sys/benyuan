@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, Film, Music } from "lucide-react";
-import { DetailCard, GlassPanel, ImmersivePassiveState, ImmersiveSigil, ImmersiveTopBar, PrimaryButton, SecondaryButton } from "@/components/framework-primitives";
+import { ArrowDown, BookOpen, Film, Music } from "lucide-react";
+import { GlassPanel, ImmersivePassiveState, ImmersiveSigil, ImmersiveTopBar, PrimaryButton, SecondaryButton } from "@/components/framework-primitives";
 import { benyuanUiRecipes, cx } from "@/config/benyuan-ui-recipes";
 import { buildConstellationShortFlow } from "@/lib/benyuan-mainflow-presentation";
 import { BENYUAN_SESSION_STORAGE_KEY, type BenyuanSessionState } from "@/lib/benyuan-v3-client-session";
@@ -26,15 +26,6 @@ const recommendationMeta = [
   { key: "films", label: "电影", Icon: Film },
   { key: "music", label: "音乐", Icon: Music },
 ] as const;
-
-function ResultSectionHeading({ label, title }: { label: string; title: string }) {
-  return (
-    <div className="mb-5">
-      <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">{label}</p>
-      <h3 className="mt-2 text-[1.25rem] font-semibold tracking-[0em] text-[var(--text-primary)] md:text-[1.45rem]">{title}</h3>
-    </div>
-  );
-}
 
 function escapeXml(value: string) {
   return value
@@ -297,6 +288,14 @@ export function BenyuanConstellationView() {
   const essenceLead = shortFlow?.essence.lead ?? "--";
   const essenceSupport = shortFlow?.essence.support ?? "--";
   const primaryActionStep = shortFlow?.moment.path?.actionable_steps[0] ?? shortFlow?.moment.path?.title ?? "";
+  const primaryTension = shortFlow?.moment.tension;
+  const primaryPath = shortFlow?.moment.path;
+  const foldedNarrative = shortFlow?.folded.narrativeParagraphs ?? narrativeParagraphs;
+  const recommendationLead = [
+    data?.recommendations.books[0] ? `${data.recommendations.books[0].title} · ${data.recommendations.books[0].author}` : null,
+    data?.recommendations.films[0] ? `${data.recommendations.films[0].title} · ${data.recommendations.films[0].director}` : null,
+    data?.recommendations.music[0] ? `${data.recommendations.music[0].artist} · ${data.recommendations.music[0].album}` : null,
+  ].filter(Boolean).join(" / ");
 
   function resetActionFeedback(kind: "share" | "png") {
     if (resetTimerRef.current !== null) {
@@ -382,189 +381,132 @@ export function BenyuanConstellationView() {
   }
 
   return (
-    <div className={cx(benyuanUiRecipes.immersiveFlowNarrow, "cosmic-result-one-shot")}>
-      <ImmersiveTopBar backHref="/theater" progressValue={100} />
+    <div className={cx(benyuanUiRecipes.immersiveFlowNarrow, "constellation-moon-scroll")} data-constellation-state="ready">
+      <ImmersiveTopBar backHref="/theater" progressValue={100} progressText="星图抵达" />
 
-      <GlassPanel className={cx(benyuanUiRecipes.heroAccentPanel, "cosmic-result-hero mx-auto w-full max-w-[30rem]")}>
-        <div className="mx-auto flex min-h-[52vh] max-w-[21rem] flex-col items-center justify-center text-center md:max-w-[25rem]">
-          <ImmersiveSigil size="md" />
-          <h2 className="mt-6 max-w-[18rem] text-[3.35rem] font-black leading-[0.9] tracking-[0em] text-[var(--text-primary)] md:max-w-none md:text-[5.2rem]">{data.archetype.name}</h2>
-          <p className="mt-4 text-[10px] uppercase tracking-[0.32em] text-[var(--text-tertiary)]">{data.archetype.english_name}</p>
-          <div className="mt-6 h-px w-16 bg-[linear-gradient(90deg,transparent,rgba(217,214,223,0.54),transparent)]" />
-          <p className="mt-7 max-w-[18.5rem] text-[1.12rem] leading-[1.62] text-[var(--text-primary)] md:max-w-[23rem] md:text-[1.48rem]">{data.archetype.core_essence}</p>
-          <p className="cosmic-result-hero-hint">继续向下接收星图</p>
+      <GlassPanel className="constellation-lens-stage mx-auto w-full max-w-[30rem]" data-constellation-section="archetype">
+        <div className="constellation-lens-stage__inner">
+          <div className="constellation-core-orb" aria-hidden>
+            <div className="constellation-core-orb__axis" />
+            <ImmersiveSigil size="md" className="constellation-core-orb__sigil" />
+          </div>
+          <p className="constellation-kicker">精神星图</p>
+          <h2 className="constellation-archetype-title">{data.archetype.name}</h2>
+          <p className="constellation-archetype-subtitle">{data.archetype.english_name}</p>
+          <p className="constellation-essence-copy">{data.archetype.core_essence}</p>
+          <a href="#constellation-map" className="constellation-scroll-cue" aria-label="继续查看星图">
+            <ArrowDown className="h-4 w-4" strokeWidth={1.5} />
+          </a>
         </div>
       </GlassPanel>
 
-      <div className="cosmic-result-sequence mx-auto grid w-full max-w-[30rem] grid-cols-1 gap-2.5">
-        <button
-          type="button"
-          onClick={() => activeDimension && setActiveDimensionKey(activeDimension.key)}
-          className="cosmic-result-card"
-          data-benyuan-pressable="true"
-        >
-          <span className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">ESSENCE</span>
-          <span className="mt-2 text-[1.22rem] font-black tracking-[0em] text-[var(--text-primary)] md:text-[1.5rem]">本质</span>
-          <span className="mt-1 text-[10px] text-[var(--text-secondary)]">为什么出发</span>
-          <span className="mt-5 text-[0.95rem] leading-7 text-[var(--text-primary)]">{essenceLead}</span>
-          <span className="mt-2 text-[0.82rem] leading-6 text-[var(--text-tertiary)]">{essenceSupport}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => activeDimension && setActiveDimensionKey(activeDimension.key)}
-          className="cosmic-result-card"
-          data-benyuan-pressable="true"
-        >
-          <span className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">STRUCTURE</span>
-          <span className="mt-2 text-[1.22rem] font-black tracking-[0em] text-[var(--text-primary)] md:text-[1.5rem]">结构</span>
-          <span className="mt-1 text-[10px] text-[var(--text-secondary)]">如何前行</span>
-          <span className="mt-5 text-[0.95rem] leading-7 text-[var(--text-primary)]">
-            {topStructureDimensions.map((item) => item.label).join(" · ") || "--"}
-          </span>
-          <span className="mt-2 text-[0.82rem] leading-6 text-[var(--text-tertiary)]">{activeStructureSummary || "--"}</span>
-        </button>
-        <div className="cosmic-result-card">
-          <span className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-tertiary)]">NOW</span>
-          <span className="mt-2 text-[1.22rem] font-black tracking-[0em] text-[var(--text-primary)] md:text-[1.5rem]">此刻</span>
-          <span className="mt-1 text-[10px] text-[var(--text-secondary)]">你的当下指引</span>
-          <span className="mt-5 text-[0.95rem] leading-7 text-[var(--text-primary)]">{shortFlow?.moment.tension?.name ?? "--"}</span>
-          <span className="mt-2 text-[0.82rem] leading-6 text-[var(--text-tertiary)]">{primaryActionStep || shortFlow?.moment.path?.title || "--"}</span>
+      <section id="constellation-map" className="constellation-dimension-orbit mx-auto w-full max-w-[30rem]" data-constellation-section="dimensions">
+        <div className="constellation-section-intro">
+          <p>七维轨道</p>
+          <h3>{topStructureDimensions.map((item) => item.label).join(" · ") || "精神结构"}</h3>
+          <span>{activeStructureSummary || essenceSupport}</span>
         </div>
-      </div>
-
-      <details className={cx(benyuanUiRecipes.collapsiblePanel, "mx-auto w-full max-w-[30rem]")}>
-        <summary className="cursor-pointer list-none px-5 py-5 text-left md:px-6">
-          <p className="text-sm font-medium tracking-[0em] text-[var(--text-primary)]">继续阅读全部结果</p>
-        </summary>
-        <div className="border-t border-[rgba(255,255,255,0.08)] px-5 py-5 md:px-6">
-          <div className="space-y-6">
-            <div>
-              <ResultSectionHeading label="完整结构" title="七维星图" />
-              <div className="grid gap-3 sm:grid-cols-2">
-                {dimensions.map((dimension) => {
-                  const active = activeDimension?.key === dimension.key;
-                  return (
-                    <button
-                      key={dimension.key}
-                      type="button"
-                      onMouseEnter={() => setActiveDimensionKey(dimension.key)}
-                      onClick={() => setActiveDimensionKey(dimension.key)}
-                      className={cx(benyuanUiRecipes.interactiveCard(active, "accent"), "px-4 py-4")}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-base text-[var(--text-primary)]">{dimension.label}</span>
-                        <span className="font-mono text-sm text-[var(--text-secondary)]">{dimension.score}%</span>
-                      </div>
-                      <div className="mt-3 h-[3px] w-full rounded-full bg-[rgba(255,255,255,0.1)]">
-                        <div className="h-[3px] rounded-full bg-[linear-gradient(90deg,rgba(243,241,234,0.9),rgba(217,214,223,0.44))]" style={{ width: `${dimension.score}%` }} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {shortFlow && shortFlow.folded.secondaryTensions.length > 0 ? (
-              <div>
-                <ResultSectionHeading label="更多张力" title="其余的内在拉扯" />
-                <div className="space-y-4">
-                  {shortFlow.folded.secondaryTensions.map((tension, index) => (
-                    <DetailCard key={tension.tension_id} label={`张力 0${index + 2}`} title={tension.name} description={tension.description} tone="accent">
-                      <p className="text-sm leading-7 text-[var(--text-primary)]">{tension.growth_direction}</p>
-                    </DetailCard>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {shortFlow && shortFlow.folded.secondaryPaths.length > 0 ? (
-              <div>
-                <ResultSectionHeading label="更多路径" title="其余可继续带走的动作" />
-                <div className="space-y-4">
-                  {shortFlow.folded.secondaryPaths.map((item, index) => (
-                    <DetailCard key={`${item.title}-${index + 1}`} label={`路径 0${index + 2}`} title={item.title} description={item.description}>
-                      <ul className="mt-5 space-y-2 text-sm leading-7 text-[var(--text-primary)]">
-                        {item.actionable_steps.map((step, stepIndex) => (
-                          <li key={`${item.title}-${step}-${stepIndex}`}>- {step}</li>
-                        ))}
-                      </ul>
-                    </DetailCard>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div>
-                <ResultSectionHeading label="地形" title="精神地形总览" />
-                <div className="space-y-4">
-                  {(shortFlow?.folded.narrativeParagraphs ?? narrativeParagraphs).map((paragraph, index) => (
-                    <DetailCard key={index} label={`段落 0${index + 1}`} title={<span className="text-[1rem] leading-8 text-[var(--text-secondary)] md:text-[1.05rem] md:leading-9">{paragraph}</span>} />
-                  ))}
-                </div>
-            </div>
-
-            <div>
-              <ResultSectionHeading label="回响" title="继续共鸣的内容" />
-              <div className="grid gap-4 xl:grid-cols-3">
-                {recommendationMeta.map((group) => (
-                  <div key={group.key} className={cx("p-5", benyuanUiRecipes.sectionPanel)}>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(243,241,234,0.12)] bg-[rgba(255,255,255,0.035)] text-[var(--text-secondary)]">
-                        <group.Icon className="h-5 w-5" />
-                      </div>
-                      <h3 className="text-lg text-[var(--text-primary)]">{group.label}</h3>
-                    </div>
-                    <div className="mt-5 space-y-4 text-sm leading-7 text-[var(--text-secondary)]">
-                      {group.key === "books"
-                        ? data.recommendations.books.map((item) => (
-                            <div key={`${item.title}-${item.author}`} className="border-b border-[rgba(255,255,255,0.06)] pb-4 last:border-b-0 last:pb-0">
-                              <p className="text-[var(--text-primary)]">{item.title} · {item.author}</p>
-                              <p>{item.reason}</p>
-                            </div>
-                          ))
-                        : null}
-                      {group.key === "films"
-                        ? data.recommendations.films.map((item) => (
-                            <div key={`${item.title}-${item.director}`} className="border-b border-[rgba(255,255,255,0.06)] pb-4 last:border-b-0 last:pb-0">
-                              <p className="text-[var(--text-primary)]">{item.title} · {item.director}</p>
-                              <p>{item.reason}</p>
-                            </div>
-                          ))
-                        : null}
-                      {group.key === "music"
-                        ? data.recommendations.music.map((item) => (
-                            <div key={`${item.artist}-${item.album}`} className="border-b border-[rgba(255,255,255,0.06)] pb-4 last:border-b-0 last:pb-0">
-                              <p className="text-[var(--text-primary)]">{item.artist} · {item.album}</p>
-                              <p>{item.reason}</p>
-                            </div>
-                          ))
-                        : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div className="constellation-dimension-orbit__plane">
+          <div className="constellation-dimension-orbit__center">
+            <span>{activeDimension?.score ?? "--"}%</span>
+            <p>{activeDimension?.label ?? "主导维度"}</p>
           </div>
+          {dimensions.map((dimension, index) => {
+            const active = activeDimension?.key === dimension.key;
+            return (
+              <button
+                key={dimension.key}
+                type="button"
+                className="constellation-dimension-node"
+                data-active={active ? "true" : "false"}
+                style={{ "--orbit-index": index, "--dimension-score": `${dimension.score}%` } as CSSProperties}
+                onMouseEnter={() => setActiveDimensionKey(dimension.key)}
+                onClick={() => setActiveDimensionKey(dimension.key)}
+              >
+                <span>{dimension.label}</span>
+                <strong>{dimension.score}</strong>
+              </button>
+            );
+          })}
         </div>
-      </details>
-
-      <section className="cosmic-result-final mx-auto w-full max-w-[30rem]" aria-label="星图收束">
-        <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-tertiary)]">RETURN</p>
-        <h3 className="mt-4 text-[2.05rem] font-black leading-none tracking-[0em] text-[var(--text-primary)] md:text-[2.7rem]">这不是结论</h3>
-        <p className="mt-4 text-[1.02rem] leading-8 text-[var(--text-primary)]">是你此刻的精神坐标。</p>
-        <p className="mt-5 text-sm leading-7 text-[var(--text-secondary)]">{supportHint}</p>
+        <p className="constellation-dimension-reading">{activeDimension?.interpretation ?? essenceLead}</p>
       </section>
 
-      <div className="cosmic-result-action-dock mx-auto w-full max-w-[30rem]">
-        {actionHint ? <p role="status" aria-live="polite" className="cosmic-result-action-hint">{actionHint}</p> : null}
-        <div className="grid grid-cols-3 gap-2">
-          <SecondaryButton type="button" onClick={() => void handleShare()} className="cosmic-result-action-button disabled:cursor-not-allowed disabled:opacity-50">
+      <section className="constellation-narrative-river mx-auto w-full max-w-[30rem]" data-constellation-section="river">
+        <div className="constellation-river-line" aria-hidden />
+        <article className="constellation-river-moment">
+          <p>本质</p>
+          <h3>{essenceLead}</h3>
+          <span>{essenceSupport}</span>
+        </article>
+        <article className="constellation-river-moment">
+          <p>张力</p>
+          <h3>{primaryTension?.name ?? "--"}</h3>
+          <span>{primaryTension?.description ?? "--"}</span>
+          {primaryTension?.growth_direction ? <em>{primaryTension.growth_direction}</em> : null}
+        </article>
+        <article className="constellation-river-moment">
+          <p>路径</p>
+          <h3>{primaryPath?.title ?? "下一步"}</h3>
+          <span>{primaryActionStep || primaryPath?.description || supportHint}</span>
+        </article>
+        {foldedNarrative.slice(0, 3).map((paragraph, index) => (
+          <article key={index} className="constellation-river-paragraph">
+            <p>{String(index + 1).padStart(2, "0")}</p>
+            <span>{paragraph}</span>
+          </article>
+        ))}
+      </section>
+
+      <section className="constellation-resonance-field mx-auto w-full max-w-[30rem]" data-constellation-section="resonance">
+        <div className="constellation-section-intro">
+          <p>回响</p>
+          <h3>继续共鸣的内容</h3>
+          <span>{recommendationLead || "把一个回响带回现实就够了。"}</span>
+        </div>
+        <div className="constellation-resonance-list">
+          {recommendationMeta.map((group) => (
+            <article key={group.key} className="constellation-resonance-item">
+              <div>
+                <group.Icon className="h-4 w-4" strokeWidth={1.5} />
+                <p>{group.label}</p>
+              </div>
+              {group.key === "books"
+                ? data.recommendations.books.slice(0, 2).map((item) => (
+                    <span key={`${item.title}-${item.author}`}>{item.title} · {item.author}</span>
+                  ))
+                : null}
+              {group.key === "films"
+                ? data.recommendations.films.slice(0, 2).map((item) => (
+                    <span key={`${item.title}-${item.director}`}>{item.title} · {item.director}</span>
+                  ))
+                : null}
+              {group.key === "music"
+                ? data.recommendations.music.slice(0, 2).map((item) => (
+                    <span key={`${item.artist}-${item.album}`}>{item.artist} · {item.album}</span>
+                  ))
+                : null}
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="constellation-closing-lens mx-auto w-full max-w-[30rem]" data-constellation-section="closing">
+        <p>这不是结论</p>
+        <h3>是你此刻的精神坐标。</h3>
+        <span>{supportHint}</span>
+      </section>
+
+      <div className="constellation-final-dock mx-auto w-full max-w-[30rem]">
+        {actionHint ? <p role="status" aria-live="polite" className="constellation-action-hint">{actionHint}</p> : null}
+        <div className="constellation-final-dock__buttons">
+          <SecondaryButton type="button" onClick={() => void handleShare()} className="constellation-action-button disabled:cursor-not-allowed disabled:opacity-50">
             {shareState === "done" ? "已分享" : shareState === "error" ? "分享失败" : "分享"}
           </SecondaryButton>
-          <SecondaryButton type="button" onClick={() => void handleExportPng()} className="cosmic-result-action-button disabled:cursor-not-allowed disabled:opacity-50">
+          <SecondaryButton type="button" onClick={() => void handleExportPng()} className="constellation-action-button disabled:cursor-not-allowed disabled:opacity-50">
             {pngState === "done" ? "已保存" : pngState === "error" ? "保存失败" : "保存"}
           </SecondaryButton>
-          <a href="/collect" className={cx(benyuanUiRecipes.secondaryLink, "cosmic-result-action-button")}>重新探索</a>
+          <a href="/collect" className={cx(benyuanUiRecipes.secondaryLink, "constellation-action-button")}>重新探索</a>
         </div>
       </div>
     </div>
