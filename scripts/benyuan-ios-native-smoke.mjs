@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -139,6 +139,13 @@ async function executeRun(udid, bundleId, config) {
   const tempScreenshotPath = path.join(tempDir, path.basename(config.screenshotPath));
   run('xcrun', ['simctl', 'io', udid, 'screenshot', tempScreenshotPath]);
   await copyFile(tempScreenshotPath, config.screenshotPath);
+  const screenshot = await readFile(config.screenshotPath);
+  const screenshotText = screenshot.toString('latin1');
+  const showsShellError =
+    screenshotText.includes('The resource could not be loaded') ||
+    screenshotText.includes('App Transport Security') ||
+    screenshotText.includes('NSURLError') ||
+    screenshotText.includes('DEBUG SHELL');
 
   return {
     source: config.source,
@@ -146,6 +153,7 @@ async function executeRun(udid, bundleId, config) {
     launchedAt,
     screenshotPath: config.screenshotPath,
     launchOutput,
+    showsShellError,
   };
 }
 
@@ -189,6 +197,10 @@ async function main() {
 
   await writeFile(jsonPath, `${JSON.stringify(summary, null, 2)}\n`);
   console.log(JSON.stringify(summary, null, 2));
+
+  if (runs.some((run) => run.showsShellError)) {
+    throw new Error('ios_native_smoke_shell_error_page');
+  }
 }
 
 main().catch((error) => {

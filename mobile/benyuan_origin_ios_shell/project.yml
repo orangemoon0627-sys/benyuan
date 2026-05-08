@@ -11,8 +11,8 @@ settings:
   base:
     SWIFT_VERSION: 5.0
     PRODUCT_BUNDLE_IDENTIFIER: com.fanhao.benyuan.origin.shell
-    MARKETING_VERSION: 0.2.0
-    CURRENT_PROJECT_VERSION: 2
+    MARKETING_VERSION: 0.2.1
+    CURRENT_PROJECT_VERSION: 3
     GENERATE_INFOPLIST_FILE: NO
     INFOPLIST_FILE: Info.plist
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
@@ -35,16 +35,16 @@ targets:
       configs:
         Debug:
           BenyuanShellEnvironment: development
-          BenyuanShellStagingBaseURL: https://benyuan-production.up.railway.app
-          BenyuanShellProductionBaseURL: https://benyuan-production.up.railway.app
+          BenyuanShellStagingBaseURL: http://120.26.126.88
+          BenyuanShellProductionBaseURL: http://120.26.126.88
         Staging:
           BenyuanShellEnvironment: staging
-          BenyuanShellStagingBaseURL: https://benyuan-production.up.railway.app
-          BenyuanShellProductionBaseURL: https://benyuan-production.up.railway.app
+          BenyuanShellStagingBaseURL: http://120.26.126.88
+          BenyuanShellProductionBaseURL: http://120.26.126.88
         Release:
           BenyuanShellEnvironment: production
-          BenyuanShellStagingBaseURL: https://benyuan-production.up.railway.app
-          BenyuanShellProductionBaseURL: https://benyuan-production.up.railway.app
+          BenyuanShellStagingBaseURL: http://120.26.126.88
+          BenyuanShellProductionBaseURL: http://120.26.126.88
 schemes:
   BenyuanOriginShell:
     build:

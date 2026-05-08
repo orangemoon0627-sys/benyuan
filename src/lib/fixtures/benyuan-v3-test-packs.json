@@ -1,9 +1,9 @@
 [
   {
     "id": "A",
-    "name": "孤独求索者",
-    "archetype": "The Solitary Seeker",
-    "description": "偏存在主义、夜行、深海暗流，适合测试高开放性与高审美敏感路线。",
+    "name": "暮海寻光者",
+    "archetype": "The Moonlit Seeker",
+    "description": "偏存在追问、夜行、深海与微光，适合测试高开放性与高审美敏感路线。",
     "answers": {
       "A1_core_image": "A1-1",
       "A3_literature": ["A3-1", "A3-2", "A3-4"],
@@ -32,9 +32,9 @@
   },
   {
     "id": "B",
-    "name": "理性建构者",
-    "archetype": "The Rational Builder",
-    "description": "偏结构化、未来导向、低波动情绪，适合测试更系统化的分析与剧场分支。",
+    "name": "星图筑序者",
+    "archetype": "The Star-Map Architect",
+    "description": "偏结构、秩序、未来节律与冷静判断，适合测试系统化分析与星图建构路线。",
     "answers": {
       "A1_core_image": "A1-3",
       "A3_literature": ["A3-4", "A3-7", "A3-9"],
@@ -63,9 +63,9 @@
   },
   {
     "id": "C",
-    "name": "温柔守护者",
-    "archetype": "The Gentle Keeper",
-    "description": "偏关系、温度与安全感，适合测试暖调叙事、连接需求和现实取向结果。",
+    "name": "月港持灯者",
+    "archetype": "The Moon-Harbor Keeper",
+    "description": "偏关系、温度、安全感与柔软边界，适合测试暖暗调叙事、连接需求和现实承托。",
     "answers": {
       "A1_core_image": "A1-5",
       "A3_literature": ["A3-3", "A3-6", "A3-8"],

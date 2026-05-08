@@ -412,12 +412,13 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
   const relation = getSelectedText("B5_relationship_philosophy", record.part1_data.philosophy.relationship_philosophy);
   const themes = record.aggregated_traits.core_themes;
   const archetype = getCoreArchetype(record);
+  const visibleArchetype = getBenyuanArchetypeProfile(archetype).archetype.name;
 
   return {
     user_id: record.user_id,
     generated_at: new Date().toISOString(),
     personalization_summary: {
-      core_archetype: archetype,
+      core_archetype: visibleArchetype,
       aesthetic_style: cinema.includes("林奇") ? "surrealist_melancholic" : cinema.includes("塔可夫斯基") ? "poetic_spiritual" : "introspective_cinematic",
       emotional_tone: emotion.includes("深海") ? "introspective_poetic" : "reflective_symbolic",
       key_themes: themes,

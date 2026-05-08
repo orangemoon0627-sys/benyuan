@@ -39,19 +39,19 @@
   "demoRoutes": [
     {
       "pack": "A",
-      "label": "孤独求索者",
+      "label": "暮海寻光者",
       "theater": "/theater?part1_id=part1_ebc4el2y&theater_script_id=theater_fcm6q0k8",
       "constellation": "/constellation?constellation_id=const_qaub8gcl"
     },
     {
       "pack": "B",
-      "label": "理性建构者",
+      "label": "星图筑序者",
       "theater": "/theater?part1_id=part1_s575l1t7&theater_script_id=theater_003qj9px",
       "constellation": "/constellation?constellation_id=const_h572ny90"
     },
     {
       "pack": "C",
-      "label": "温柔守护者",
+      "label": "月港持灯者",
       "theater": "/theater?part1_id=part1_pydb5on7&theater_script_id=theater_di7oz5x2",
       "constellation": "/constellation?constellation_id=const_lufzlqfx"
     }

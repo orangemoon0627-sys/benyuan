@@ -16,6 +16,7 @@ import {
 } from "@/lib/benyuan-v3-prompts";
 import { readUploadedAssetDataUrl } from "@/lib/benyuan-v3-assets";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
+import { dedupeMirrorQuestions } from "@/lib/benyuan-v3-theater-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { readCodexProviderDefaults } from "@/lib/codex-runtime";
 import type {
@@ -861,26 +862,28 @@ function normalizeTheaterScript(candidate: unknown, fallback: TheaterScript): Th
   const liveQuestions = Array.isArray(source.act3 && isRecord(source.act3) ? source.act3.mirror_questions : [])
     ? ((source.act3 as { mirror_questions?: unknown[] }).mirror_questions as unknown[])
     : [];
+  const personalizationSummary = isRecord(source.personalization_summary) ? source.personalization_summary : {};
+  const sourceCoreArchetype =
+    typeof personalizationSummary.core_archetype === "string"
+      ? personalizationSummary.core_archetype
+      : fallback.personalization_summary.core_archetype;
 
   return {
     user_id: typeof source.user_id === "string" ? source.user_id : fallback.user_id,
     generated_at: typeof source.generated_at === "string" ? source.generated_at : fallback.generated_at,
     personalization_summary: {
-      core_archetype:
-        isRecord(source.personalization_summary) && typeof source.personalization_summary.core_archetype === "string"
-          ? source.personalization_summary.core_archetype
-          : fallback.personalization_summary.core_archetype,
+      core_archetype: isSuspiciousArchetypeName(sourceCoreArchetype) ? fallback.personalization_summary.core_archetype : sourceCoreArchetype,
       aesthetic_style:
-        isRecord(source.personalization_summary) && typeof source.personalization_summary.aesthetic_style === "string"
-          ? source.personalization_summary.aesthetic_style
+        typeof personalizationSummary.aesthetic_style === "string"
+          ? personalizationSummary.aesthetic_style
           : fallback.personalization_summary.aesthetic_style,
       emotional_tone:
-        isRecord(source.personalization_summary) && typeof source.personalization_summary.emotional_tone === "string"
-          ? source.personalization_summary.emotional_tone
+        typeof personalizationSummary.emotional_tone === "string"
+          ? personalizationSummary.emotional_tone
           : fallback.personalization_summary.emotional_tone,
       key_themes:
-        isRecord(source.personalization_summary) && Array.isArray(source.personalization_summary.key_themes)
-          ? source.personalization_summary.key_themes.filter((item): item is string => typeof item === "string")
+        Array.isArray(personalizationSummary.key_themes)
+          ? personalizationSummary.key_themes.filter((item): item is string => typeof item === "string")
           : fallback.personalization_summary.key_themes,
     },
     act1: {
@@ -928,7 +931,7 @@ function normalizeTheaterScript(candidate: unknown, fallback: TheaterScript): Th
         isRecord(source.act3) && typeof source.act3.scene_description === "string"
           ? source.act3.scene_description
           : fallback.act3.scene_description,
-      mirror_questions: (liveQuestions.length > 0 ? liveQuestions : fallback.act3.mirror_questions).map((question, index) => {
+      mirror_questions: dedupeMirrorQuestions((liveQuestions.length > 0 ? liveQuestions : fallback.act3.mirror_questions).map((question, index) => {
         const fallbackQuestion = fallback.act3.mirror_questions[index] ?? fallback.act3.mirror_questions[fallback.act3.mirror_questions.length - 1];
         const questionRecord = isRecord(question) ? question : {};
         const options = Array.isArray(questionRecord.options) ? questionRecord.options : fallbackQuestion.options;
@@ -953,7 +956,7 @@ function normalizeTheaterScript(candidate: unknown, fallback: TheaterScript): Th
             };
           }),
         };
-      }),
+      }), fallback.act3.mirror_questions),
       mirror_final_words:
         isRecord(source.act3) && typeof source.act3.mirror_final_words === "string"
           ? source.act3.mirror_final_words

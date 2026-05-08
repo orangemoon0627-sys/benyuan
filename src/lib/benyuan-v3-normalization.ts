@@ -1,4 +1,5 @@
 import { repairCanonicalBook, repairCanonicalFilm, repairCanonicalMusic } from "@/lib/benyuan-v3-report-profile";
+import { dedupeCoreTensions } from "@/lib/benyuan-v3-constellation-normalization";
 import type { PsycheConstellation } from "@/lib/benyuan-v3-types";
 
 function cleanText(value: string | null | undefined) {
@@ -71,19 +72,7 @@ function splitArtistAlbum(value: string) {
 }
 
 export function normalizePsycheConstellation(constellation: PsycheConstellation): PsycheConstellation {
-  const tensionSeen = new Set<string>();
-  const tensions = constellation.core_tensions.filter((item) => {
-    const key = `${fingerprint(item.name)}:${fingerprint(item.description)}`;
-    if (!item.name || !item.description || tensionSeen.has(key)) return false;
-    tensionSeen.add(key);
-    return true;
-  }).map((item, index) => ({
-    ...item,
-    tension_id: index + 1,
-    name: cleanText(item.name),
-    description: cleanText(item.description),
-    growth_direction: cleanText(item.growth_direction),
-  }));
+  const tensions = dedupeCoreTensions(constellation.core_tensions);
 
   const growthMap = new Map<string, PsycheConstellation["growth_suggestions"][number]>();
   for (const item of constellation.growth_suggestions) {

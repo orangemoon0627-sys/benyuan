@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, FlaskConical, Images, UploadCloud } from "lucide-react";
+import { Camera, FlaskConical, Images, UploadCloud, X } from "lucide-react";
 import { BottomActionBar, DetailCard, GlassPanel, ImmersiveTopBar, MetaPill, MicroSwitch, SecondaryButton, SectionTitle, TextField } from "@/components/framework-primitives";
 import { benyuanUiRecipes, cx } from "@/config/benyuan-ui-recipes";
 import { buildCollectPrimaryActionModel } from "@/lib/benyuan-mainflow-presentation";
@@ -18,6 +18,7 @@ import {
 import { benyuanPart1Questions, benyuanQuestionsByModule } from "@/lib/benyuan-v3-schema";
 import { benyuanTestPacks, type BenyuanTestPack, type BenyuanTestPackAsset } from "@/lib/benyuan-v3-test-packs";
 import { benyuanDemoLinks as fallbackDemoLinks, type BenyuanDemoLink } from "@/lib/benyuan-v3-demo-links";
+import { mergeUploadedAssets, removeUploadedAsset, remainingUploadSlots, uploadedAssetsFromAnswer } from "@/lib/benyuan-upload-assets";
 import type { AgentRuntimeOverride, BenyuanModuleKey, BenyuanQuestion, BenyuanUploadedAssetRef, Part1AnswerMap } from "@/lib/benyuan-v3-types";
 
 const moduleTitles: Record<BenyuanModuleKey, string> = {
@@ -237,14 +238,6 @@ async function fetchAssetAsFile(asset: BenyuanTestPackAsset, prefix: string) {
   });
 }
 
-function uploadedAssetsFromValue(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (item): item is BenyuanUploadedAssetRef =>
-      typeof item === "object" && item !== null && typeof (item as BenyuanUploadedAssetRef).asset_id === "string",
-  );
-}
-
 function QuestionBlock({
   question,
   questionNumber,
@@ -255,6 +248,7 @@ function QuestionBlock({
   onToggleMulti,
   onDistribution,
   onUpload,
+  onRemoveUploadAsset,
   uploading,
   uploadError,
   onNativeUploadFromLibrary,
@@ -270,13 +264,14 @@ function QuestionBlock({
   onToggleMulti: (optionId: string) => void;
   onDistribution: (key: "past" | "present" | "future", value: number) => void;
   onUpload: (files: FileList | File[] | null) => Promise<void>;
+  onRemoveUploadAsset: (assetId: string) => void;
   onNativeUploadFromLibrary?: () => Promise<void>;
   onNativeUploadFromCamera?: () => Promise<void>;
   nativeUploadEnabled?: boolean;
   uploading: boolean;
   uploadError?: string;
 }) {
-  const uploadedAssets = uploadedAssetsFromValue(value);
+  const uploadedAssets = uploadedAssetsFromAnswer(value);
   const [dragActive, setDragActive] = useState(false);
   const uploadInputId = `upload-input-${question.id}`;
   const uploadMin = question.uploadRange?.min ?? 1;
@@ -473,7 +468,16 @@ function QuestionBlock({
                 <div className="mt-5">
                   <div className={benyuanUiRecipes.thumbnailRail}>
                     {uploadedAssets.map((file, index) => (
-                      <div key={`${file.asset_id}-${index}`} className={benyuanUiRecipes.thumbnailCard}>
+                      <div key={`${file.asset_id}-${index}`} className={cx(benyuanUiRecipes.thumbnailCard, "relative")}>
+                        <button
+                          type="button"
+                          aria-label={`删除线索 ${index + 1}`}
+                          onClick={() => onRemoveUploadAsset(file.asset_id)}
+                          disabled={uploading}
+                          className="absolute right-2 top-2 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/65 text-stone-100 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          <X className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        </button>
                         {file.mime_type.startsWith("image/") ? (
                           <Image
                             src={`/api/part1/uploaded/${file.asset_id}`}
@@ -693,6 +697,26 @@ export function BenyuanPart1Workflow({
     setAnswers((current) => ({ ...current, [questionId]: value }));
   }
 
+  function findUploadQuestion(questionId: string) {
+    return benyuanPart1Questions.find((question) => question.id === questionId && question.kind === "upload");
+  }
+
+  function updateUploadedAnswer(questionId: string, incomingAssets: BenyuanUploadedAssetRef[]) {
+    const question = findUploadQuestion(questionId);
+    const uploadMax = question?.uploadRange?.max ?? incomingAssets.length;
+    const nextAssets = mergeUploadedAssets(answersRef.current[questionId], incomingAssets, uploadMax);
+    answersRef.current = { ...answersRef.current, [questionId]: nextAssets };
+    setAnswers((current) => ({ ...current, [questionId]: nextAssets }));
+
+    return { nextCount: nextAssets.length, uploadMax };
+  }
+
+  function removeUploadAsset(questionId: string, assetId: string) {
+    clearAutoAdvanceTimer();
+    setAnswers((current) => ({ ...current, [questionId]: removeUploadedAsset(current[questionId], assetId) }));
+    setStatus("已移除这条图片线索，可以重新选择。");
+  }
+
   function toggleMulti(questionId: string, optionId: string) {
     clearAutoAdvanceTimer();
     const current = Array.isArray(answers[questionId]) ? (answers[questionId] as string[]) : [];
@@ -731,8 +755,9 @@ export function BenyuanPart1Workflow({
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "upload_failed");
 
-      updateAnswer(questionId, payload.assets);
-      scheduleAutoAdvance(questionId, 680);
+      const uploadedAssets = (payload.assets ?? []) as BenyuanUploadedAssetRef[];
+      const { nextCount, uploadMax } = updateUploadedAnswer(questionId, uploadedAssets);
+      if (nextCount >= uploadMax) scheduleAutoAdvance(questionId, 680);
       const optimizedCount = preparedUploads.filter((item) => item.optimized).length;
       const savedBytes = preparedUploads.reduce((total, item) => total + Math.max(0, item.originalSize - item.file.size), 0);
       setStatus(
@@ -752,13 +777,20 @@ export function BenyuanPart1Workflow({
   async function openNativeImagePicker(question: BenyuanQuestion, source: "library" | "camera") {
     if (question.kind !== "upload") return;
 
+    const uploadMax = question.uploadRange?.max ?? 1;
+    const remaining = remainingUploadSlots(answersRef.current[question.id], uploadMax);
+    if (remaining <= 0) {
+      setStatus("这一题的图片线索已经足够。先删除一张，再重新选择。");
+      return;
+    }
+
     setUploadErrors((current) => ({ ...current, [question.id]: "" }));
     setStatus(source === "camera" ? "正在打开 iPhone 相机..." : "正在打开 iPhone 原生相册...");
 
     try {
       const files = await pickImagesWithBenyuanNativeShell({
         questionId: question.id,
-        maxCount: source === "camera" ? 1 : question.uploadRange?.max ?? 1,
+        maxCount: source === "camera" ? 1 : remaining,
         source,
       });
 
@@ -925,6 +957,7 @@ export function BenyuanPart1Workflow({
           onToggleMulti={(optionId) => toggleMulti(ritualQuestion.id, optionId)}
           onDistribution={(key, value) => updateDistribution(key, value)}
           onUpload={(files) => uploadFiles(ritualQuestion.id, files, "web-upload")}
+          onRemoveUploadAsset={(assetId) => removeUploadAsset(ritualQuestion.id, assetId)}
           onNativeUploadFromLibrary={() => openNativeImagePicker(ritualQuestion, "library")}
           onNativeUploadFromCamera={() => openNativeImagePicker(ritualQuestion, "camera")}
           nativeUploadEnabled={Boolean(shellInfo?.bridge?.includes("pickImages"))}

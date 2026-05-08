@@ -2,6 +2,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { requestStageJson } from './benyuan-pack-benchmark-lib.mjs';
 
 const baseUrl = (process.env.BENYUAN_BASE_URL ?? 'http://127.0.0.1:3015').replace(/\/$/, '');
 const selectedPacks = (process.env.BENYUAN_PACKS ?? 'A,B,C')
@@ -62,49 +63,6 @@ async function requestJson(pathname, init) {
   return payload;
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function requestJsonWithRetry(pathname, init, { retries = 2, backoffMs = 1500 } = {}) {
-  let attempt = 0;
-  while (true) {
-    try {
-      return await requestJson(pathname, init);
-    } catch (error) {
-      attempt += 1;
-      if (attempt > retries) throw error;
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`retry ${attempt}/${retries} -> ${pathname}: ${message.slice(0, 180)}`);
-      await sleep(backoffMs * attempt);
-    }
-  }
-}
-
-async function requestStageJson(pathname, init, { label, pack, events, retries = 1, backoffMs = 2000 } = {}) {
-  let attempt = 0;
-  while (true) {
-    const payload = await requestJsonWithRetry(pathname, init);
-    const runtimeMode = payload?.runtime?.mode;
-    if (runtimeMode !== 'fallback' || attempt >= retries) {
-      return payload;
-    }
-
-    attempt += 1;
-    const runtimeError = payload?.runtime?.error ? ` (${payload.runtime.error})` : '';
-    events?.push({
-      pack,
-      stage: label,
-      attempt,
-      mode: runtimeMode,
-      error: payload?.runtime?.error ?? null,
-      recordedAt: new Date().toISOString(),
-    });
-    console.warn(`${label} returned fallback runtime, retry ${attempt}/${retries}${runtimeError}`);
-    await sleep(backoffMs * attempt);
-  }
-}
-
 async function uploadFiles(questionId, filePaths) {
   const form = new FormData();
   form.append('question_id', questionId);
@@ -160,7 +118,7 @@ async function runPack(packId, packs) {
   console.log(`part1 submit: ${part1Duration}s -> ${part1.part1_id}`);
 
   const multimodalStarted = now();
-  const multimodal = await requestStageJson('/api/analyze/multimodal', {
+  const multimodal = await requestStageJson(requestJson, '/api/analyze/multimodal', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ part1_id: part1.part1_id }),
@@ -169,7 +127,7 @@ async function runPack(packId, packs) {
   console.log(`multimodal: ${multimodalDuration}s`);
 
   const theaterStarted = now();
-  const theater = await requestStageJson('/api/theater/generate', {
+  const theater = await requestStageJson(requestJson, '/api/theater/generate', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ part1_id: part1.part1_id }),
@@ -219,7 +177,7 @@ async function runPack(packId, packs) {
   console.log(`part2 submit: ${part2Duration}s -> ${part2.part2_id}`);
 
   const constellationStarted = now();
-  const constellation = await requestStageJson('/api/constellation/generate', {
+  const constellation = await requestStageJson(requestJson, '/api/constellation/generate', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ part1_id: part1.part1_id, part2_id: part2.part2_id }),

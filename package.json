@@ -23,6 +23,7 @@
     "smoke:processing:ui": "node scripts/benyuan-processing-ui-contract-smoke.mjs",
     "smoke:constellation:ui": "node scripts/benyuan-constellation-ui-contract-smoke.mjs",
     "smoke:theater:ui": "node scripts/benyuan-theater-ui-contract-smoke.mjs",
+    "smoke:visible-archetypes": "node scripts/benyuan-visible-archetype-labels-smoke.mjs",
     "smoke:store:empty": "node scripts/benyuan-store-empty-smoke.mjs",
     "ios:shell:regression": "node scripts/benyuan-ios-regression.mjs",
     "ios:shell:build": "node scripts/benyuan-ios-shell-build.mjs",

@@ -12,6 +12,7 @@ app_port="${BENYUAN_STAGING_PORT:-3015}"
 process_name="${BENYUAN_STAGING_PROCESS:-benyuan-staging}"
 npm_registry="${BENYUAN_STAGING_NPM_REGISTRY:-https://registry.npmmirror.com}"
 public_base_url="${BENYUAN_STAGING_PUBLIC_BASE_URL:-http://$staging_host}"
+runtime_env_file="${BENYUAN_STAGING_ENV_FILE:-$app_root/shared/benyuan-runtime.env}"
 expected_origin="${BENYUAN_EXPECTED_ORIGIN:-https://github.com/orangemoon0627-sys/benyuan.git}"
 deploy_remote="${BENYUAN_DEPLOY_REMOTE:-benyuan}"
 keep_releases="${BENYUAN_STAGING_KEEP_RELEASES:-5}"
@@ -41,6 +42,7 @@ Environment overrides:
   BENYUAN_STAGING_APP_ROOT=$app_root
   BENYUAN_STAGING_PORT=$app_port
   BENYUAN_STAGING_PUBLIC_BASE_URL=$public_base_url
+  BENYUAN_STAGING_ENV_FILE=$runtime_env_file
   BENYUAN_DEPLOY_REMOTE=$deploy_remote
 EOF
 }
@@ -141,6 +143,7 @@ echo "branch remote: ${branch_remote:-<unset>}"
 echo "branch pushRemote: ${branch_push_remote:-<unset>}"
 echo "target: $ssh_target:$app_root"
 echo "public check: $public_base_url"
+echo "runtime env file: $runtime_env_file"
 
 if [ "$deploy_url" != "$expected_origin" ]; then
   cat >&2 <<EOF
@@ -252,8 +255,14 @@ remote_run "set -euo pipefail
 cd '$release_dir'
 npm ci --omit=dev --no-audit --no-fund --registry='$npm_registry'
 ln -sfn '$release_dir' '$app_root/current'
+if [ -f '$runtime_env_file' ]; then
+  set -a
+  . '$runtime_env_file'
+  set +a
+fi
+export NODE_ENV=production
 pm2 delete '$process_name' >/dev/null 2>&1 || true
-pm2 start ./node_modules/next/dist/bin/next --name '$process_name' -- start -p '$app_port' -H 127.0.0.1
+pm2 start ./node_modules/next/dist/bin/next --name '$process_name' --update-env -- start -p '$app_port' -H 127.0.0.1
 pm2 save
 pm2 startup systemd -u '$staging_user' --hp '/$staging_user' >/dev/null || true
 current_release=\"\$(readlink -f '$app_root/current')\"
@@ -277,11 +286,11 @@ wc -c /tmp/benyuan-next-root.html /tmp/benyuan-nginx-root.html"
 
 log "Public smoke checks"
 if [ "$dry_run" = "0" ]; then
-  BENYUAN_BASE_URL="$public_base_url" npm run smoke:runtime:gate
+  BENYUAN_BASE_URL="$public_base_url" BENYUAN_EXPECT_LIVE="${BENYUAN_EXPECT_LIVE:-0}" npm run smoke:runtime:gate
   BENYUAN_BASE_URL="$public_base_url" npm run smoke:runtime:page
   BENYUAN_BASE_URL="$public_base_url" node --input-type=module -e "const base=process.env.BENYUAN_BASE_URL; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); if(!res.ok) throw new Error('runtime API failed: ' + res.status); const data=await res.json(); console.log(JSON.stringify(data.runtime ?? data).slice(0, 500));"
 else
-  echo "+ BENYUAN_BASE_URL=$public_base_url npm run smoke:runtime:gate"
+  echo "+ BENYUAN_BASE_URL=$public_base_url BENYUAN_EXPECT_LIVE=${BENYUAN_EXPECT_LIVE:-0} npm run smoke:runtime:gate"
   echo "+ BENYUAN_BASE_URL=$public_base_url npm run smoke:runtime:page"
   echo "+ BENYUAN_BASE_URL=$public_base_url node --input-type=module -e <runtime-api-smoke>"
 fi

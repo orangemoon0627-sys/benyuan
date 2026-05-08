@@ -15,6 +15,7 @@ const localChecks = [
   ["constellation ui contract", ["npm", "run", "smoke:constellation:ui"]],
   ["processing ui contract", ["npm", "run", "smoke:processing:ui"]],
   ["theater ui contract", ["npm", "run", "smoke:theater:ui"]],
+  ["visible archetype labels", ["npm", "run", "smoke:visible-archetypes"]],
   ["test pack manifest", ["npm", "run", "smoke:benyuan:test-packs"]],
 ];
 

@@ -29,10 +29,10 @@ function fingerprint(value: string | null | undefined) {
 
 const loneSeekerProfile: ArchetypeProfile = {
   archetype: {
-    name: "孤独求索者",
-    english_name: "The Solitary Seeker",
-    core_essence: "你在孤独与审美里寻找意义，也愿意为真实保留足够的精神纵深。",
-    visual_prompt: "A poetic archetype portrait for The Solitary Seeker, cosmic horizon, deep sea dusk, luminous loneliness, tactile fog, restrained gold light, contemplative East Asian poster composition, intimate but vast, cinematic stillness, 16:9",
+    name: "暮海寻光者",
+    english_name: "The Moonlit Seeker",
+    core_essence: "你常在幽暗、审美与记忆的回声里辨认意义，也愿意为真实保留足够的精神纵深。",
+    visual_prompt: "A poetic archetype portrait for The Moonlit Seeker, cosmic horizon, deep sea dusk, lunar mist, restrained gold light, contemplative East Asian poster composition, intimate but vast, cinematic stillness, 16:9",
   },
   narrativeLead: "你给人的核心印象，不是张扬，而是一种安静却密度很高的存在感。",
   narrativeFocus: "你会把风景、音乐、句子和时间感当作真正的证据来阅读，所以外部世界对你来说从来不只是背景。",
@@ -89,10 +89,10 @@ const loneSeekerProfile: ArchetypeProfile = {
 
 const rationalBuilderProfile: ArchetypeProfile = {
   archetype: {
-    name: "理性建构者",
-    english_name: "The Rational Builder",
-    core_essence: "你用结构、秩序和可持续的节律感来理解世界，也用它们保护自己的复杂感受。",
-    visual_prompt: "A poetic archetype portrait for The Rational Builder, geometric midnight skyline, restrained silver gold, clean negative space, ambient architecture, measured cinematic light, minimal but warm, East Asian editorial poster composition, 16:9",
+    name: "星图筑序者",
+    english_name: "The Star-Map Architect",
+    core_essence: "你用结构、秩序和可持续的节律把混沌折成可行的星图，也借此安放自己的复杂感受。",
+    visual_prompt: "A poetic archetype portrait for The Star-Map Architect, geometric midnight skyline, restrained silver gold, clean negative space, ambient architecture, measured cinematic light, minimal but warm, East Asian editorial poster composition, 16:9",
   },
   narrativeLead: "你给人的第一印象不是热烈，而是清醒、安静、带着分寸的稳定感。",
   narrativeFocus: "你并不逃避复杂，反而相信复杂的问题应该被拆解、被命名，再被慢慢推进。",
@@ -149,10 +149,10 @@ const rationalBuilderProfile: ArchetypeProfile = {
 
 const gentleGuardianProfile: ArchetypeProfile = {
   archetype: {
-    name: "温柔守护者",
-    english_name: "The Gentle Keeper",
-    core_essence: "你用温度、稳定与连接感托住自己和重要的人，也在练习先照顾自己的容量。",
-    visual_prompt: "A poetic archetype portrait for The Gentle Keeper, dawn mountain theater, soft mist, warm gold lamp, gentle green shadows, intimate atmosphere, quiet healing, delicate East Asian poster composition, black gold palette, 16:9",
+    name: "月港持灯者",
+    english_name: "The Moon-Harbor Keeper",
+    core_essence: "你用温度、稳定与连接感为重要的人点灯，也在学习把自己的容量放回中心。",
+    visual_prompt: "A poetic archetype portrait for The Moon-Harbor Keeper, dawn moon harbor, soft mist, warm gold lamp, gentle dark green shadows, intimate atmosphere, quiet healing, delicate East Asian poster composition, black gold palette, 16:9",
   },
   narrativeLead: "你给人的靠近方式不是锋利的，而是温柔、克制、让人愿意放下防备的。",
   narrativeFocus: "你对世界的感受方式带着细腻度：不是靠碰撞确认自己，而是靠氛围、节律和真实情感来辨认什么值得停留。",
