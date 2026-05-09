@@ -11,6 +11,10 @@ struct BenyuanNativeTheaterView: View {
                 ZStack(alignment: .top) {
                     BenyuanStageLens(progress: theaterProgress, intensity: 1.08)
                         .allowsHitTesting(false)
+                    BenyuanFlowOrbitTrail(progress: theaterProgress, intensity: 0.76, tilt: -14)
+                        .frame(height: max(260, proxy.size.height * 0.44))
+                        .padding(.top, proxy.size.height * 0.10)
+                        .allowsHitTesting(false)
 
                     ScrollView(showsIndicators: false) {
                         phaseContent

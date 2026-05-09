@@ -12,13 +12,15 @@ struct BenyuanNativeCollectView: View {
 
             if let question = model.currentQuestion {
                 ScrollView(showsIndicators: false) {
-                    BenyuanRevealedStack(spacing: BenyuanSpacing.x4) {
-                        if question.kind == .upload {
-                            uploadHeader(question)
-                        } else {
-                            questionHeader(question)
+                    BenyuanQuestionStepMotion(direction: model.questionMotionDirection, token: model.questionMotionToken) {
+                        BenyuanRevealedStack(spacing: BenyuanSpacing.x4) {
+                            if question.kind == .upload {
+                                uploadHeader(question)
+                            } else {
+                                questionHeader(question)
+                            }
+                            questionBody(question)
                         }
-                        questionBody(question)
                     }
                     .id(model.activeQuestionIndex)
                     .padding(.horizontal, BenyuanSpacing.x4)
@@ -210,12 +212,14 @@ struct BenyuanNativeCollectView: View {
                 .padding(.horizontal, BenyuanSpacing.x4)
                 .padding(.vertical, BenyuanSpacing.x3)
                 .background(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .fill(hasAssets ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                                .stroke(hasAssets ? BenyuanColor.accentGold.opacity(0.24) : BenyuanColor.glassStroke, lineWidth: 1)
-                        )
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .fill(hasAssets ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill)
+                        BenyuanFlowOrbitTrail(progress: min(max(Double(assets.count) / Double(max(maxCount, 1)), 0.12), 1), intensity: hasAssets ? 0.82 : 0.48, tilt: -9)
+                            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .stroke(hasAssets ? BenyuanColor.accentGold.opacity(0.24) : BenyuanColor.glassStroke, lineWidth: 1)
+                    }
                 )
             }
             .buttonStyle(.plain)

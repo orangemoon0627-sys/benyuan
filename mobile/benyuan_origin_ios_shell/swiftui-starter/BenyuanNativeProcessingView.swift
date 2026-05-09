@@ -27,8 +27,12 @@ struct BenyuanNativeProcessingView: View {
                     .shadow(color: BenyuanColor.bgVoid.opacity(0.64), radius: 40, y: 28)
 
                 VStack(spacing: 28) {
-                    BenyuanDeepCelestialBody(size: 214, progress: model.processingProgress, mode: .processing)
-                        .padding(.top, BenyuanSpacing.x2)
+                    ZStack {
+                        BenyuanProcessingPhaseCurrent(progress: model.processingProgress)
+                            .frame(width: 270, height: 170)
+                        BenyuanDeepCelestialBody(size: 214, progress: model.processingProgress, mode: .processing)
+                    }
+                    .padding(.top, BenyuanSpacing.x2)
 
                     VStack(spacing: BenyuanSpacing.x3) {
                         Text(processingPhaseLabel)

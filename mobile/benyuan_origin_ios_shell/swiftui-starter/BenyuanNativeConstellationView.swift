@@ -73,6 +73,9 @@ struct BenyuanNativeConstellationView: View {
             ZStack {
                 BenyuanConstellationDeepFieldMask(progress: leadingConstellationProgress(data))
                     .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
+                BenyuanFlowOrbitTrail(progress: leadingConstellationProgress(data), intensity: 0.82, tilt: -10)
+                    .padding(.horizontal, BenyuanSpacing.x2)
+                    .allowsHitTesting(false)
 
                 RoundedRectangle(cornerRadius: 44, style: .continuous)
                     .fill(

@@ -20,6 +20,12 @@ enum BenyuanNativeTheaterPhase: Equatable {
     case epilogue
 }
 
+enum BenyuanQuestionMotionDirection: Equatable {
+    case forward
+    case backward
+    case reset
+}
+
 enum BenyuanUploadApplyMode: Equatable {
     case append
     case replace
@@ -81,6 +87,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var pendingDeleteHistoryItem: BenyuanAccountHistoryItem?
     @Published var isDeleteHistoryConfirmationPresented = false
     @Published var activeBindingProvider: BenyuanAuthProvider?
+    @Published var questionMotionDirection: BenyuanQuestionMotionDirection = .reset
+    @Published var questionMotionToken = UUID()
 
     private let client: BenyuanAPIClient
     private let store: BenyuanFlowStore
@@ -109,6 +117,27 @@ final class BenyuanNativeFlowModel: ObservableObject {
     var progress: Double {
         guard !questions.isEmpty else { return 0 }
         return Double(answeredCount) / Double(questions.count)
+    }
+
+    var flowMotionProgress: Double {
+        switch stage {
+        case .launching:
+            return 0.05
+        case .auth:
+            return 0.10
+        case .account:
+            return 0.16
+        case .collect:
+            return 0.18 + progress * 0.34
+        case .processing:
+            return 0.58 + min(max(processingProgress, 0), 1) * 0.18
+        case .theater:
+            return 0.78
+        case .constellation:
+            return 0.96
+        case .error:
+            return 0.12
+        }
     }
 
     var allQuestionsAnswered: Bool {
@@ -717,11 +746,17 @@ final class BenyuanNativeFlowModel: ObservableObject {
     }
 
     func previousQuestion() {
-        activeQuestionIndex = max(0, activeQuestionIndex - 1)
+        let nextIndex = max(0, activeQuestionIndex - 1)
+        guard nextIndex != activeQuestionIndex else { return }
+        recordQuestionMotion(direction: .backward)
+        activeQuestionIndex = nextIndex
     }
 
     func nextQuestion() {
-        activeQuestionIndex = min(max(questions.count - 1, 0), activeQuestionIndex + 1)
+        let nextIndex = min(max(questions.count - 1, 0), activeQuestionIndex + 1)
+        guard nextIndex != activeQuestionIndex else { return }
+        recordQuestionMotion(direction: .forward)
+        activeQuestionIndex = nextIndex
     }
 
     func submitPart1AndGenerateTheater() async {
@@ -736,7 +771,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     private func submitPart1AndGenerateTheaterPipeline() async throws {
         guard allQuestionsAnswered else {
-            activeQuestionIndex = firstIncompleteQuestionIndex()
+            moveToQuestion(firstIncompleteQuestionIndex())
             toast = "还有问题没有完成。"
             throw BenyuanNativeFlowError.incompletePart1
         }
@@ -972,12 +1007,25 @@ final class BenyuanNativeFlowModel: ObservableObject {
         questions.firstIndex { !isAnswered($0) } ?? 0
     }
 
+    private func moveToQuestion(_ index: Int) {
+        let bounded = min(max(index, 0), max(questions.count - 1, 0))
+        guard bounded != activeQuestionIndex else { return }
+        recordQuestionMotion(direction: bounded > activeQuestionIndex ? .forward : .backward)
+        activeQuestionIndex = bounded
+    }
+
+    private func recordQuestionMotion(direction: BenyuanQuestionMotionDirection) {
+        questionMotionDirection = direction
+        questionMotionToken = UUID()
+    }
+
     private func advanceAfterAnswer(delay: TimeInterval = 0.18) {
         Task {
             let nanoseconds = UInt64(delay * 1_000_000_000)
             try? await Task.sleep(nanoseconds: nanoseconds)
             await MainActor.run {
                 if activeQuestionIndex < questions.count - 1 {
+                    recordQuestionMotion(direction: .forward)
                     activeQuestionIndex += 1
                 }
             }

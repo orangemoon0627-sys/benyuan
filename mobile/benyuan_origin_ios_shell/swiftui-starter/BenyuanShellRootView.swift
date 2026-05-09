@@ -96,6 +96,9 @@ struct BenyuanShellRootView: View {
     @ViewBuilder
     private var nativeFlow: some View {
         ZStack(alignment: .top) {
+            BenyuanFlowTransitionLayer(progress: nativeModel.flowMotionProgress)
+                .allowsHitTesting(false)
+
             switch nativeModel.stage {
             case .launching:
                 BenyuanNativeProcessingView(model: nativeModel)

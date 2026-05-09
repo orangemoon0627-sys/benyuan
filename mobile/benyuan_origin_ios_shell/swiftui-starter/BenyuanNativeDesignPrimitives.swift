@@ -1,5 +1,228 @@
 import SwiftUI
 
+struct BenyuanFlowTransitionLayer: View {
+    var progress: Double
+    var intensity: Double = 1
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            let clamped = min(max(progress, 0), 1)
+            let breath = accessibilityReduceMotion ? 0.45 : 0.5 + 0.5 * sin(phase * 0.34)
+
+            GeometryReader { proxy in
+                let width = max(proxy.size.width, 1)
+                let height = max(proxy.size.height, 1)
+                let centerX = width * (0.18 + clamped * 0.66)
+                let centerY = height * (0.22 + sin(clamped * .pi) * 0.38)
+
+                ZStack {
+                    RadialGradient(
+                        colors: [
+                            BenyuanColor.accentGold.opacity((0.06 + breath * 0.025) * intensity),
+                            BenyuanColor.nebulaViolet.opacity((0.075 + clamped * 0.04) * intensity),
+                            .clear
+                        ],
+                        center: UnitPoint(x: centerX / width, y: centerY / height),
+                        startRadius: 10,
+                        endRadius: max(width, height) * 0.78
+                    )
+
+                    ForEach(0..<3, id: \.self) { index in
+                        let orbitWidth = width * (0.68 + CGFloat(index) * 0.28)
+                        let orbitHeight = height * (0.20 + CGFloat(index) * 0.055)
+                        Ellipse()
+                            .trim(from: 0.08 + clamped * 0.08, to: 0.44 + clamped * 0.24)
+                            .stroke(
+                                BenyuanColor.textPrimary.opacity((0.026 + Double(index) * 0.012) * intensity),
+                                style: StrokeStyle(lineWidth: index == 0 ? 1.2 : 0.8, lineCap: .round, dash: index == 2 ? [5, 20] : [])
+                            )
+                            .frame(width: orbitWidth, height: orbitHeight)
+                            .rotationEffect(.degrees(-18 + clamped * 26 + phase * (1.8 + Double(index) * 0.8)))
+                            .position(x: centerX, y: centerY)
+                    }
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    .clear,
+                                    BenyuanColor.accentGold.opacity((0.08 + breath * 0.06) * intensity),
+                                    BenyuanColor.textPrimary.opacity(0.10 * intensity),
+                                    .clear
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: width * (0.26 + clamped * 0.28), height: 2)
+                        .blur(radius: 0.8)
+                        .position(x: centerX, y: centerY + height * 0.11)
+                        .blendMode(.screen)
+                }
+            }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct BenyuanQuestionStepMotion<Content: View>: View {
+    var direction: BenyuanQuestionMotionDirection
+    var token: UUID
+    @ViewBuilder var content: () -> Content
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @State private var isSettled = false
+
+    var body: some View {
+        content()
+            .opacity(isSettled ? 1 : 0.18)
+            .offset(x: isSettled ? 0 : initialOffset)
+            .blur(radius: isSettled || accessibilityReduceMotion ? 0 : 9)
+            .scaleEffect(isSettled ? 1 : 0.988)
+            .onAppear {
+                settle()
+            }
+            .onChange(of: token) { _ in
+                settle()
+            }
+    }
+
+    private var initialOffset: CGFloat {
+        guard !accessibilityReduceMotion else { return 0 }
+        switch direction {
+        case .forward: return 32
+        case .backward: return -32
+        case .reset: return 0
+        }
+    }
+
+    private func settle() {
+        isSettled = false
+        withAnimation(.easeOut(duration: accessibilityReduceMotion ? 0.12 : 0.46)) {
+            isSettled = true
+        }
+    }
+}
+
+struct BenyuanProcessingPhaseCurrent: View {
+    var progress: Double
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            let clamped = min(max(progress, 0.04), 1)
+            let pulse = accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 0.74)
+
+            GeometryReader { proxy in
+                let width = proxy.size.width
+                let height = proxy.size.height
+                let center = CGPoint(x: width * 0.50, y: height * 0.48)
+
+                ZStack {
+                    ForEach(0..<3, id: \.self) { index in
+                        Ellipse()
+                            .trim(from: 0.04, to: 0.22 + clamped * 0.42)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        .clear,
+                                        BenyuanColor.accentGold.opacity(0.10 + Double(index) * 0.04),
+                                        BenyuanColor.textPrimary.opacity(0.08 + pulse * 0.05),
+                                        .clear
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                style: StrokeStyle(lineWidth: index == 0 ? 1.4 : 0.9, lineCap: .round)
+                            )
+                            .frame(width: width * (0.72 + CGFloat(index) * 0.18), height: height * (0.30 + CGFloat(index) * 0.08))
+                            .rotationEffect(.degrees(-16 + phase * (4.0 + Double(index) * 1.4) + clamped * 22))
+                            .position(center)
+                    }
+
+                    Circle()
+                        .fill(BenyuanColor.accentGold.opacity(0.55 + pulse * 0.22))
+                        .frame(width: 7 + pulse * 3, height: 7 + pulse * 3)
+                        .position(
+                            x: center.x + cos(phase * 0.76 + clamped * .pi * 2) * width * 0.20,
+                            y: center.y + sin(phase * 0.76 + clamped * .pi * 2) * height * 0.09
+                        )
+                        .shadow(color: BenyuanColor.accentGold.opacity(0.42), radius: 12)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct BenyuanFlowOrbitTrail: View {
+    var progress: Double
+    var intensity: Double = 1
+    var tilt: Double = -12
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            let clamped = min(max(progress, 0.04), 1)
+            let pulse = accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 0.52)
+
+            GeometryReader { proxy in
+                let width = proxy.size.width
+                let height = proxy.size.height
+                let center = CGPoint(x: width * 0.50, y: height * 0.50)
+
+                ZStack {
+                    Ellipse()
+                        .stroke(BenyuanColor.textPrimary.opacity(0.045 * intensity), lineWidth: 1)
+                        .frame(width: width * 0.84, height: height * 0.34)
+                        .rotationEffect(.degrees(tilt))
+                        .position(center)
+
+                    Ellipse()
+                        .trim(from: 0.02 + clamped * 0.12, to: min(0.98, 0.28 + clamped * 0.58))
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    .clear,
+                                    BenyuanColor.accentGold.opacity((0.18 + pulse * 0.08) * intensity),
+                                    BenyuanColor.textPrimary.opacity(0.16 * intensity),
+                                    .clear
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            style: StrokeStyle(lineWidth: 1.35, lineCap: .round, dash: [1, 0])
+                        )
+                        .frame(width: width * 0.88, height: height * 0.36)
+                        .rotationEffect(.degrees(tilt + phase * 4.2))
+                        .position(center)
+
+                    Circle()
+                        .fill(BenyuanColor.accentGold.opacity((0.64 + pulse * 0.22) * intensity))
+                        .frame(width: 6 + pulse * 2, height: 6 + pulse * 2)
+                        .position(
+                            x: center.x + cos(phase * 0.64 + clamped * .pi * 2) * width * 0.38,
+                            y: center.y + sin(phase * 0.64 + clamped * .pi * 2) * height * 0.15
+                        )
+                        .shadow(color: BenyuanColor.accentGold.opacity(0.38 * intensity), radius: 10)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 struct BenyuanNativeTopBar: View {
     let progress: Double
     let label: String
