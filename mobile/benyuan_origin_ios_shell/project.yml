@@ -12,7 +12,10 @@ settings:
     SWIFT_VERSION: 5.0
     PRODUCT_BUNDLE_IDENTIFIER: com.fanhao.benyuan.origin.shell
     MARKETING_VERSION: 0.2.1
-    CURRENT_PROJECT_VERSION: 3
+    CURRENT_PROJECT_VERSION: 5
+    BENYUAN_WECHAT_APP_ID: ""
+    BENYUAN_WECHAT_UNIVERSAL_LINK: ""
+    BENYUAN_WECHAT_ASSOCIATED_DOMAIN: "applinks:"
     GENERATE_INFOPLIST_FILE: NO
     INFOPLIST_FILE: Info.plist
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
@@ -23,15 +26,18 @@ targets:
     sources:
       - path: swiftui-starter
       - path: BenyuanDesignTokens.swift
+      - path: BenyuanOriginShell-Bridging-Header.h
       - path: native-smoke-fixture.png
       - path: Assets.xcassets
     settings:
       base:
         PRODUCT_NAME: BenyuanOriginShell
+        CODE_SIGN_ENTITLEMENTS: BenyuanOriginShell.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_OBJC_BRIDGING_HEADER: BenyuanOriginShell-Bridging-Header.h
       configs:
         Debug:
           BenyuanShellEnvironment: development
@@ -45,11 +51,30 @@ targets:
           BenyuanShellEnvironment: production
           BenyuanShellStagingBaseURL: http://120.26.126.88
           BenyuanShellProductionBaseURL: http://120.26.126.88
+  BenyuanOriginShellTests:
+    type: bundle.unit-test
+    platform: iOS
+    supportedDestinations: [iOS]
+    sources:
+      - path: Tests
+    dependencies:
+      - target: BenyuanOriginShell
+    settings:
+      base:
+        PRODUCT_NAME: BenyuanOriginShellTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.fanhao.benyuan.origin.shell.tests
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: ""
 schemes:
   BenyuanOriginShell:
     build:
       targets:
         BenyuanOriginShell: all
+        BenyuanOriginShellTests: [test]
+    test:
+      config: Debug
+      targets:
+        - BenyuanOriginShellTests
     run:
       config: Debug
     archive:

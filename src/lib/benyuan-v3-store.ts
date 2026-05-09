@@ -1,14 +1,35 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { BenyuanStoredAsset, BenyuanV3Store, ConstellationRecord, Part1Record, Part2Record, TheaterScriptRecord } from "@/lib/benyuan-v3-types";
+import type {
+  BenyuanAuthProvider,
+  BenyuanAuthSession,
+  BenyuanAuthProviderIndex,
+  BenyuanAuthRateLimit,
+  BenyuanAccountHistoryItem,
+  BenyuanPhoneOtp,
+  BenyuanStoredAsset,
+  BenyuanUser,
+  BenyuanV3Store,
+  ConstellationRecord,
+  Part1Record,
+  Part2Record,
+  TheaterScriptRecord,
+} from "@/lib/benyuan-v3-types";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { generateDeterministicConstellation } from "@/lib/benyuan-v3-engine";
+import { uploadedAssetsFromAnswer } from "@/lib/benyuan-upload-assets";
 
-const STORE_PATH = path.join(process.cwd(), "data", "benyuan-v3-store.json");
-const TEMP_STORE_PATH = `${STORE_PATH}.tmp`;
+const configuredStorePath = process.env.BENYUAN_V3_STORE_PATH?.trim();
+const STORE_PATH = configuredStorePath ? path.resolve(configuredStorePath) : path.join(process.cwd(), "data", "benyuan-v3-store.json");
+const TEMP_STORE_PATH = `${STORE_PATH}.${process.pid}.tmp`;
 
 const EMPTY_STORE: BenyuanV3Store = {
+  users: {},
+  auth_sessions: {},
+  phone_otps: {},
+  auth_provider_index: {},
+  auth_rate_limits: {},
   uploaded_assets: {},
   part1_records: {},
   theater_scripts: {},
@@ -76,6 +97,11 @@ async function ensureStoreFile() {
 
 function mergeStore(raw: Partial<BenyuanV3Store> | null | undefined): BenyuanV3Store {
   return {
+    users: raw?.users ?? {},
+    auth_sessions: raw?.auth_sessions ?? {},
+    phone_otps: raw?.phone_otps ?? {},
+    auth_provider_index: raw?.auth_provider_index ?? {},
+    auth_rate_limits: raw?.auth_rate_limits ?? {},
     uploaded_assets: raw?.uploaded_assets ?? {},
     part1_records: raw?.part1_records ?? {},
     theater_scripts: raw?.theater_scripts ?? {},
@@ -117,6 +143,158 @@ export async function readBenyuanV3Store() {
 
 export function createBenyuanV3Id(prefix: "upload" | "part1" | "theater" | "part2" | "const") {
   return uid(prefix);
+}
+
+export function createBenyuanAuthId(prefix: "usr" | "auth") {
+  return uid(prefix);
+}
+
+export async function saveAuthUserAndSession(user: BenyuanUser, session: BenyuanAuthSession) {
+  return withStoreWrite((store) => {
+    store.users[user.user_id] = user;
+    store.auth_sessions[session.token] = session;
+    const timestamp = new Date().toISOString();
+    for (const [provider, providerSubject] of Object.entries(user.providers)) {
+      if (!providerSubject) continue;
+      const indexKey = `${provider}:${providerSubject}`;
+      const existing = store.auth_provider_index[indexKey];
+      store.auth_provider_index[indexKey] = {
+        provider: provider as BenyuanAuthProviderIndex["provider"],
+        provider_subject: providerSubject,
+        user_id: user.user_id,
+        created_at: existing?.created_at ?? timestamp,
+        updated_at: timestamp,
+      };
+    }
+    return { user, session };
+  });
+}
+
+export async function getAuthSessionByToken(token: string) {
+  const store = await readBenyuanV3Store();
+  const session = store.auth_sessions[token];
+  if (!session || session.revoked_at) return undefined;
+  const user = store.users[session.user_id];
+  if (!user) return undefined;
+  return { session, user };
+}
+
+export async function findUserByProviderSubject(provider: BenyuanAuthProviderIndex["provider"], providerSubject: string) {
+  const store = await readBenyuanV3Store();
+  const indexed = store.auth_provider_index[`${provider}:${providerSubject}`];
+  if (!indexed) return undefined;
+  return store.users[indexed.user_id];
+}
+
+export async function revokeAuthSession(token: string, timestamp = new Date().toISOString()) {
+  return withStoreWrite((store) => {
+    const session = store.auth_sessions[token];
+    if (!session) return undefined;
+    const revoked = { ...session, updated_at: timestamp, revoked_at: timestamp };
+    store.auth_sessions[token] = revoked;
+    return revoked;
+  });
+}
+
+export async function getAuthRateLimit(key: string) {
+  const store = await readBenyuanV3Store();
+  return store.auth_rate_limits[key];
+}
+
+export async function saveAuthRateLimit(limit: BenyuanAuthRateLimit) {
+  return withStoreWrite((store) => {
+    store.auth_rate_limits[limit.key] = limit;
+    return limit;
+  });
+}
+
+export async function savePhoneOtp(otp: BenyuanPhoneOtp) {
+  return withStoreWrite((store) => {
+    store.phone_otps[otp.phone] = otp;
+    return otp;
+  });
+}
+
+export async function getPhoneOtp(phone: string) {
+  const store = await readBenyuanV3Store();
+  return store.phone_otps[phone];
+}
+
+function countPart1Assets(part1: Part1Record) {
+  return ["A2_music_analysis", "C1_social_posts_analysis", "C2_precious_photo_analysis"].reduce((total, key) => {
+    const value = part1.answers[key];
+    return total + uploadedAssetsFromAnswer(value).length;
+  }, 0);
+}
+
+function findTheaterForPart1(store: BenyuanV3Store, part1Id: string) {
+  return Object.values(store.theater_scripts).find((item) => item.part1_id === part1Id);
+}
+
+function findPart2ForPart1(store: BenyuanV3Store, part1Id: string) {
+  return Object.values(store.part2_records).find((item) => item.part1_id === part1Id);
+}
+
+function findConstellationForPart1(store: BenyuanV3Store, part1Id: string) {
+  return Object.values(store.constellations).find((item) => item.part1_id === part1Id);
+}
+
+function makeHistoryItem(store: BenyuanV3Store, part1: Part1Record): BenyuanAccountHistoryItem {
+  const theater = findTheaterForPart1(store, part1.part1_id);
+  const part2 = findPart2ForPart1(store, part1.part1_id);
+  const constellation = findConstellationForPart1(store, part1.part1_id);
+  const stage = constellation ? "constellation" : part2 ? "part2" : theater ? "theater" : "part1";
+  const assetCount = countPart1Assets(part1);
+  const archetypeName = constellation?.psyche_constellation.archetype.name;
+  const theme = part1.aggregated_traits.core_themes[0] ?? "私人月相";
+  const title = archetypeName ? `${archetypeName}的本源档案` : `${theme}的本源档案`;
+  const subtitleParts = [`影像线索 ${assetCount} 个`];
+  if (constellation) subtitleParts.push("星图已生成");
+  else if (part2) subtitleParts.push("剧场已完成");
+  else if (theater) subtitleParts.push("剧场进行中");
+  else subtitleParts.push("收集中");
+  const updatedAt = constellation?.created_at ?? part2?.created_at ?? theater?.created_at ?? part1.updated_at;
+
+  return {
+    part1_id: part1.part1_id,
+    theater_script_id: theater?.theater_script_id,
+    part2_id: part2?.part2_id,
+    constellation_id: constellation?.constellation_id,
+    stage,
+    title,
+    subtitle: subtitleParts.join(" / "),
+    archetype_name: archetypeName,
+    created_at: part1.created_at,
+    updated_at: updatedAt,
+    asset_count: assetCount,
+  };
+}
+
+export async function listAccountHistoryForUser(userId: string) {
+  const store = await readBenyuanV3Store();
+  return Object.values(store.part1_records)
+    .filter((part1) => part1.user_id === userId)
+    .map((part1) => makeHistoryItem(store, part1))
+    .sort((left, right) => new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime());
+}
+
+export async function deleteAccountHistoryForUser(userId: string, part1Id: string) {
+  return withStoreWrite((store) => {
+    const part1 = store.part1_records[part1Id];
+    if (!part1 || part1.user_id !== userId) return false;
+
+    for (const [id, constellation] of Object.entries(store.constellations)) {
+      if (constellation.part1_id === part1Id) delete store.constellations[id];
+    }
+    for (const [id, part2] of Object.entries(store.part2_records)) {
+      if (part2.part1_id === part1Id) delete store.part2_records[id];
+    }
+    for (const [id, theater] of Object.entries(store.theater_scripts)) {
+      if (theater.part1_id === part1Id) delete store.theater_scripts[id];
+    }
+    delete store.part1_records[part1Id];
+    return true;
+  });
 }
 
 export async function saveUploadedAsset(asset: BenyuanStoredAsset) {

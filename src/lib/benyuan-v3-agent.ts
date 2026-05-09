@@ -19,6 +19,7 @@ import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
 import { dedupeMirrorQuestions } from "@/lib/benyuan-v3-theater-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { readCodexProviderDefaults } from "@/lib/codex-runtime";
+import { parseProviderJsonOrSsePayload } from "@/lib/benyuan-agent-response-parser";
 import type {
   AgentRuntimeOverride,
   AgentReasoningEffort,
@@ -249,6 +250,56 @@ async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: num
   }
 }
 
+type AgentStage = "multimodal" | "theater" | "constellation";
+type AgentSpeedProfile = "quality" | "fast";
+type AgentTransportPreference = "stream_first" | "json_first";
+type AgentStageProfile = {
+  maxOutputTokens?: number;
+  reasoningEffort?: AgentReasoningEffort;
+  timeoutMs?: number;
+  transport?: AgentTransportPreference;
+  allowSecondaryAttempts?: boolean;
+};
+
+const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentStageProfile>> = {
+  quality: {
+    multimodal: {},
+    theater: {},
+    constellation: {},
+  },
+  fast: {
+    multimodal: {
+      maxOutputTokens: 1100,
+      reasoningEffort: "low",
+      timeoutMs: 60000,
+      transport: "json_first",
+      allowSecondaryAttempts: false,
+    },
+    theater: {
+      maxOutputTokens: 2600,
+      reasoningEffort: "medium",
+      timeoutMs: 70000,
+      transport: "json_first",
+      allowSecondaryAttempts: false,
+    },
+    constellation: {
+      maxOutputTokens: 3800,
+      reasoningEffort: "medium",
+      timeoutMs: 90000,
+      transport: "json_first",
+      allowSecondaryAttempts: false,
+    },
+  },
+};
+
+export function readBenyuanAgentSpeedProfile(): AgentSpeedProfile {
+  return process.env.BENYUAN_AGENT_SPEED_PROFILE === "fast" ? "fast" : "quality";
+}
+
+function getAgentStageProfile(stage: AgentStage) {
+  return AGENT_STAGE_PROFILES[readBenyuanAgentSpeedProfile()][stage];
+}
+
 function resolveRuntime(override?: AgentRuntimeOverride) {
   const runtime = readAnalysisRuntimeConfig("deep", { provider: "custom" });
   const codexDefaults = readCodexProviderDefaults();
@@ -279,6 +330,15 @@ function resolveRuntime(override?: AgentRuntimeOverride) {
   };
 }
 
+type LiveAgentRuntime = ReturnType<typeof resolveRuntime> & { baseUrl: string };
+
+function withRequestTimeout(runtime: LiveAgentRuntime, timeoutMs?: number): LiveAgentRuntime {
+  if (!timeoutMs) return runtime;
+  return {
+    ...runtime,
+    timeoutMs: Math.min(runtime.timeoutMs, timeoutMs),
+  };
+}
 
 function isKnownStreamOnlyResponsesRuntime(runtime: { providerName: string; baseUrl: string }) {
   return runtime.providerName === "crs" || /soxio\.me\/openai/i.test(runtime.baseUrl);
@@ -313,7 +373,7 @@ function formatStatusError(prefix: string, status: number, detail?: string) {
 }
 
 async function attemptResponsesStreamJson(params: {
-  runtime: ReturnType<typeof resolveRuntime> & { baseUrl: string };
+  runtime: LiveAgentRuntime;
   headers: Record<string, string>;
   body: Record<string, unknown>;
   errorPrefix: string;
@@ -353,18 +413,72 @@ async function attemptResponsesStreamJson(params: {
   }
 }
 
-async function requestAgentJson(params: { system: string; user: string; runtimeOverride?: AgentRuntimeOverride; maxOutputTokens?: number; reasoningEffort?: AgentReasoningEffort }) {
+async function attemptResponsesJson(params: {
+  runtime: LiveAgentRuntime;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+  errorPrefix: string;
+}) {
+  try {
+    const response = await fetchWithTimeout(joinBaseUrl(params.runtime.baseUrl, "responses"), {
+      method: "POST",
+      headers: params.headers,
+      body: JSON.stringify(params.body),
+    }, params.runtime.timeoutMs);
+
+    if (!response.ok) {
+      const detail = await readErrorDetail(response);
+      return {
+        parsed: null,
+        requestId: undefined,
+        error: formatStatusError(params.errorPrefix, response.status, detail),
+        status: response.status,
+      };
+    }
+
+    const rawText = await response.text();
+    const payload = parseProviderJsonOrSsePayload(rawText);
+    const parsed = payload.parsed;
+
+    return {
+      parsed,
+      requestId: payload.requestId,
+      error: parsed ? undefined : (payload.errorDetail ? formatEventError(params.errorPrefix, payload.errorDetail) : `${params.errorPrefix}_parse_failed`),
+      status: response.status,
+    };
+  } catch (error) {
+    return {
+      parsed: null,
+      requestId: undefined,
+      error: error instanceof Error ? error.message : `${params.errorPrefix}_request_failed`,
+      status: undefined,
+    };
+  }
+}
+
+async function requestAgentJson(params: {
+  system: string;
+  user: string;
+  runtimeOverride?: AgentRuntimeOverride;
+  maxOutputTokens?: number;
+  reasoningEffort?: AgentReasoningEffort;
+  timeoutMs?: number;
+  transport?: AgentTransportPreference;
+  allowSecondaryAttempts?: boolean;
+}) {
   const runtime = resolveRuntime(params.runtimeOverride);
   if (!runtime.available || !runtime.apiKey || !runtime.baseUrl) {
     return { data: null, runtime: { provider: runtime.providerName, model: runtime.model, mode: "fallback" as const } };
   }
 
-  const liveRuntime = { ...runtime, baseUrl: runtime.baseUrl } as typeof runtime & { baseUrl: string };
+  const liveRuntime = withRequestTimeout({ ...runtime, baseUrl: runtime.baseUrl } as LiveAgentRuntime, params.timeoutMs);
   const headers = {
     Authorization: `Bearer ${runtime.apiKey}`,
     "Content-Type": "application/json",
   };
   const streamOnlyResponses = isKnownStreamOnlyResponsesRuntime(liveRuntime);
+  const transport = streamOnlyResponses ? "stream_first" : params.transport ?? "stream_first";
+  const allowSecondaryAttempts = params.allowSecondaryAttempts ?? true;
   const chatCompatibilityKey = getChatCompatibilityKey({ providerName: runtime.providerName, model: runtime.model, baseUrl: liveRuntime.baseUrl });
   const chatUnsupported = chatUnsupportedRuntimes.has(chatCompatibilityKey) || isKnownChatUnsupportedRuntime(liveRuntime);
 
@@ -381,25 +495,67 @@ async function requestAgentJson(params: { system: string; user: string; runtimeO
     ],
   });
 
-  let responsesError: string | undefined;
-  const streamAttempt = await attemptResponsesStreamJson({
-    runtime: liveRuntime,
-    headers,
-    body: buildResponsesBody(true),
-    errorPrefix: "responses_stream_failed",
+  const liveResult = (requestId?: string) => ({
+    provider: runtime.providerName,
+    model: runtime.model,
+    mode: "live" as const,
+    request_id: requestId,
   });
-  if (streamAttempt.parsed) {
-    return {
-      data: streamAttempt.parsed,
-      runtime: {
-        provider: runtime.providerName,
-        model: runtime.model,
-        mode: "live" as const,
-        request_id: streamAttempt.requestId,
-      },
-    };
+  const fallbackResult = (error?: string) => ({
+    data: null,
+    runtime: {
+      provider: runtime.providerName,
+      model: runtime.model,
+      mode: "fallback" as const,
+      error,
+    },
+  });
+
+  let responsesError: string | undefined;
+
+  const tryResponsesJson = async () => {
+    const jsonAttempt = await attemptResponsesJson({
+      runtime: liveRuntime,
+      headers,
+      body: buildResponsesBody(false),
+      errorPrefix: "responses_json_failed",
+    });
+    if (jsonAttempt.parsed) {
+      return {
+        data: jsonAttempt.parsed,
+        runtime: liveResult(jsonAttempt.requestId),
+      };
+    }
+    responsesError = appendError(responsesError, jsonAttempt.error);
+    return null;
+  };
+
+  const tryResponsesStream = async () => {
+    const streamAttempt = await attemptResponsesStreamJson({
+      runtime: liveRuntime,
+      headers,
+      body: buildResponsesBody(true),
+      errorPrefix: "responses_stream_failed",
+    });
+    if (streamAttempt.parsed) {
+      return {
+        data: streamAttempt.parsed,
+        runtime: liveResult(streamAttempt.requestId),
+      };
+    }
+    responsesError = appendError(responsesError, streamAttempt.error);
+    return null;
+  };
+
+  if (transport === "json_first" && !streamOnlyResponses) {
+    const jsonResult = await tryResponsesJson();
+    if (jsonResult) return jsonResult;
+    if (!allowSecondaryAttempts) return fallbackResult(responsesError);
   }
-  responsesError = appendError(responsesError, streamAttempt.error);
+
+  const streamResult = await tryResponsesStream();
+  if (streamResult) return streamResult;
+  if (!allowSecondaryAttempts) return fallbackResult(responsesError);
 
   if (streamOnlyResponses) {
     const compactAttempt = await attemptResponsesStreamJson({
@@ -414,12 +570,7 @@ async function requestAgentJson(params: { system: string; user: string; runtimeO
     if (compactAttempt.parsed) {
       return {
         data: compactAttempt.parsed,
-        runtime: {
-          provider: runtime.providerName,
-          model: runtime.model,
-          mode: "live" as const,
-          request_id: compactAttempt.requestId,
-        },
+        runtime: liveResult(compactAttempt.requestId),
       };
     }
     responsesError = appendError(responsesError, compactAttempt.error);
@@ -437,67 +588,19 @@ async function requestAgentJson(params: { system: string; user: string; runtimeO
     if (rescueAttempt.parsed) {
       return {
         data: rescueAttempt.parsed,
-        runtime: {
-          provider: runtime.providerName,
-          model: runtime.model,
-          mode: "live" as const,
-          request_id: rescueAttempt.requestId,
-        },
+        runtime: liveResult(rescueAttempt.requestId),
       };
     }
     responsesError = appendError(responsesError, rescueAttempt.error);
     responsesError = appendError(responsesError, "responses_json_skipped_stream_only");
-  } else {
-    try {
-      const response = await fetchWithTimeout(joinBaseUrl(liveRuntime.baseUrl, "responses"), {
-        method: "POST",
-        headers,
-        body: JSON.stringify(buildResponsesBody(false)),
-      }, runtime.timeoutMs);
-
-      if (response.ok) {
-        const payload = await response.json();
-        const rawText = readResponsesText(payload);
-        const parsed = extractJsonObject(rawText) ?? (isRecord(payload) ? payload : null);
-
-        if (parsed) {
-          const requestId = isRecord(payload) && typeof payload.id === "string"
-            ? payload.id
-            : isRecord(payload) && isRecord(payload.response) && typeof payload.response.id === "string"
-              ? payload.response.id
-              : undefined;
-          return {
-            data: parsed,
-            runtime: {
-              provider: runtime.providerName,
-              model: runtime.model,
-              mode: "live" as const,
-              request_id: requestId,
-            },
-          };
-        }
-
-        responsesError = appendError(responsesError, "responses_json_parse_failed");
-      } else {
-        const detail = await readErrorDetail(response);
-        responsesError = appendError(responsesError, formatStatusError("responses_json_failed", response.status, detail));
-      }
-    } catch (error) {
-      responsesError = appendError(responsesError, error instanceof Error ? error.message : "responses_json_request_failed");
-    }
+  } else if (transport === "stream_first") {
+    const jsonResult = await tryResponsesJson();
+    if (jsonResult) return jsonResult;
   }
 
   if (chatUnsupported) {
     chatUnsupportedRuntimes.add(chatCompatibilityKey);
-    return {
-      data: null,
-      runtime: {
-        provider: runtime.providerName,
-        model: runtime.model,
-        mode: "fallback" as const,
-        error: appendError(responsesError, "chat_completions_skipped_unsupported"),
-      },
-    };
+    return fallbackResult(appendError(responsesError, "chat_completions_skipped_unsupported"));
   }
 
   try {
@@ -512,7 +615,7 @@ async function requestAgentJson(params: { system: string; user: string; runtimeO
           { role: "user", content: params.user },
         ],
       }),
-    }, runtime.timeoutMs);
+    }, liveRuntime.timeoutMs);
 
     if (!response.ok) {
       const detail = await readErrorDetail(response);
@@ -586,6 +689,9 @@ async function requestMultimodalJson(params: {
   runtimeOverride?: AgentRuntimeOverride;
   maxOutputTokens?: number;
   reasoningEffort?: AgentReasoningEffort;
+  timeoutMs?: number;
+  transport?: AgentTransportPreference;
+  allowSecondaryAttempts?: boolean;
 }) {
   const runtime = resolveRuntime(params.runtimeOverride);
   if (!runtime.available || !runtime.apiKey || !runtime.baseUrl) {
@@ -608,15 +714,20 @@ async function requestMultimodalJson(params: {
       runtimeOverride: params.runtimeOverride,
       maxOutputTokens: params.maxOutputTokens,
       reasoningEffort: params.reasoningEffort,
+      timeoutMs: params.timeoutMs,
+      transport: params.transport,
+      allowSecondaryAttempts: params.allowSecondaryAttempts,
     });
   }
 
-  const liveRuntime = { ...runtime, baseUrl: runtime.baseUrl } as typeof runtime & { baseUrl: string };
+  const liveRuntime = withRequestTimeout({ ...runtime, baseUrl: runtime.baseUrl } as LiveAgentRuntime, params.timeoutMs);
   const headers = {
     Authorization: `Bearer ${runtime.apiKey}`,
     "Content-Type": "application/json",
   };
   const streamOnlyResponses = isKnownStreamOnlyResponsesRuntime(liveRuntime);
+  const transport = streamOnlyResponses ? "stream_first" : params.transport ?? "stream_first";
+  const allowSecondaryAttempts = params.allowSecondaryAttempts ?? true;
   const multimodalChatCompatibilityKey = getChatCompatibilityKey({ providerName: runtime.providerName, model: runtime.model, baseUrl: liveRuntime.baseUrl });
   const chatUnsupported = chatUnsupportedRuntimes.has(multimodalChatCompatibilityKey) || isKnownChatUnsupportedRuntime(liveRuntime);
 
@@ -653,7 +764,57 @@ async function requestMultimodalJson(params: {
     ],
   });
 
+  const liveResult = (requestId?: string) => ({
+    provider: runtime.providerName,
+    model: runtime.model,
+    mode: "live" as const,
+    request_id: requestId,
+  });
+  const fallbackResult = (error?: string) => ({
+    data: null,
+    runtime: {
+      provider: runtime.providerName,
+      model: runtime.model,
+      mode: "fallback" as const,
+      error,
+    },
+  });
+
   let responsesError: string | undefined;
+  const tryResponsesJson = async () => {
+    const jsonAttempt = await attemptResponsesJson({
+      runtime: liveRuntime,
+      headers,
+      body: buildResponsesBody(false),
+      errorPrefix: "multimodal_responses_json_failed",
+    });
+    if (jsonAttempt.parsed) {
+      return {
+        data: jsonAttempt.parsed,
+        runtime: liveResult(jsonAttempt.requestId),
+      };
+    }
+    responsesError = appendError(responsesError, jsonAttempt.error);
+    return null;
+  };
+
+  const tryResponsesStream = async () => {
+    const streamAttempt = await attemptResponsesStreamJson({
+      runtime: liveRuntime,
+      headers,
+      body: buildResponsesBody(true),
+      errorPrefix: "multimodal_responses_stream_failed",
+    });
+    if (streamAttempt.parsed) {
+      return {
+        data: streamAttempt.parsed,
+        runtime: liveResult(streamAttempt.requestId),
+      };
+    }
+    responsesError = appendError(responsesError, streamAttempt.error);
+    return null;
+  };
+
   if (streamOnlyResponses) {
     const streamAttempts = [
       {
@@ -688,7 +849,8 @@ async function requestMultimodalJson(params: {
       },
     ] as const;
 
-    for (const attempt of streamAttempts) {
+    const attemptsToRun = allowSecondaryAttempts ? streamAttempts : streamAttempts.slice(0, 1);
+    for (const attempt of attemptsToRun) {
       if (attempt.delayMs > 0) {
         await wait(attempt.delayMs);
       }
@@ -714,74 +876,25 @@ async function requestMultimodalJson(params: {
 
     responsesError = appendError(responsesError, "multimodal_responses_json_skipped_stream_only");
   } else {
-    const streamAttempt = await attemptResponsesStreamJson({
-      runtime: liveRuntime,
-      headers,
-      body: buildResponsesBody(true),
-      errorPrefix: "multimodal_responses_stream_failed",
-    });
-    if (streamAttempt.parsed) {
-      return {
-        data: streamAttempt.parsed,
-        runtime: {
-          provider: runtime.providerName,
-          model: runtime.model,
-          mode: "live" as const,
-          request_id: streamAttempt.requestId,
-        },
-      };
+    if (transport === "json_first") {
+      const jsonResult = await tryResponsesJson();
+      if (jsonResult) return jsonResult;
+      if (!allowSecondaryAttempts) return fallbackResult(responsesError);
     }
-    responsesError = appendError(responsesError, streamAttempt.error);
-    try {
-      const response = await fetchWithTimeout(joinBaseUrl(liveRuntime.baseUrl, "responses"), {
-        method: "POST",
-        headers,
-        body: JSON.stringify(buildResponsesBody(false)),
-      }, runtime.timeoutMs);
 
-      if (response.ok) {
-        const payload = await response.json();
-        const rawText = readResponsesText(payload);
-        const parsed = extractJsonObject(rawText) ?? (isRecord(payload) ? payload : null);
+    const streamResult = await tryResponsesStream();
+    if (streamResult) return streamResult;
+    if (!allowSecondaryAttempts) return fallbackResult(responsesError);
 
-        if (parsed) {
-          const requestId = isRecord(payload) && typeof payload.id === "string"
-            ? payload.id
-            : isRecord(payload) && isRecord(payload.response) && typeof payload.response.id === "string"
-              ? payload.response.id
-              : undefined;
-          return {
-            data: parsed,
-            runtime: {
-              provider: runtime.providerName,
-              model: runtime.model,
-              mode: "live" as const,
-              request_id: requestId,
-            },
-          };
-        }
-
-        responsesError = appendError(responsesError, "multimodal_responses_json_parse_failed");
-      } else {
-        const detail = await readErrorDetail(response);
-        responsesError = appendError(responsesError, formatStatusError("multimodal_responses_json_failed", response.status, detail));
-      }
-    } catch (error) {
-      responsesError = appendError(responsesError, error instanceof Error ? error.message : "multimodal_responses_json_request_failed");
+    if (transport === "stream_first") {
+      const jsonResult = await tryResponsesJson();
+      if (jsonResult) return jsonResult;
     }
   }
 
   if (chatUnsupported) {
     chatUnsupportedRuntimes.add(multimodalChatCompatibilityKey);
-    return {
-      data: null,
-      runtime: {
-        provider: runtime.providerName,
-        model: runtime.model,
-        mode: "fallback" as const,
-        error: appendError(responsesError, "multimodal_chat_skipped_unsupported"),
-      },
-    };
+    return fallbackResult(appendError(responsesError, "multimodal_chat_skipped_unsupported"));
   }
 
   try {
@@ -805,7 +918,7 @@ async function requestMultimodalJson(params: {
           },
         ],
       }),
-    }, runtime.timeoutMs);
+    }, liveRuntime.timeoutMs);
 
     if (!response.ok) {
       const detail = await readErrorDetail(response);
@@ -1429,7 +1542,15 @@ export async function runMultimodalAnalysis(
     precious_photo_input?: MultimodalInputItem;
   },
   runtimeOverride?: AgentRuntimeOverride,
-) {
+): Promise<{
+  result: {
+    music_analysis: MusicAnalysis;
+    social_posts_analysis: SocialPostAnalysis[];
+    social_posts_overall_pattern: SocialPostOverallPattern;
+    precious_photo_analysis: PreciousPhotoAnalysis;
+  };
+  runtime: AgentRuntimeResult;
+}> {
   const fallback = {
     music_analysis: analyzeMusicInputs(input.music_inputs),
     ...(() => {
@@ -1441,6 +1562,7 @@ export async function runMultimodalAnalysis(
     })(),
     precious_photo_analysis: analyzePreciousPhotoInput(input.precious_photo_input),
   };
+  const profile = getAgentStageProfile("multimodal");
 
   const request = await requestMultimodalJson({
     system: MULTIMODAL_SYSTEM_PROMPT,
@@ -1449,8 +1571,11 @@ export async function runMultimodalAnalysis(
     socialInputs: input.social_post_inputs,
     photoInput: input.precious_photo_input,
     runtimeOverride,
-    maxOutputTokens: 1600,
-    reasoningEffort: runtimeOverride?.reasoning_effort ?? "xhigh",
+    maxOutputTokens: profile.maxOutputTokens ?? 1600,
+    reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
+    timeoutMs: profile.timeoutMs,
+    transport: profile.transport,
+    allowSecondaryAttempts: profile.allowSecondaryAttempts,
   });
 
   const normalized = normalizeMultimodalResult(request.data, fallback);
@@ -1466,12 +1591,16 @@ export async function runMultimodalAnalysis(
 
 export async function generateTheaterScriptWithAgent(record: Part1Record, runtimeOverride?: AgentRuntimeOverride): Promise<{ theaterScript: TheaterScript; runtime: AgentRuntimeResult }> {
   const fallback = generateDeterministicTheaterScript(record);
+  const profile = getAgentStageProfile("theater");
   const request = await requestAgentJson({
     system: DIRECTOR_SYSTEM_PROMPT,
     user: buildDirectorUserPrompt(record),
     runtimeOverride,
-    maxOutputTokens: 4200,
-    reasoningEffort: runtimeOverride?.reasoning_effort ?? "xhigh",
+    maxOutputTokens: profile.maxOutputTokens ?? 4200,
+    reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
+    timeoutMs: profile.timeoutMs,
+    transport: profile.transport,
+    allowSecondaryAttempts: profile.allowSecondaryAttempts,
   });
 
   const normalized = normalizeTheaterScript(request.data, fallback);
@@ -1484,12 +1613,16 @@ export async function generateTheaterScriptWithAgent(record: Part1Record, runtim
 
 export async function generateConstellationWithAgent(part1: Part1Record, part2: Part2Record, runtimeOverride?: AgentRuntimeOverride): Promise<{ constellation: PsycheConstellation; runtime: AgentRuntimeResult }> {
   const fallback = generateDeterministicConstellation(part1, part2);
+  const profile = getAgentStageProfile("constellation");
   const request = await requestAgentJson({
     system: ANALYST_SYSTEM_PROMPT,
     user: buildAnalystUserPrompt(part1, part2, fallback),
     runtimeOverride,
-    maxOutputTokens: 5600,
-    reasoningEffort: runtimeOverride?.reasoning_effort ?? "xhigh",
+    maxOutputTokens: profile.maxOutputTokens ?? 5600,
+    reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
+    timeoutMs: profile.timeoutMs,
+    transport: profile.transport,
+    allowSecondaryAttempts: profile.allowSecondaryAttempts,
   });
 
   const normalized = normalizeConstellation(request.data, fallback);

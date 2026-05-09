@@ -1,5 +1,16 @@
 import Foundation
 
+enum BenyuanNativePreviewStage: String, Equatable {
+    case auth
+    case account
+    case collect
+    case upload
+    case processing
+    case theater
+    case constellation
+    case constellationEnd = "constellation-end"
+}
+
 struct BenyuanShellConfig {
     enum Environment: String {
         case development
@@ -111,6 +122,33 @@ struct BenyuanShellConfig {
         launchArgumentValue("--benyuan-route")
     }
 
+    static var nativePreviewStage: BenyuanNativePreviewStage? {
+#if DEBUG
+        nativePreviewStage(arguments: ProcessInfo.processInfo.arguments)
+#else
+        nil
+#endif
+    }
+
+    static var nativeE2EAutorun: Bool {
+#if DEBUG
+        nativeE2EAutorun(arguments: ProcessInfo.processInfo.arguments)
+#else
+        false
+#endif
+    }
+
+    static func nativePreviewStage(arguments: [String]) -> BenyuanNativePreviewStage? {
+        guard let raw = launchArgumentValue("--benyuan-native-preview", arguments: arguments)?.lowercased() else {
+            return nil
+        }
+        return BenyuanNativePreviewStage(rawValue: raw)
+    }
+
+    static func nativeE2EAutorun(arguments: [String]) -> Bool {
+        arguments.contains("--benyuan-native-e2e-autorun")
+    }
+
     static var nativePickFixtureNames: [String] {
         guard let raw = launchArgumentValue("--benyuan-native-pick-fixture") else {
             return []
@@ -138,6 +176,13 @@ struct BenyuanShellConfig {
         components.query = nil
         components.fragment = nil
         return components.url
+    }
+
+    private static func launchArgumentValue(_ key: String, arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: key), index + 1 < arguments.count else {
+            return nil
+        }
+        return arguments[index + 1]
     }
 
     private static func infoConfiguredBaseURL(_ key: String) -> URL? {

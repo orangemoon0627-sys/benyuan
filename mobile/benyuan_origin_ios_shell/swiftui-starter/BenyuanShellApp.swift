@@ -3,6 +3,8 @@ import SwiftUI
 @main
 struct BenyuanShellApp: App {
     init() {
+        BenyuanWechatAuthClient.shared.configure()
+
         if let raw = BenyuanShellConfig.launchArgumentValue("--benyuan-base-url"),
            let url = URL(string: raw) {
             BenyuanShellConfig.persistRuntimeBaseURL(url)
@@ -18,6 +20,12 @@ struct BenyuanShellApp: App {
     var body: some Scene {
         WindowGroup {
             BenyuanShellRootView()
+                .onOpenURL { url in
+                    _ = BenyuanWechatAuthClient.shared.handleOpenURL(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                    _ = BenyuanWechatAuthClient.shared.handleUniversalLink(userActivity)
+                }
         }
     }
 }

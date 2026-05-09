@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertPart1Owner } from "@/lib/benyuan-auth";
 import { createBenyuanV3Id, getPart1Record, getTheaterScriptRecord, savePart2Record } from "@/lib/benyuan-v3-store";
 import type { Part2ChoiceRecord, Part2Metadata, Part2MirrorRecord } from "@/lib/benyuan-v3-types";
 
@@ -18,6 +19,13 @@ export async function POST(request: Request) {
   const [part1, theaterScript] = await Promise.all([getPart1Record(body.part1_id), getTheaterScriptRecord(body.theater_script_id)]);
   if (!part1) return NextResponse.json({ error: "part1_not_found" }, { status: 404 });
   if (!theaterScript) return NextResponse.json({ error: "theater_script_not_found" }, { status: 404 });
+  const ownership = await assertPart1Owner(request, part1);
+  if (!ownership.ok) {
+    return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+  }
+  if (theaterScript.part1_id !== part1.part1_id) {
+    return NextResponse.json({ error: "theater_script_part1_mismatch" }, { status: 409 });
+  }
 
   const record = {
     part2_id: createBenyuanV3Id("part2"),

@@ -7,12 +7,14 @@ import process from "node:process";
 import {
   collectIosProjectConfig,
   collectTestFlightExportStatus,
+  evaluateIosAuthReleaseReadiness,
 } from "./benyuan-ios-testflight-preflight-lib.mjs";
 
 const root = process.cwd();
 const outputDir = path.join(root, "output");
 const outputPath = path.join(outputDir, "benyuan-ios-testflight-preflight.json");
 const projectYmlPath = path.join(root, "mobile", "benyuan_origin_ios_shell", "project.yml");
+const entitlementsPath = path.join(root, "mobile", "benyuan_origin_ios_shell", "BenyuanOriginShell.entitlements");
 const appIconContentsPath = path.join(
   root,
   "mobile",
@@ -127,6 +129,7 @@ async function collectArchiveDistributionStatus(archive) {
 async function main() {
   await mkdir(outputDir, { recursive: true });
   const projectYml = await readFile(projectYmlPath, "utf8");
+  const entitlementsText = await readFile(entitlementsPath, "utf8");
   const iconContents = JSON.parse(await readFile(appIconContentsPath, "utf8"));
   const shellBuild = await readJsonIfPresent(shellBuildPath);
   const nativeSmoke = await readJsonIfPresent(nativeSmokePath);
@@ -139,6 +142,16 @@ async function main() {
   const projectConfig = collectIosProjectConfig(projectYml);
   const { displayName, marketingVersion, buildNumber, bundleId } = projectConfig.shell;
   const { stagingBaseUrl: stagingUrl, productionBaseUrl: releaseUrl } = projectConfig.releaseConfig;
+  const authRelease = evaluateIosAuthReleaseReadiness({
+    authConfig: projectConfig.authConfig,
+    entitlementsText,
+    authRunbookPresent: await fileExists(path.join(root, "docs", "benyuan-auth-wechat-sms-runbook-2026-05-08.md")),
+    authSmokeScriptsPresent: {
+      contract: await fileExists(path.join(root, "scripts", "benyuan-auth-contract-smoke.mjs")),
+      runtime: await fileExists(path.join(root, "scripts", "benyuan-auth-runtime-smoke.mjs")),
+      smsAliyun: await fileExists(path.join(root, "scripts", "benyuan-auth-sms-aliyun-smoke.mjs")),
+    },
+  });
 
   const iconImages = Array.isArray(iconContents.images) ? iconContents.images : [];
   const iconFiles = iconImages.map((image) => image.filename).filter(Boolean);
@@ -166,6 +179,7 @@ async function main() {
   if (!nativeSmoke) {
     blockers.push("native_smoke_artifact_missing");
   }
+  blockers.push(...authRelease.blockers);
   const hasReadyExport = exportDistribution?.readyForAppStoreConnect === true;
   if (!archive) {
     blockers.push("release_archive_missing");
@@ -187,6 +201,15 @@ async function main() {
       stagingBaseUrl: stagingUrl,
       productionBaseUrl: releaseUrl,
       usesPlaceholderUrls: isPlaceholderReleaseUrl(stagingUrl) || isPlaceholderReleaseUrl(releaseUrl),
+    },
+    authRelease: {
+      wechatAppId: projectConfig.authConfig.wechatAppId ? "configured" : "missing",
+      wechatUniversalLink: projectConfig.authConfig.wechatUniversalLink ?? null,
+      wechatAssociatedDomain: projectConfig.authConfig.wechatAssociatedDomain ?? null,
+      readyForCoreAuth: authRelease.readyForCoreAuth,
+      readyForWechatRelease: authRelease.readyForWechatRelease,
+      blockers: authRelease.blockers,
+      warnings: authRelease.warnings,
     },
     assets: {
       appIconReady: iconFiles.length > 0 && iconMissing.length === 0,
@@ -226,6 +249,7 @@ async function main() {
         : null,
     },
     blockers,
+    warnings: authRelease.warnings,
     readyForTestFlightUpload: blockers.length === 0,
     nextManualSteps: [
       "在 Apple Developer / App Store Connect 中确认当前账号属于可发布 App 的 provider",

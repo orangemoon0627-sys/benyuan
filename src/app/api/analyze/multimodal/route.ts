@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { assertPart1Owner } from "@/lib/benyuan-auth";
+import { recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
 import { aggregateTraitsFromPart1 } from "@/lib/benyuan-v3-engine";
 import { runMultimodalAnalysis } from "@/lib/benyuan-v3-agent";
 import { getPart1Record, savePart1Record } from "@/lib/benyuan-v3-store";
@@ -44,11 +46,16 @@ export async function POST(request: Request) {
   if (!record) {
     return NextResponse.json({ error: "part1_not_found" }, { status: 404 });
   }
+  const ownership = await assertPart1Owner(request, record);
+  if (!ownership.ok) {
+    return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+  }
 
   const musicRefs = refsFromAnswer(record.answers.A2_music_analysis);
   const socialRefs = refsFromAnswer(record.answers.C1_social_posts_analysis);
   const photoRefs = refsFromAnswer(record.answers.C2_precious_photo_analysis);
 
+  const startedAt = Date.now();
   const analysis = await runMultimodalAnalysis(
     {
       music_inputs: itemsFromRefs(musicRefs, body.music_inputs),
@@ -65,6 +72,16 @@ export async function POST(request: Request) {
     },
     body.runtime_override,
   );
+  const timing = await recordBenyuanAgentTiming({
+    stage: "multimodal",
+    duration_ms: Date.now() - startedAt,
+    runtime_mode: analysis.runtime.mode,
+    provider: analysis.runtime.provider,
+    model: analysis.runtime.model,
+    error: analysis.runtime.error,
+    request_id: analysis.runtime.request_id,
+    part1_id: record.part1_id,
+  });
 
   const updated = {
     ...record,
@@ -95,6 +112,7 @@ export async function POST(request: Request) {
       social: socialRefs.length,
       photo: photoRefs.length,
     },
+    timing,
     music_analysis: updated.part1_data.aesthetics.music_analysis,
     social_posts_analysis: updated.part1_data.narrative.social_posts_analysis,
     social_posts_overall_pattern: updated.part1_data.narrative.social_posts_overall_pattern,

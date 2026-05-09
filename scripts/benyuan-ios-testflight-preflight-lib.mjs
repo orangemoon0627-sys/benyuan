@@ -33,12 +33,13 @@ function extractSettingValue(text, key) {
 }
 
 function extractConfigValue(block, primaryKey, fallbackKey) {
-  return extractSettingValue(block, primaryKey) ?? extractSettingValue(block, fallbackKey);
+  return extractSettingValue(block, primaryKey) ?? (fallbackKey ? extractSettingValue(block, fallbackKey) : null);
 }
 
 export function collectIosProjectConfig(projectYml) {
   const stagingBlock = collectConfigBlock(projectYml, "Staging");
   const releaseBlock = collectConfigBlock(projectYml, "Release");
+  const baseBlock = collectConfigBlock(projectYml, "base");
 
   return {
     shell: {
@@ -59,6 +60,75 @@ export function collectIosProjectConfig(projectYml) {
         "INFOPLIST_KEY_BenyuanShellProductionBaseURL",
       ),
     },
+    authConfig: {
+      wechatAppId: extractConfigValue(releaseBlock, "BENYUAN_WECHAT_APP_ID") ?? extractSettingValue(baseBlock, "BENYUAN_WECHAT_APP_ID"),
+      wechatUniversalLink:
+        extractConfigValue(releaseBlock, "BENYUAN_WECHAT_UNIVERSAL_LINK") ?? extractSettingValue(baseBlock, "BENYUAN_WECHAT_UNIVERSAL_LINK"),
+      wechatAssociatedDomain:
+        extractConfigValue(releaseBlock, "BENYUAN_WECHAT_ASSOCIATED_DOMAIN") ?? extractSettingValue(baseBlock, "BENYUAN_WECHAT_ASSOCIATED_DOMAIN"),
+    },
+  };
+}
+
+function isMissingWechatAppId(value) {
+  return !value || !/^wx[a-zA-Z0-9]{8,}$/.test(value);
+}
+
+function isMissingWechatUniversalLink(value) {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol !== "https:" || !url.pathname.startsWith("/app/benyuan/");
+  } catch {
+    return true;
+  }
+}
+
+function isMissingWechatAssociatedDomain(value) {
+  return !value || value === "applinks:" || !/^applinks:[a-z0-9.-]+\.[a-z]{2,}$/i.test(value);
+}
+
+export function evaluateIosAuthReleaseReadiness(input) {
+  const blockers = [];
+  const warnings = [];
+  const authSmokeScriptsPresent = input.authSmokeScriptsPresent ?? {};
+  const entitlementsText = String(input.entitlementsText ?? "");
+
+  if (!entitlementsText.includes("com.apple.developer.applesignin")) {
+    blockers.push("apple_sign_in_entitlement_missing");
+  }
+  if (!input.authRunbookPresent) {
+    blockers.push("auth_runbook_missing");
+  }
+  if (!authSmokeScriptsPresent.contract) {
+    blockers.push("auth_contract_smoke_missing");
+  }
+  if (!authSmokeScriptsPresent.runtime) {
+    blockers.push("auth_runtime_smoke_missing");
+  }
+  if (!authSmokeScriptsPresent.smsAliyun) {
+    blockers.push("auth_sms_aliyun_smoke_missing");
+  }
+
+  const authConfig = input.authConfig ?? {};
+  if (isMissingWechatAppId(authConfig.wechatAppId)) {
+    warnings.push("wechat_app_id_missing");
+  }
+  if (isMissingWechatUniversalLink(authConfig.wechatUniversalLink)) {
+    warnings.push("wechat_universal_link_missing");
+  }
+  if (isMissingWechatAssociatedDomain(authConfig.wechatAssociatedDomain)) {
+    warnings.push("wechat_associated_domain_missing");
+  }
+  if (!entitlementsText.includes("com.apple.developer.associated-domains")) {
+    warnings.push("wechat_associated_domains_entitlement_missing");
+  }
+
+  return {
+    readyForCoreAuth: blockers.length === 0,
+    readyForWechatRelease: blockers.length === 0 && warnings.length === 0,
+    blockers,
+    warnings,
   };
 }
 

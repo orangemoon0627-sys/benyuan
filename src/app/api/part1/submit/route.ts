@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readAuthFromRequest } from "@/lib/benyuan-auth";
 import { aggregateTraitsFromPart1, buildPart1DataFromAnswers } from "@/lib/benyuan-v3-engine";
 import { createBenyuanV3Id, savePart1Record } from "@/lib/benyuan-v3-store";
 import { summarizeSelectedOptions, validatePart1Answers } from "@/lib/benyuan-v3-validation";
@@ -6,6 +7,7 @@ import type { Part1SubmissionInput } from "@/lib/benyuan-v3-types";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as Part1SubmissionInput;
+  const auth = await readAuthFromRequest(request);
   const validation = validatePart1Answers(body.answers);
 
   if (!validation.ok) {
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
   const record = {
     part1_id: createBenyuanV3Id("part1"),
-    user_id: body.user_id ?? "usr_local",
+    user_id: auth?.user.user_id ?? body.user_id ?? "usr_local",
     created_at: now,
     updated_at: now,
     answers: validation.answers,

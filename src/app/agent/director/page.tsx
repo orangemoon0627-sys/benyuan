@@ -27,7 +27,7 @@ export default function DirectorAgentPage() {
           </div>
         </GlassPanel>
         <GlassPanel>
-          <SectionTitle label="Runtime" title="运行机制" description="支持 runtime_override，可直接传 api_key / base_url / model / provider_name / reasoning_effort。" />
+          <SectionTitle label="Runtime" title="运行机制" description="支持服务端 runtime 配置；客户端只提交业务数据，不携带 API Key。" />
           <div className="flex flex-wrap gap-2">
             <MetaPill>POST /api/theater/generate</MetaPill>
             <MetaPill>runtime_override.live</MetaPill>

@@ -1,4 +1,5 @@
 import { BENYUAN_V3_CONSTELLATION_ENGINE, deriveConstellationSupportTone, getBenyuanArchetypeProfile } from "@/lib/benyuan-v3-report-profile";
+import { benyuanQuestionsById, getQuestionOption } from "@/lib/benyuan-v3-schema";
 import type { Part1Record, Part2Record, PsycheConstellation } from "@/lib/benyuan-v3-types";
 
 const dimensionLabels: Record<string, string> = {
@@ -26,7 +27,130 @@ function formatRecommendationSeeds(constellation: PsycheConstellation) {
   return { books, films, music };
 }
 
-export const DIRECTOR_SYSTEM_PROMPT = `# 剧场导演 Agent Prompt v3
+function compact(value: unknown) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function optionLabel(questionId: string, optionId: unknown) {
+  if (typeof optionId !== "string") return compact(optionId);
+  const option = getQuestionOption(questionId, optionId);
+  return option ? `${option.text}（${option.psychologicalSignal ?? option.id}）` : optionId;
+}
+
+function answerValueLabel(questionId: string, value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => optionLabel(questionId, item)).filter(Boolean).join(" / ");
+  }
+
+  if (value && typeof value === "object") {
+    const question = benyuanQuestionsById[questionId];
+    if (question?.kind === "distribution") {
+      return Object.entries(value as Record<string, unknown>)
+        .map(([key, item]) => `${key}:${compact(item)}%`)
+        .join(" / ");
+    }
+
+    return JSON.stringify(value);
+  }
+
+  return optionLabel(questionId, value);
+}
+
+function evidenceLine(questionId: string, value: unknown) {
+  const question = benyuanQuestionsById[questionId];
+  const label = question ? `${question.title} ${question.prompt}` : questionId;
+  const answer = answerValueLabel(questionId, value);
+  return answer ? `- ${label}：${answer}` : "";
+}
+
+function formatMusicEvidence(record: Part1Record) {
+  const music = record.part1_data.aesthetics.music_analysis;
+  if (!music) return "- 音乐线索：未上传或尚未完成多模态分析";
+
+  return [
+    `- 音乐线索：${music.primary_genres.join(" / ") || "未知流派"}`,
+    `  情绪基调：${music.emotional_tone || "unknown"}`,
+    `  语言 / 年代：${music.language_diversity.join(" / ") || "unknown"}；${Object.entries(music.era_distribution ?? {}).map(([key, value]) => `${key}:${value}%`).join(" / ") || "unknown"}`,
+    `  性格信号：${Object.entries(music.personality_signals ?? {}).map(([key, value]) => `${key}:${value}`).join(" / ") || "unknown"}`,
+  ].join("\n");
+}
+
+function formatSocialEvidence(record: Part1Record) {
+  const posts = record.part1_data.narrative.social_posts_analysis ?? [];
+  const overall = record.part1_data.narrative.social_posts_overall_pattern;
+  if (posts.length === 0 && !overall) return "- 社交动态线索：未上传或尚未完成多模态分析";
+
+  const postLines = posts.slice(0, 3).map((item) => {
+    const themes = item.themes?.join(" / ") || "unknown";
+    const signals = item.psychological_signals?.join(" / ") || "unknown";
+    return `- 社交动态 ${item.post_id}：${item.text_content}；情绪 ${item.emotional_tone}；主题 ${themes}；表达 ${item.expression_style}；信号 ${signals}`;
+  });
+
+  if (overall) {
+    postLines.push(`- 社交动态整体：主情绪 ${overall.dominant_emotion}；核心主题 ${(overall.core_themes ?? []).join(" / ")}；真实度 ${overall.expression_authenticity}`);
+  }
+
+  return postLines.join("\n");
+}
+
+function formatPhotoEvidence(record: Part1Record) {
+  const photo = record.part1_data.narrative.precious_photo_analysis;
+  if (!photo) return "- 珍贵照片线索：未上传或尚未完成多模态分析";
+
+  return [
+    `- 珍贵照片：${photo.visual_content}`,
+    `  构图 / 光线 / 色彩：${photo.composition} / ${photo.lighting} / ${photo.color_mood}`,
+    `  象征元素：${photo.symbolic_elements.join(" / ") || "unknown"}`,
+    `  心理解释：主题 ${photo.psychological_interpretation.core_themes.join(" / ")}；情绪 ${photo.psychological_interpretation.emotional_tone}；自我概念 ${photo.psychological_interpretation.self_concept}；存在姿态 ${photo.psychological_interpretation.existential_stance}`,
+  ].join("\n");
+}
+
+function formatPart1EvidenceDossier(record: Part1Record) {
+  const answerLines = [
+    evidenceLine("A1_core_image", record.part1_data.aesthetics.core_desire_image ?? record.answers.A1_core_image),
+    evidenceLine("A3_literature", record.part1_data.aesthetics.literature ?? record.answers.A3_literature),
+    evidenceLine("A4_cinema", record.part1_data.aesthetics.cinema ?? record.answers.A4_cinema),
+    evidenceLine("A5_inspiration_scene", record.part1_data.aesthetics.inspiration_scene ?? record.answers.A5_inspiration_scene),
+    evidenceLine("B1_night_thoughts", record.part1_data.philosophy.night_thoughts ?? record.answers.B1_night_thoughts),
+    evidenceLine("B2_decision_style", record.part1_data.philosophy.decision_style ?? record.answers.B2_decision_style),
+    evidenceLine("B3_emotion_pattern", record.part1_data.philosophy.emotion_pattern ?? record.answers.B3_emotion_pattern),
+    evidenceLine("B4_time_philosophy", record.part1_data.philosophy.time_orientation ?? record.answers.B4_time_philosophy),
+    evidenceLine("B5_relationship_philosophy", record.part1_data.philosophy.relationship_philosophy ?? record.answers.B5_relationship_philosophy),
+    evidenceLine("C3_resonance_moments", record.part1_data.narrative.resonance_moments ?? record.answers.C3_resonance_moments),
+  ].filter(Boolean);
+
+  return `证据档案（供内部生成使用，不要逐字暴露给用户）：
+
+一、A/B/C 可读回答
+${answerLines.join("\n")}
+
+二、多模态线索
+${formatMusicEvidence(record)}
+${formatSocialEvidence(record)}
+${formatPhotoEvidence(record)}
+
+三、聚合倾向
+- Big Five：${Object.entries(record.aggregated_traits.big_five).map(([key, value]) => `${key}:${value}`).join(" / ")}
+- 核心主题：${record.aggregated_traits.core_themes.join(" / ")}
+- 原型候选：${record.aggregated_traits.archetype_hints.join(" / ")}`;
+}
+
+function formatPart2EvidenceDossier(part2: Part2Record) {
+  const act2 = part2.act2_choices.length > 0
+    ? part2.act2_choices.map((item, index) => `- 第 ${index + 1} 次选择：${item.selected}；choice_id ${item.choice_id}；停顿 ${item.hesitation_time ?? 0} 秒；时间 ${item.timestamp}`).join("\n")
+    : "- 尚无 Act2 选择";
+  const act3 = part2.act3_responses.length > 0
+    ? part2.act3_responses.map((item, index) => `- 镜面回答 ${index + 1}：${item.selected}；question_id ${item.question_id}；停顿 ${item.hesitation_time ?? 0} 秒；时间 ${item.timestamp}`).join("\n")
+    : "- 尚无 Act3 镜面回答";
+  const phaseDurations = Object.entries(part2.metadata.phase_durations ?? {}).map(([key, value]) => `${key}:${value}s`).join(" / ") || "unknown";
+
+  return `剧场选择轨迹（供内部分析使用，不要写成技术埋点）：
+${act2}
+${act3}
+- 设备与节奏：${part2.metadata.device ?? "unknown"}；总耗时 ${part2.metadata.total_time ?? "unknown"} 秒；阶段耗时 ${phaseDurations}`;
+}
+
+export const DIRECTOR_SYSTEM_PROMPT = `# 剧场导演 Agent Prompt v4
 
 ## 你的身份
 
@@ -53,6 +177,7 @@ export const DIRECTOR_SYSTEM_PROMPT = `# 剧场导演 Agent Prompt v3
 场景、物件、光线、空间、冲突方向都必须能从用户输入中找到依据。
 每一幕至少要隐含关联 2 类输入证据，例如：用户回答、审美素材、选择偏好、聚合倾向。
 不要直接解释证据来源，但生成时必须基于证据。
+Act1 必须从“证据档案”里抽取用户最强的空间意象、光线、情绪和关系距离；Act2/Act3 的每一组场景都至少绑定一条具体用户痕迹，例如某个回答文本、音乐情绪、社交动态句子或照片构图。
 
 3. 宇宙生成感
 默认气质是深黑、暗紫、银白、暗金点亮、星尘、玻璃层、深场与柔光。
@@ -65,23 +190,29 @@ export const DIRECTOR_SYSTEM_PROMPT = `# 剧场导演 Agent Prompt v3
 尾声负责收束，并把用户带向星图。
 
 5. 连续剧情
-三幕必须像同一条镜头推进下去的角色代入游戏，而不是三组彼此独立的问题。
+三幕必须像一条镜头连续推进下去的角色代入游戏，而不是三组彼此独立的问题。
 用户不是答题者，而是进入这座剧场的行动者。每一次选择都要改变下一段空间的光线、距离、物件或角色关系。
 第二幕的 choice 应形成连续行动链：进入、停留、靠近、避开、触碰、放下、回望。
 第三幕的 mirror_questions 也必须嵌在剧情中，像场景里的角色、镜面、声音或物件对用户发问，不要写成问卷。
+如果输入里出现明确的音乐、社交文本或照片线索，连续剧情必须让这些线索转化为可感知的物件、声音、颜色或距离，也可以进一步变成镜面里的回声，而不是只复用抽象原型名。
 
-6. 心理安全
+6. 宿命感边界
+剧场可以有宿命感，但宿命感不是预言，不是“命中注定你会怎样”，而是让用户感觉自己此前留下的照片、声音、文字和选择在同一条路上重新相遇。
+所有宿命感都必须来自证据回环：同一件物件再次出现、同一句话变成回声、同一束光改变距离、同一张照片里的构图变成路径。
+不要写“你注定”“命运安排”“前世”“神谕”等预言或玄学判断。
+
+7. 心理安全
 保持探索性和象征性。
 不制造惊吓，不诱发创伤，不使用病理化暗示，不给用户贴负面标签。
 不要写自毁、濒死、暴力、被困绝望等强刺激内容。
 
-7. 低解释感
+8. 低解释感
 不要告诉用户“你正在被分析”。
 不要解释选项代表什么。
 不要把场景写成测试说明。
 只让场景自然发生。
 
-8. 单焦点体验
+9. 单焦点体验
 每一段用户可见文本只服务一个体验目标：进入、靠近、回望或收束。
 不要同时塞入多个主题。
 
@@ -245,7 +376,7 @@ visual_prompt 使用英文，适合图像生成模型。
 5. 是否 JSON 可以被直接解析？
 `;
 
-export const ANALYST_SYSTEM_PROMPT = `# 精神分析师 Agent Prompt v3
+export const ANALYST_SYSTEM_PROMPT = `# 精神分析师 Agent Prompt v4
 
 ## 你的身份
 
@@ -288,6 +419,17 @@ aggregated_traits.archetype_hints 已按优先级排序。
 可以让弗洛伊德、荣格、拉康、温尼科特、克尔凯郭尔、尼采、海德格尔、梅洛-庞蒂、加缪、波伏瓦、陀思妥耶夫斯基、黑塞、卡夫卡、博尔赫斯、卡尔维诺、伍尔夫等思想或文学传统成为隐性参照。
 不要堆书名和人名炫耀知识；只有当它能照亮用户的内在结构时才使用。
 推荐作品必须像精神旁证：说明这部书、电影或音乐如何对应用户的某种主义倾向、审美秩序、关系姿态或时间感。
+结果必须至少有一处把用户的回答、影像/音乐/动态线索、剧场选择轨迹，与精神分析、哲学与文艺旁证交叉起来，避免只写“孤独、探索、敏感”这类网络模板词。
+
+可以使用短引或转述，但要克制：
+- 短引总量很少，优先使用公版或常见短句，不要输出长段书摘、歌词或台词。
+- 更推荐“某位思想家的问题意识如何照亮用户结构”的转述，而不是直接堆引用。
+- 如果引用不确定，宁可转述，不要假装精确。
+
+星体语言必须绑定心理结构：
+- 星体、月相、黑洞、轨道、潮汐、暗金光、深场这些词可以出现，但必须对应用户的具体证据。
+- 例如“黑洞”对应吸力、回避、不可直视的核心物；“月相”对应周期、显影、遮蔽；“轨道”对应关系距离与行动节律。
+- 不要把星图写成纯玄学命盘。
 
 6. 非评判性
 所有特质都是结构特征，不是缺陷。
@@ -573,7 +715,9 @@ export const MULTIMODAL_SYSTEM_PROMPT = `你是「本源」系统的多模态预
 }`;
 
 export function buildDirectorUserPrompt(record: Part1Record) {
-  return `请根据以下用户 Part 1 数据，生成个性化三幕式剧场脚本。\n\n风格补充：\n- 这是“黑洞入口 / 精神剧场 / 星图显形”产品体验里的个人剧场。\n- 氛围应是深黑、暗紫、银白、暗金点亮、星尘、玻璃层与深场柔光。\n- 文案要落在具体空间、具体物件、具体动作上，不要像产品说明。\n- 第二幕更像“靠近某个方向”，第三幕更像“被镜像反问”。\n- 内部证据可以使用，但不要在用户可见文本中解释证据来源。\n\n用户 ID: ${record.user_id}\nPart 1 JSON:\n${JSON.stringify({ part1_data: record.part1_data, aggregated_traits: record.aggregated_traits })}\n\n请严格输出 {"theater_script": {...}}。`;
+  const evidenceDossier = formatPart1EvidenceDossier(record);
+
+  return `请根据以下用户 Part 1 数据，生成个性化三幕式剧场脚本。\n\n风格补充：\n- 这是“黑洞入口 / 精神剧场 / 星图显形”产品体验里的个人剧场。\n- 氛围应是深黑、暗紫、银白、暗金点亮、星尘、玻璃层与深场柔光。\n- 文案要落在具体空间、具体物件、具体动作上，不要像产品说明。\n- 第二幕更像“靠近某个方向”，第三幕更像“被镜像反问”。\n- 必须优先使用证据档案里的具体回答、音乐、社交文本与照片构图，生成连续剧情。\n- Act2 要形成连续行动链：第一步进入，第二步改变距离，第三步触碰或放下某个物件。\n- Act3 的镜面问题必须从 Act2 变形而来，不要突然跳成问卷。\n- 宿命感来自证据回环：同一句话、同一个声音、同一张照片里的构图，在不同幕里改变形态后再次出现。\n- 内部证据可以使用，但不要在用户可见文本中解释证据来源。\n\n用户 ID: ${record.user_id}\n\n${evidenceDossier}\n\nPart 1 JSON:\n${JSON.stringify({ part1_data: record.part1_data, aggregated_traits: record.aggregated_traits })}\n\n请严格输出 {"theater_script": {...}}。`;
 }
 
 export function buildAnalystUserPrompt(part1: Part1Record, part2: Part2Record, fallback: PsycheConstellation) {
@@ -581,8 +725,10 @@ export function buildAnalystUserPrompt(part1: Part1Record, part2: Part2Record, f
   const archetypeProfile = getBenyuanArchetypeProfile(primaryHint);
   const supportTone = deriveConstellationSupportTone(fallback) === "supportive" ? "supportive_boundary" : "standard_non_judgemental";
   const recommendationSeeds = formatRecommendationSeeds(fallback);
+  const part1EvidenceDossier = formatPart1EvidenceDossier(part1);
+  const part2EvidenceDossier = formatPart2EvidenceDossier(part2);
 
-  return `请根据以下完整数据，生成精神星图分析报告。\n\n风格补充：\n- 这是要直接面向用户阅读的星图，不是内部技术报告。\n- 语言要更像镜像与理解，不像测评结论。\n- 保持克制、准确、可读，避免说教与泛泛安慰。\n- 结果应贴合“黑洞入口 / 精神剧场 / 星图显形”的产品方向：深邃、短句、低解释感、可保存、可分享。\n- 以下引擎上下文只用于内部校准，不得出现在用户可见文本中。\n\n引擎上下文：
+  return `请根据以下完整数据，生成精神星图分析报告。\n\n风格补充：\n- 这是要直接面向用户阅读的星图，不是内部技术报告。\n- 语言要更像镜像与理解，不像测评结论。\n- 保持克制、准确、可读，避免说教与泛泛安慰。\n- 结果应贴合“黑洞入口 / 精神剧场 / 星图显形”的产品方向：深邃、短句、低解释感、可保存、可分享。\n- 星体语言必须照见心理结构：黑洞是吸力与不可直视之物，月相是显影与遮蔽，轨道是关系距离，潮汐是情绪周期。\n- 以下引擎上下文只用于内部校准，不得出现在用户可见文本中。\n\n引擎上下文：
 - engine_mode: ${BENYUAN_V3_CONSTELLATION_ENGINE.mode}
 - prompt_version: ${BENYUAN_V3_CONSTELLATION_ENGINE.promptVersion}
 - primary_archetype_hint: ${primaryHint}
@@ -596,6 +742,15 @@ export function buildAnalystUserPrompt(part1: Part1Record, part2: Part2Record, f
 - recommendation_books: ${recommendationSeeds.books}
 - recommendation_films: ${recommendationSeeds.films}
 - recommendation_music: ${recommendationSeeds.music}
+
+${part1EvidenceDossier}
+
+${part2EvidenceDossier}
+
+精神分析、哲学与文艺旁证要求：
+- narrative_overview 至少有一段交叉使用“可读回答 + 多模态线索 + 剧场选择轨迹”。
+- 推荐与解释可以调用精神分析、分析心理学、存在主义、现象学、时间哲学、文学/电影/音乐旁证，但必须回到用户证据，不要堆知识名词。
+- 避免“孤独求索者”“敏感而复杂的人”这类网络模板表达，把原型写成更具体的精神姿态。
 
 Part 1 JSON:
 ${JSON.stringify({ user_id: part1.user_id, part1_data: part1.part1_data, aggregated_traits: part1.aggregated_traits })}

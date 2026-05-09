@@ -20,16 +20,47 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>wechat</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(BENYUAN_WECHAT_APP_ID)</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>weixin</string>
+		<string>weixinULAPI</string>
+		<string>weixinURLParamsAPI</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsArbitraryLoadsForMedia</key>
 		<true/>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
 		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>120.26.126.88</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>本源会在你主动拍摄素材时使用相机，用于 Part 1 的多模态分析。</string>
@@ -37,6 +68,8 @@
 	<string>本源开发测试会连接同一 Wi‑Fi 下的本地 Web 服务。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>本源会在你主动选择图片素材时访问照片库，用于 Part 1 的多模态分析。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>本源会在你主动保存星图摘要时写入照片库。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -54,5 +87,9 @@
 	<string>$(BenyuanShellStagingBaseURL)</string>
 	<key>BenyuanShellProductionBaseURL</key>
 	<string>$(BenyuanShellProductionBaseURL)</string>
+	<key>BenyuanWechatAppID</key>
+	<string>$(BENYUAN_WECHAT_APP_ID)</string>
+	<key>BenyuanWechatUniversalLink</key>
+	<string>$(BENYUAN_WECHAT_UNIVERSAL_LINK)</string>
 </dict>
 </plist>

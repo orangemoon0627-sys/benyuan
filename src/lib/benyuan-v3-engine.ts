@@ -403,6 +403,23 @@ function getCoreArchetype(record: Part1Record) {
   return record.aggregated_traits.archetype_hints[0] ?? "lone_seeker";
 }
 
+function firstSocialPostText(record: Part1Record) {
+  return record.part1_data.narrative.social_posts_analysis?.[0]?.text_content || "那句你曾经留下的话";
+}
+
+function photoMotif(record: Part1Record) {
+  const photo = record.part1_data.narrative.precious_photo_analysis;
+  if (!photo) return "一张尚未显影的照片";
+  const symbols = photo.symbolic_elements.join("、") || photo.visual_content;
+  return `${photo.visual_content}，里面有${symbols}`;
+}
+
+function musicMotif(record: Part1Record) {
+  const music = record.part1_data.aesthetics.music_analysis;
+  if (!music) return "一段低低的背景声";
+  return `${music.primary_genres.join(" / ")} 的声音，带着 ${music.emotional_tone} 的底色`;
+}
+
 export function generateDeterministicTheaterScript(record: Part1Record): TheaterScript {
   const coreImage = getSelectedText("A1_core_image", record.part1_data.aesthetics.core_desire_image);
   const cinema = getSelectedText("A4_cinema", record.part1_data.aesthetics.cinema);
@@ -410,6 +427,9 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
   const decision = getSelectedText("B2_decision_style", record.part1_data.philosophy.decision_style);
   const emotion = getSelectedText("B3_emotion_pattern", record.part1_data.philosophy.emotion_pattern);
   const relation = getSelectedText("B5_relationship_philosophy", record.part1_data.philosophy.relationship_philosophy);
+  const socialText = firstSocialPostText(record);
+  const photo = photoMotif(record);
+  const music = musicMotif(record);
   const themes = record.aggregated_traits.core_themes;
   const archetype = getCoreArchetype(record);
   const visibleArchetype = getBenyuanArchetypeProfile(archetype).archetype.name;
@@ -424,8 +444,8 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
       key_themes: themes,
     },
     act1: {
-      scene_description: `你醒来时，发现自己站在一处只属于你的边界空间。眼前的景象像是从“${coreImage}”里生长出来，又被“${cinema}”的镜头重新照亮。远处有风，近处有水汽，空气里带着一种介于现实与梦之间的静默。你能感觉到，这里并不是某个需要解释的地方，而是你内心那些长期没有被完整命名的部分，终于获得了场景。\n\n身后仿佛延伸着“${scene}”的气味与节律，像一条你熟悉的精神通道；前方却有更深的召唤，缓慢、神秘、不可回避。它不逼迫你，却要求你真正做出选择。你意识到，自己此刻所面对的，不只是一个去向，而是你对未知、关系和核心渴望的真实反应。`,
-      visual_prompt: `A solitary figure standing inside a symbolic threshold landscape inspired by ${cinema}, derived from the image of ${coreImage}, cinematic atmosphere, mist, horizon, poetic darkness, melancholic but luminous, subtle surrealism, tactile wind and water, immersive mood, ultra wide frame, 16:9`,
+      scene_description: `你醒来时，站在一片很深的月场里。远处的黑色天体缓慢转动，边缘有一圈暗金色的光，像从“${coreImage}”里抽出的引力。脚下不是地面，而是一层半透明的潮水；潮水下压着一张照片的轮廓：${photo}。\n\n空气里有${music}。它不是背景乐，更像这座剧场的呼吸。某处传来一句低低的回声：“${socialText}” 这句话没有被解释，只是在你身边绕了一圈，落成一条通向前方的细线。\n\n你身后保留着“${scene}”的节律，前方则像被“${cinema}”的镜头慢慢推近。你意识到，自己不是来回答问题的。你只是沿着此前留下的画面、声音和句子，回到一个早就等在那里的入口。`,
+      visual_prompt: `deep black moon field, dark celestial body with antique gold rim light, translucent tidal floor, photo trace motif ${photo}, cinematic atmosphere inspired by ${cinema}, quiet immersive iPhone app scene, low saturation, silver glow, 16:9`,
       ambient_sound: coreImage.includes("海") ? "ocean_waves_distant" : coreImage.includes("雨") ? "rain_soft" : "silence_deep",
       duration: 30,
     },
@@ -433,72 +453,72 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
       choices: [
         {
           choice_id: 1,
-          scene: `迷雾深处传来一个近乎熟悉的召唤，它像在等待你立刻回应，也像在考验你如何面对未知。考虑到你平时更倾向于“${decision}”，而你的情绪节律又接近“${emotion}”，这一刻显得尤其真实。`,
+          scene: `第一幕留下的那句话还在潮水上漂着。你往前走，发现它被折成一封没有寄出的信，信封背面有照片里的光。你的身体按照“${decision}”的方式先做出反应，而情绪像“${emotion}”一样在水下慢慢移动。`,
           options: [
-            { id: "1A", text: "立即循声而去，哪怕前方仍未被看清", trait_signal: "action_oriented + intuitive + risk_taking", response: "你选择先走一步，再让答案在路上成形。迷雾并没有立刻散开，但你开始听见自己的脚步声，这让未知不再只是威胁，而像某种被你主动迎接的命运。" },
-            { id: "1B", text: "停下来，先判断声音真正来自哪里", trait_signal: "analytical + cautious + risk_aware", response: "你没有把第一感受当成唯一凭据，而是给自己留出辨认的时间。对你来说，谨慎不是退缩，而是为真正重要的选择建立秩序。" },
-            { id: "1C", text: "向迷雾回应，等待对方也向你靠近", trait_signal: "relationship_oriented + openness + trust_tendency", response: "你没有单方面追逐，而是先发出自己的信号。你知道连接需要双向发生，而不是永远由你独自承担全部风险。" },
-            { id: "1D", text: "假装没听见，继续沿着自己的路径前行", trait_signal: "independent + self_protective + avoidant_attachment", response: "你选择把边界放在前面。不是因为你什么都不在意，而是因为你很清楚，某些未知只有在你愿意的时候，才配进入你的世界。" },
+            { id: "1A", text: "靠近那封信，让潮水先读出第一行", trait_signal: "action_oriented + intuitive + risk_taking", response: "信封没有打开，只是变得更轻。你听见里面有一小段声音，像答案还没准备好，却已经承认你来了。" },
+            { id: "1B", text: "停下脚步，先看清信封背面的光", trait_signal: "analytical + cautious + risk_aware", response: "那束光没有催你。它沿着照片里的轮廓慢慢亮起，让你知道辨认本身也是一种靠近。" },
+            { id: "1C", text: "沿着回声回应一句话，再等它回来", trait_signal: "relationship_oriented + openness + trust_tendency", response: "你的声音落进月场，过了一会儿才回来。它不是原样返回，而是多了一点像他人的温度。" },
+            { id: "1D", text: "绕开信封，先把自己的影子带到前面", trait_signal: "independent + self_protective + avoidant_attachment", response: "影子比你先穿过那圈光。你没有丢下信，只是暂时不让它决定你的方向。" },
           ],
         },
         {
           choice_id: 2,
-          scene: `前方出现了一个人影。TA 并不靠近，只是站在光线与阴影交界的位置，像在等待你定义距离。这一幕更像对“${relation}”的镜像测试。`,
+          scene: `信的纸面化成一条窄桥。桥的另一端站着一个模糊的人影，像从“${relation}”里显出来的距离。TA 没有说话，只把那张照片推到桥中央，等你决定要不要共享这段光。`,
           options: [
-            { id: "2A", text: "先保持距离，观察对方是否值得靠近", trait_signal: "boundary + selective_social + discernment", response: "你把靠近的速度交还给判断，而不是交给冲动。关系在你这里从来不是数量问题，而是是否足够真实。" },
-            { id: "2B", text: "主动走近，试着发起一场真正的对话", trait_signal: "deep_connection + vulnerability + connection_need", response: "你愿意承担被看见的风险，因为你知道，真正的理解从来不是自动发生的，而是有人先打开一道门。" },
-            { id: "2C", text: "并肩沉默地走一段，不急着交换任何解释", trait_signal: "quiet_intimacy + reflective_attachment + emotional_depth", response: "你选择了一种更适合自己的连接方式。不是所有关系都要从语言开始，有些理解先发生在共享的节奏里。" },
-            { id: "2D", text: "转身离开，把这一刻留在未完成里", trait_signal: "avoidant_attachment + self_preservation + autonomy", response: "你把未完成保留为一种自由。你知道，并非所有相遇都必须发展成关系，有时转身本身就是一种诚实。" },
+            { id: "2A", text: "停下脚步，看那个人如何对待照片", trait_signal: "boundary + selective_social + discernment", response: "TA 没有急着拿走它，只把照片转向月光。你发现，真正的距离不是远近，而是对方是否懂得轻放。" },
+            { id: "2B", text: "走向桥中央，把照片推回一点点", trait_signal: "deep_connection + vulnerability + connection_need", response: "照片在你们之间停住。你没有交出全部，只交出一角；但这一角已经足够让桥下的潮声变浅。" },
+            { id: "2C", text: "留在并肩的位置，让同一段声音流过你们", trait_signal: "quiet_intimacy + reflective_attachment + emotional_depth", response: "没有人解释那段声音。它从你们中间穿过时，反而让沉默变得可以共同承担。" },
+            { id: "2D", text: "回望来路，把桥暂时留给月光", trait_signal: "avoidant_attachment + self_preservation + autonomy", response: "桥没有消失。你只是把它留在身后，像承认某些靠近需要晚一点，才不会变成失去自己。" },
           ],
         },
         {
           choice_id: 3,
-          scene: `道路尽头出现两种同时成立的召唤：一种指向安稳、清晰与归属，另一种指向更辽阔但也更不确定的边界。它逼近的，是你真正的核心渴望。`,
+          scene: `桥尽头出现一枚小小的黑色星体。它没有吞没任何东西，只把信、照片、声音和那个人影缓慢拉成同一条轨道。你能感觉到，这里逼近的不是答案，而是你一直怎样保存自己。`,
           options: [
-            { id: "3A", text: "选择安全与清晰，先让内心安定下来", trait_signal: "security_need + stabilization + emotional_regulation", response: "你没有把稳定看成庸常，而是把它视为继续探索的地基。某些灵魂不是不需要远方，而是先需要一个能安放自己的地方。" },
-            { id: "3B", text: "选择未知与自由，即使答案仍然模糊", trait_signal: "freedom_desire + openness + exploration", response: "你愿意把不确定当成现实的一部分，而不是非得马上消除的噪音。你知道，真正重要的东西，常常不会在绝对确定中诞生。" },
-            { id: "3C", text: "停在两者之间，继续感受这股拉扯本身", trait_signal: "tension_tolerance + introspection + ambiguity_capacity", response: "你没有仓促地把张力解决掉。对你来说，理解矛盾本身，有时比立刻做出单一选择更接近真实。" },
-            { id: "3D", text: "寻找第三条隐秘的路径，不接受二选一", trait_signal: "creative_reframing + independence + non_linear_thinking", response: "你 instinctively 开始寻找结构之外的可能。你不愿被现成框架定义，总想为自己重新发明一条更贴身的道路。" },
+            { id: "3A", text: "把信收进口袋，先让轨道稳定下来", trait_signal: "security_need + stabilization + emotional_regulation", response: "星体的光慢了一点。你把稳定当成容器，而不是退路；有些远方必须先有地方安放。" },
+            { id: "3B", text: "伸手触碰星体边缘，允许未知靠近", trait_signal: "freedom_desire + openness + exploration", response: "你的手没有被吞没，只沾上一层银色的冷光。未知没有回答你，却让你更清楚自己仍愿意继续。" },
+            { id: "3C", text: "留在两股引力之间，听它们同时说话", trait_signal: "tension_tolerance + introspection + ambiguity_capacity", response: "两股引力没有互相抵消。它们像两条潮线，提醒你有些真实本来就不只朝一个方向。" },
+            { id: "3D", text: "沿着暗金轨道，寻找没有标出的出口", trait_signal: "creative_reframing + independence + non_linear_thinking", response: "轨道在你脚下分出第三条细线。它很窄，却贴合你的步子，像专门为不愿二选一的人留下。" },
           ],
         },
       ],
     },
     act3: {
-      scene_description: "门后是一面巨大的镜子，占据了整个墙面。镜中的你既熟悉又陌生，像是那些一直被你延后解释的感受，终于找到了能直视你的形状。TA 开口时，声音和你相同，但语气更安静，也更锋利。",
+      scene_description: "黑色星体慢慢展开，里面不是深渊，而是一面被潮水擦亮的镜面。信、照片、那段声音和桥上的人影都浮在镜面里，像同一场剧终于露出它的底片。",
       mirror_questions: [
         {
           question_id: 1,
-          dialogue: "“你一直在寻找什么？” 镜中的你问道，像是在替你把多年未说出的句子缓慢说完。",
-          question: "选择最接近你内心真实答案的选项：",
+          dialogue: `镜面把“${socialText}”重新念了一遍，声音很轻，像从海水下面传来。它没有问你对不对，只问：这句话最想被谁听见？`,
+          question: "让镜面停在一个方向上：",
           options: [
-            { id: "3A-1", text: "一个真正理解我的人", trait_signal: "relationship_need + being_understood_desire" },
-            { id: "3A-2", text: "我自己都不知道的答案", trait_signal: "self_exploration + existential_anxiety" },
-            { id: "3A-3", text: "一种确定性和安全感", trait_signal: "security_need + anxiety_tendency" },
-            { id: "3A-4", text: "逃离某种束缚的自由", trait_signal: "freedom_desire + rebelliousness" },
-            { id: "3A-5", text: "生命的意义和价值", trait_signal: "meaning_seeking + philosophical" },
-            { id: "3A-6", text: "内心的平静", trait_signal: "peace_need + emotional_regulation" },
-            { id: "3A-7", text: "我不知道，也许什么都不是", trait_signal: "nihilism_tendency + confusion" },
+            { id: "3A-1", text: "交给一个真正听得懂沉默的人", trait_signal: "relationship_need + being_understood_desire" },
+            { id: "3A-2", text: "先交还给自己，还不急着解释", trait_signal: "self_exploration + existential_anxiety" },
+            { id: "3A-3", text: "放进一盏稳定的灯下，等它安静", trait_signal: "security_need + anxiety_tendency" },
+            { id: "3A-4", text: "让它随潮水漂远，换一片空气", trait_signal: "freedom_desire + rebelliousness" },
+            { id: "3A-5", text: "留在星体中心，继续追问它的意义", trait_signal: "meaning_seeking + philosophical" },
+            { id: "3A-6", text: "贴近胸口，先让呼吸慢下来", trait_signal: "peace_need + emotional_regulation" },
+            { id: "3A-7", text: "暂时不处理，只承认它曾经存在", trait_signal: "uncertainty_tolerance + confusion" },
           ],
         },
         {
           question_id: 2,
-          dialogue: "镜中的你沉默片刻，目光像穿过你此刻的样子，直接落向更深处。",
-          question: "如果可以改变一件事，你会选择：",
+          dialogue: "镜面里的照片翻到背面，那里有一条细小裂纹。裂纹没有破坏画面，只把光分成两半。",
+          question: "你愿意先移动哪一半光？",
           options: [
-            { id: "3B-1", text: "改变过去的某个决定", trait_signal: "regret_tendency + past_oriented" },
-            { id: "3B-2", text: "改变现在的某种状态", trait_signal: "present_dissatisfaction + action_willingness" },
-            { id: "3B-3", text: "改变未来的某种可能", trait_signal: "anxiety_tendency + future_oriented" },
-            { id: "3B-4", text: "改变他人对我的看法", trait_signal: "external_validation_need + social_anxiety" },
-            { id: "3B-5", text: "改变我对自己的看法", trait_signal: "self_acceptance_difficulty + inner_conflict" },
-            { id: "3B-6", text: "什么都不想改变", trait_signal: "acceptance_tendency + present_satisfaction" },
+            { id: "3B-1", text: "把过去那一半轻轻转向现在", trait_signal: "regret_tendency + past_oriented" },
+            { id: "3B-2", text: "把现在这一半推近一点现实", trait_signal: "present_dissatisfaction + action_willingness" },
+            { id: "3B-3", text: "把未来那一半留给尚未发生的路", trait_signal: "anxiety_tendency + future_oriented" },
+            { id: "3B-4", text: "把别人眼中的光调暗一些", trait_signal: "external_validation_need + social_anxiety" },
+            { id: "3B-5", text: "把看向自己的光调得柔和一点", trait_signal: "self_acceptance_difficulty + inner_conflict" },
+            { id: "3B-6", text: "不移动它，只看裂纹如何继续发亮", trait_signal: "acceptance_tendency + present_satisfaction" },
           ],
         },
       ],
-      mirror_final_words: "镜子开始被雾气覆盖。\"你已经知道答案了，\"镜中的你说，\"只是你终于愿意让它被看见。\"",
+      mirror_final_words: "镜面没有给出结论，只把所有光收成一枚很小的月。它落进你掌心，像在说：你带走的不是答案，是一条能继续辨认自己的轨道。",
     },
     epilogue: {
-      scene_description: "镜子消失后，场景渐渐退去。你重新回到最初的边界，但此刻它不再只是迷雾，而像一张刚被点亮了轮廓的地图。你明白，这场旅程不是为了交出唯一正确的答案，而是让你看到自己如何面对问题本身。",
-      closing_text: "你的旅程结束了，但理解才刚刚开始。现在，让我们一起看看，你在这场旅程中揭示了什么……",
+      scene_description: "镜面退回黑色星体，桥、信、照片和声音一层层淡下去，只剩暗金轨道还在。你沿着它回到最初的月场，发现入口没有关闭，只是变成了一张正在生成的精神星图。",
+      closing_text: "这一幕没有结束，它只是换成了星体的语言。现在，星图开始显影。",
       transition_prompt: "正在绘制你的精神星图...",
       transition_animation: "stars_converging",
     },
@@ -535,12 +555,14 @@ function buildDeterministicCoreTensions(
   archetypeHint: string,
   selectedRelationshipPhilosophy: string,
 ): PsycheConstellation["core_tensions"] {
+  const relationshipTrace = `你在关系里选择“${selectedRelationshipPhilosophy}”这条距离线`;
+
   if (archetypeHint === "rational_builder") {
     return [
       {
         tension_id: 1,
         name: "结构秩序与情绪流动的张力",
-        description: `你很擅长用结构、方法和节律来稳定自己，这让你在复杂情境中保持清醒；但同一套能力也可能让你先整理感受，再真正进入感受。关系哲学“${selectedRelationshipPhilosophy}”说明你珍视清晰边界，却也会因此延后某些更直接的情绪交换。`,
+        description: `你很擅长用结构、方法和节律来稳定自己，这让你在复杂情境中保持清醒；但同一套能力也可能让你先整理感受，再真正进入感受。${relationshipTrace}，说明你珍视清晰边界，却也会因此延后某些更直接的情绪交换。`,
         growth_direction: "给情绪保留不必立刻被解释的空间，让秩序成为承接体验的容器，而不是体验本身的替代品。",
       },
       {
@@ -574,7 +596,7 @@ function buildDeterministicCoreTensions(
       {
         tension_id: 1,
         name: "自由移动与稳定归属的张力",
-        description: `你需要流动、变化和未被过早定义的空间，但关系哲学“${selectedRelationshipPhilosophy}”又说明你并没有放弃被理解、被接住和被记住的需要。`,
+        description: `你需要流动、变化和未被过早定义的空间，但${relationshipTrace}，又说明你并没有放弃被理解、被接住和被记住的需要。`,
         growth_direction: "把归属感理解为可以被协商的现实经验，而不是会立刻把你固定住的牢笼。",
       },
       {
@@ -591,7 +613,7 @@ function buildDeterministicCoreTensions(
       {
         tension_id: 1,
         name: "情绪密度与现实节律的张力",
-        description: `你会把感受保留得很深，所以关系哲学“${selectedRelationshipPhilosophy}”并不只是边界选择，也是在说明你需要更长的时间，才愿意把真实交出来。`,
+        description: `你会把感受保留得很深，所以${relationshipTrace}，并不只是边界选择，也是在说明你需要更长的时间，才愿意把真实交出来。`,
         growth_direction: "不要把情绪深度当成行动的对立面，而是给它一个能进入现实日程的出口。",
       },
       {
@@ -607,7 +629,7 @@ function buildDeterministicCoreTensions(
     {
       tension_id: 1,
       name: "精神独行与被理解渴望的张力",
-      description: `你习惯沿着自己的精神路径往深处走，也因此对关系质量有很高要求。关系哲学“${selectedRelationshipPhilosophy}”说明你不会轻易让任何人进入，但真正的孤独并不来自无人同行，而是来自很少有人能跟上你的内在密度。`,
+      description: `你习惯沿着自己的精神路径往深处走，也因此对关系质量有很高要求。${relationshipTrace}，说明你不会轻易让任何人进入，但真正的孤独并不来自无人同行，而是来自很少有人能跟上你的内在密度。`,
       growth_direction: "尝试把内在世界打开一小部分给值得的人，让理解通过具体表达发生，而不只停留在期待里。",
     },
     {
@@ -629,9 +651,29 @@ const dimensionLabelMap: Record<string, string> = {
   relationship_need: "关系需求",
 };
 
+const themeLabelMap: Record<string, string> = {
+  meaning_seeking: "意义追问",
+  solitude: "独处重力",
+  aesthetic_sensitivity: "审美感应",
+  emotional_resonance: "情绪共振",
+  connection: "深层连接",
+  warmth: "温度与归属",
+  nostalgia: "记忆回潮",
+  dream_logic: "梦境逻辑",
+  existentialism: "存在清醒",
+  self_exploration: "自我辨认",
+  philosophy: "哲学追问",
+  abstract_thinking: "抽象思辨",
+  change: "变化欲望",
+};
+
 function formatJoined(values: string[], fallback: string) {
   const next = values.filter((value) => value && value.trim().length > 0);
   return next.length > 0 ? next.join("、") : fallback;
+}
+
+function formatThemeSummary(values: string[]) {
+  return formatJoined(values.map((value) => themeLabelMap[value] ?? value), "意义追寻、审美敏感与关系边界");
 }
 
 function pickTopDimensionLabels(scores: Record<string, number>) {
@@ -651,19 +693,23 @@ function buildDeterministicNarrativeOverview(params: {
   selectedB2: string;
   selectedB5: string;
   resonanceMoments: string;
+  socialText: string;
+  photo: string;
+  music: string;
 }) {
-  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments } = params;
+  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music } = params;
   const topDimensions = pickTopDimensionLabels(scores);
-  const themeSummary = formatJoined(themes, "意义追寻、审美敏感与关系边界");
+  const themeSummary = formatThemeSummary(themes);
   const supportLine = scores.emotional_depth >= 78 && scores.meaning_seeking >= 74 && scores.action_tendency <= 58
     ? "如果最近这些感受已经持续压缩睡眠、食欲或日常节律，先把现实照料放到前面，联系可信任的人或本地专业支持，并不意味着你变得脆弱，只是说明你愿意让自己先被接住。"
     : "";
 
   return [
-    `${profile.narrativeLead} 当你把“${selectedA1}”选为核心意象时，其实已经说明你会被边界、气氛和精神纵深吸引。${profile.narrativeFocus}`,
-    `在思维方式上，你更靠近“${selectedB1}”与“${selectedB2}”。这说明你面对世界时，并不是只想迅速得到一个可执行答案，而是会先和问题本身共处，确认这件事是不是触到了更深层的意义。`,
-    `你的关系观——“${selectedB5}”——让一条很清楚的线浮现出来：${profile.relationshipLens} 当共鸣时刻集中在${resonanceMoments}时，你已经说明自己真正要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
-    `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题则贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中。${profile.movementLens}`,
+    `${profile.narrativeLead} 当你把“${selectedA1}”选为核心意象时，星图里最先亮起的是月相边缘：一半显露，一半保留。荣格会把这种反复辨认称作个体化的入口，不是变得特殊，而是把散落的自己慢慢收回同一条轨道。${profile.narrativeFocus}`,
+    `你的证据并不抽象：那句“${socialText}”、${photo}，以及${music}，都像同一个黑色天体周围的碎光。它们说明你不是被宏大词语打动，而是会从一句话、一张图、一段声音里确认：这里有我的一部分。`,
+    `在思维方式上，你更靠近“${selectedB1}”与“${selectedB2}”。这不是简单的直觉或犹豫，而像加缪式的清醒：先承认世界并不会自动给出意义，再用身体和时间去试探什么仍然值得靠近。`,
+    `当你在关系里选择“${selectedB5}”，一条很清楚的轨道浮现出来：${profile.relationshipLens} 温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己。当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
+    `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学镜面。${profile.movementLens}`,
     `${profile.closingLens}${supportLine ? ` ${supportLine}` : ""}`,
   ].join("\n\n");
 }
@@ -680,6 +726,9 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
   const selectedB5 = getSelectedText("B5_relationship_philosophy", part1.part1_data.philosophy.relationship_philosophy);
   const selectedC3 = (part1.part1_data.narrative.resonance_moments ?? []).map((item) => getSelectedText("C3_resonance_moments", item));
   const resonanceMoments = selectedC3.length > 0 ? selectedC3.join("、") : "独处与审美瞬间";
+  const socialText = firstSocialPostText(part1);
+  const photo = photoMotif(part1);
+  const music = musicMotif(part1);
 
   return {
     user_id: part1.user_id,
@@ -724,6 +773,9 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
       selectedB2,
       selectedB5,
       resonanceMoments,
+      socialText,
+      photo,
+      music,
     }),
     core_tensions: buildDeterministicCoreTensions(primaryArchetypeHint, selectedB5),
     growth_suggestions: profile.growthSuggestions,

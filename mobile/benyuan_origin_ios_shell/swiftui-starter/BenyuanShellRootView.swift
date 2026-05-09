@@ -3,7 +3,9 @@ import SwiftUI
 struct BenyuanShellRootView: View {
     @StateObject private var state = BenyuanShellState()
     @StateObject private var networkMonitor = BenyuanNetworkMonitor()
+    @StateObject private var nativeModel = BenyuanNativeFlowModel()
     @State private var reloadToken = UUID()
+    @State private var showsWebFallback = false
 
     var body: some View {
         let routeContext = BenyuanShellRouteContext.resolve(currentURL: state.currentURL ?? BenyuanRouteRecovery.restoreURL())
@@ -11,8 +13,12 @@ struct BenyuanShellRootView: View {
         ZStack(alignment: .top) {
             BenyuanShellBackdrop(showsGhostTitle: false)
 
-            BenyuanWebContainerView(isLoading: $state.isLoading, currentURL: $state.currentURL, errorMessage: $state.errorMessage, reloadToken: reloadToken, shellState: state)
-                .ignoresSafeArea()
+            if showsWebFallback {
+                BenyuanWebContainerView(isLoading: $state.isLoading, currentURL: $state.currentURL, errorMessage: $state.errorMessage, reloadToken: reloadToken, shellState: state)
+                    .ignoresSafeArea()
+            } else {
+                nativeFlow
+            }
 
             topStatusStack
 
@@ -61,17 +67,95 @@ struct BenyuanShellRootView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
             }
 
-            if state.isLoading {
+            if showsWebFallback && state.isLoading {
                 BenyuanLaunchOverlay(context: routeContext, baseURL: BenyuanShellConfig.baseURL, showsDebug: BenyuanShellConfig.showsDebugUI)
             }
+        }
+        .task {
+            guard !Self.isRunningUnitTests else { return }
+            await nativeModel.start()
         }
         .animation(.easeInOut(duration: BenyuanMotion.base), value: state.isLoading)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: state.errorMessage)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: networkMonitor.isOnline)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: state.nativeActivity)
+        .animation(.easeInOut(duration: BenyuanMotion.base), value: nativeModel.stage)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $state.isShareSheetPresented, onDismiss: state.clearShare) {
             BenyuanShareSheet(items: state.shareItems)
+        }
+        .sheet(isPresented: $nativeModel.isShareSheetPresented) {
+            BenyuanShareSheet(items: nativeModel.shareItems)
+        }
+    }
+
+    private static var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
+    @ViewBuilder
+    private var nativeFlow: some View {
+        ZStack(alignment: .top) {
+            switch nativeModel.stage {
+            case .launching:
+                BenyuanNativeProcessingView(model: nativeModel)
+            case .auth:
+                BenyuanNativeAuthView(model: nativeModel)
+            case .account:
+                BenyuanNativeAccountView(model: nativeModel)
+            case .collect:
+                BenyuanNativeCollectView(model: nativeModel)
+            case .processing:
+                BenyuanNativeProcessingView(model: nativeModel)
+            case .theater:
+                BenyuanNativeTheaterView(model: nativeModel)
+            case .constellation:
+                BenyuanNativeConstellationView(model: nativeModel)
+            case .error(let message):
+                ritualStateCard(
+                    title: "这一页暂时没有抵达",
+                    detail: message,
+                    progressValue: 0.24
+                ) {
+                    VStack(spacing: BenyuanSpacing.x3) {
+                        Button("再试一次") {
+                            nativeModel.stage = .launching
+                            Task { await nativeModel.start() }
+                        }
+                        .buttonStyle(BenyuanPrimaryPillButtonStyle())
+
+                        Button("打开 Web 备用入口") {
+                            showsWebFallback = true
+                        }
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                    }
+                }
+                .padding(.horizontal, BenyuanSpacing.x8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            }
+
+            if BenyuanShellConfig.showsDebugUI {
+                HStack {
+                    Spacer()
+                    Button(showsWebFallback ? "Native" : "Web") {
+                        showsWebFallback.toggle()
+                    }
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(BenyuanColor.accentGold)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(BenyuanColor.glassFill))
+                    .padding(.top, BenyuanSpacing.x12)
+                    .padding(.trailing, BenyuanSpacing.x4)
+                }
+            }
+
+            if let toast = nativeModel.toast {
+                BenyuanToastView(text: toast)
+                    .padding(.top, BenyuanSpacing.x12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
     }
 

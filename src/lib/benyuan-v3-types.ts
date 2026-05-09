@@ -317,7 +317,79 @@ export type AgentRuntimeResult = {
   error?: string;
 };
 
+export type BenyuanAuthProvider = "anonymous" | "apple" | "wechat" | "phone";
+
+export type BenyuanUser = {
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  display_name?: string;
+  primary_provider: BenyuanAuthProvider;
+  providers: Partial<Record<BenyuanAuthProvider, string>>;
+  phone_bound?: boolean;
+  wechat_bound?: boolean;
+};
+
+export type BenyuanAuthSession = {
+  session_id: string;
+  user_id: string;
+  token: string;
+  provider: BenyuanAuthProvider;
+  created_at: string;
+  updated_at: string;
+  revoked_at?: string;
+};
+
+export type BenyuanPhoneOtp = {
+  phone: string;
+  code_hash: string;
+  created_at: string;
+  expires_at: string;
+  consumed_at?: string;
+  attempts: number;
+};
+
+export type BenyuanAuthProviderIndex = {
+  provider: BenyuanAuthProvider;
+  provider_subject: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BenyuanAuthRateLimit = {
+  key: string;
+  count: number;
+  reset_at: string;
+  updated_at: string;
+};
+
+export type BenyuanAccountHistoryStage = "part1" | "theater" | "part2" | "constellation";
+
+export type BenyuanAccountHistoryItem = {
+  part1_id: string;
+  theater_script_id?: string;
+  part2_id?: string;
+  constellation_id?: string;
+  stage: BenyuanAccountHistoryStage;
+  title: string;
+  subtitle: string;
+  archetype_name?: string;
+  created_at: string;
+  updated_at: string;
+  asset_count: number;
+};
+
+export type BenyuanAccountHistoryResponse = {
+  items: BenyuanAccountHistoryItem[];
+};
+
 export type BenyuanV3Store = {
+  users: Record<string, BenyuanUser>;
+  auth_sessions: Record<string, BenyuanAuthSession>;
+  phone_otps: Record<string, BenyuanPhoneOtp>;
+  auth_provider_index: Record<string, BenyuanAuthProviderIndex>;
+  auth_rate_limits: Record<string, BenyuanAuthRateLimit>;
   uploaded_assets: Record<string, BenyuanStoredAsset>;
   part1_records: Record<string, Part1Record>;
   theater_scripts: Record<string, TheaterScriptRecord>;

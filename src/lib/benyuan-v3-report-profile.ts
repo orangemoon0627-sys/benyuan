@@ -2,7 +2,7 @@ import type { PsycheConstellation } from "@/lib/benyuan-v3-types";
 
 export const BENYUAN_V3_CONSTELLATION_ENGINE = {
   mode: "hybrid-structured.v1",
-  promptVersion: "analyst.v3.hybrid.1",
+  promptVersion: "analyst.v4.hybrid.1",
   normalizationVersion: "constellation-normalize.v2",
   safetyVersion: "supportive-boundary.v1",
   deltaDoc: "/Users/fanhao/Documents/Playground/docs/benyuan-content-delta-2026-03-11.md",
@@ -70,9 +70,9 @@ const loneSeekerProfile: ArchetypeProfile = {
   ],
   recommendations: {
     books: [
-      { title: "《看不见的城市》", author: "伊塔洛·卡尔维诺", reason: "它会回应你对空间、记忆与意义的敏感阅读方式。" },
-      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "它适合仍在追问“我究竟在寻找什么”的你。" },
-      { title: "《局外人》", author: "阿尔贝·加缪", reason: "当你想把孤独、距离感与存在追问放到更冷静的光线里看时，它会很贴近你。" },
+      { title: "《看不见的城市》", author: "伊塔洛·卡尔维诺", reason: "它像一面空间镜面：城市不是地点，而是记忆、欲望和自我认同的折射，能回应你从画面里辨认自己的方式。" },
+      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "它适合作为精神旁证：寻找不是逃离现实，而是把河流、身体和时间重新听成自己的声音。" },
+      { title: "《局外人》", author: "阿尔贝·加缪", reason: "加缪的存在主义会把距离感放到更清醒的光里，让你看见疏离并不等于没有感受。" },
     ],
     films: [
       { title: "《潜行者》", director: "安德烈·塔可夫斯基", reason: "如果你接受边界、象征和慢节奏，这部电影会非常接近你的精神空间。" },
@@ -130,9 +130,9 @@ const rationalBuilderProfile: ArchetypeProfile = {
   ],
   recommendations: {
     books: [
-      { title: "《禅与摩托车维修艺术》", author: "罗伯特·M. 波西格", reason: "它会让你感到“结构”和“意义”并不必然分开。" },
-      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "它能帮你把秩序之外的流动重新纳入视野。" },
-      { title: "《清醒思考的艺术》", author: "罗尔夫·多贝里", reason: "当你希望继续保留方法感，同时修正过度控制的惯性时，它会很有用。" },
+      { title: "《禅与摩托车维修艺术》", author: "罗伯特·M. 波西格", reason: "它把理性结构和精神品质放在同一张图里，像给你的秩序感找到了哲学镜面。" },
+      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "它提醒你秩序之外仍有流动，时间不是表格，也可以是一条慢慢听见自己的河。" },
+      { title: "《清醒思考的艺术》", author: "罗尔夫·多贝里", reason: "它适合作为现实侧的旁证：让分析继续服务行动，而不是把你留在无限校准里。" },
     ],
     films: [
       { title: "《降临》", director: "丹尼斯·维伦纽瓦", reason: "它会回应你对结构、语言与时间秩序的兴趣。" },
@@ -190,9 +190,9 @@ const gentleGuardianProfile: ArchetypeProfile = {
   ],
   recommendations: {
     books: [
-      { title: "《瓦尔登湖》", author: "亨利·戴维·梭罗", reason: "它会回应你对自然节律、独处感和低噪音生活的偏爱。" },
-      { title: "《爱与孤独》", author: "周国平", reason: "它适合你继续思考亲密、边界与真实连接之间的平衡。" },
-      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "它关注内在经验如何慢慢汇成意义，这与你的精神底色很贴近。" },
+      { title: "《瓦尔登湖》", author: "亨利·戴维·梭罗", reason: "它把独处写成一种清醒的生活实验，能回应你需要低噪音关系和稳定自我照料的部分。" },
+      { title: "《爱与孤独》", author: "周国平", reason: "它适合作为亲密关系的镜面，帮助你把靠近、边界和被理解的愿望放到同一处看。" },
+      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "它关注经验如何慢慢汇成意义，像把你的温柔、等待和精神河流放在一起。" },
     ],
     films: [
       { title: "《海街日记》", director: "是枝裕和", reason: "它会回应你对温柔、含蓄和关系深度的偏爱。" },
@@ -250,9 +250,9 @@ const existentialWandererProfile: ArchetypeProfile = {
   ],
   recommendations: {
     books: [
-      { title: "《局外人》", author: "阿尔贝·加缪", reason: "它能陪你把疏离、存在感和真实困惑放在更冷静的光里看。" },
-      { title: "《不能承受的生命之轻》", author: "米兰·昆德拉", reason: "如果你总在自由、关系和意义之间来回摆动，它会很贴近你。" },
-      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "当你需要一种更流动、更不线性的成长视角时，它会很有帮助。" },
+      { title: "《局外人》", author: "阿尔贝·加缪", reason: "加缪会把疏离和清醒放在一起，像给你的存在追问留出一个不急着解释的镜面。" },
+      { title: "《不能承受的生命之轻》", author: "米兰·昆德拉", reason: "它会回应自由、关系和意义之间的摇摆，让轻与重都不再只是抽象词。" },
+      { title: "《悉达多》", author: "赫尔曼·黑塞", reason: "它提供一种非线性的成长旁证：你可以移动、迷路、回到河边，然后仍然认出自己。" },
     ],
     films: [
       { title: "《镜子》", director: "安德烈·塔可夫斯基", reason: "它会回应你对记忆、时间和存在感碎片的敏感。" },
@@ -310,9 +310,9 @@ const melancholicPoetProfile: ArchetypeProfile = {
   ],
   recommendations: {
     books: [
-      { title: "《海边的卡夫卡》", author: "村上春树", reason: "它会回应你对梦感、回声和暧昧现实的偏爱。" },
-      { title: "《一个陌生女人的来信》", author: "斯蒂芬·茨威格", reason: "如果你容易被情感密度和未说尽的关系张力击中，它会很贴近你。" },
-      { title: "《情书》", author: "岩井俊二", reason: "它适合你在记忆、留白和情绪回响之间继续停留。" },
+      { title: "《海边的卡夫卡》", author: "村上春树", reason: "它把梦、回声和自我寻找放在同一片海边，像给你的情绪月相找到了文学镜面。" },
+      { title: "《一个陌生女人的来信》", author: "斯蒂芬·茨威格", reason: "它能照见情感如何在未说尽处持续发亮，也提醒你不要只把自己留在回声里。" },
+      { title: "《情书》", author: "岩井俊二", reason: "它适合你在记忆、误差和留白之间停留，像一枚温柔但不消失的精神旁证。" },
     ],
     films: [
       { title: "《花样年华》", director: "王家卫", reason: "它把节制、遗憾和诗意情绪都保留得很完整。" },

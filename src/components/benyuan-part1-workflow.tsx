@@ -59,12 +59,10 @@ function createInitialAnswers(): Part1AnswerMap {
 
 function createInitialRuntime(): AgentRuntimeOverride {
   return {
-    provider_name: "qingyan",
+    provider_name: "xiaoye",
     model: "gpt-5.5",
-    base_url: "https://zyz.qingyanzhiying.top/v1",
     reasoning_effort: "xhigh",
     disable_response_storage: true,
-    live: true,
   };
 }
 
@@ -79,7 +77,23 @@ function normalizeAnswers(value: unknown): Part1AnswerMap {
 
 function normalizeRuntime(value: unknown): AgentRuntimeOverride {
   if (!isRecord(value)) return createInitialRuntime();
-  return { ...createInitialRuntime(), ...(value as AgentRuntimeOverride) };
+  const runtime = { ...createInitialRuntime(), ...(value as AgentRuntimeOverride) };
+  if (runtime.provider_name === "qingyan") {
+    delete runtime.provider_name;
+    delete runtime.base_url;
+  }
+  if (runtime.api_key === "") delete runtime.api_key;
+  return runtime;
+}
+
+function runtimeOverrideForRequest(runtime: AgentRuntimeOverride): AgentRuntimeOverride | undefined {
+  const requestRuntime: AgentRuntimeOverride = {};
+  if (runtime.provider_name?.trim()) requestRuntime.provider_name = runtime.provider_name.trim();
+  if (runtime.model?.trim()) requestRuntime.model = runtime.model.trim();
+  if (runtime.base_url?.trim()) requestRuntime.base_url = runtime.base_url.trim();
+  if (runtime.reasoning_effort) requestRuntime.reasoning_effort = runtime.reasoning_effort;
+  if (typeof runtime.disable_response_storage === "boolean") requestRuntime.disable_response_storage = runtime.disable_response_storage;
+  return Object.keys(requestRuntime).length > 0 ? requestRuntime : undefined;
 }
 
 function isQuestionAnswered(question: BenyuanQuestion, answers: Part1AnswerMap) {
@@ -879,7 +893,7 @@ export function BenyuanPart1Workflow({
       const pending: BenyuanPendingPart1 = {
         user_id: "usr_local",
         answers,
-        runtime_override: runtimeOverride,
+        runtime_override: runtimeOverrideForRequest(runtimeOverride),
         part1_started_at: Number(window.localStorage.getItem(BENYUAN_PART1_STARTED_KEY) ?? Date.now()),
         submitted_at: Date.now(),
       };
@@ -1070,7 +1084,7 @@ export function BenyuanPart1Workflow({
                   <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--text-tertiary)]">runtime override</p>
                   <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">正常体验不需要改 provider / model / base url；这里只为排查 live provider 或多模态问题保留。</p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <MetaPill>{runtimeOverride.provider_name ?? runtimeStatus?.provider ?? "qingyan"}</MetaPill>
+                    <MetaPill>{runtimeOverride.provider_name ?? runtimeStatus?.provider ?? "custom"}</MetaPill>
                     <MetaPill>{runtimeOverride.model ?? runtimeStatus?.model ?? "gpt-5.5"}</MetaPill>
                     <MetaPill>{runtimeStatus?.wireApi ?? "responses"}</MetaPill>
                     <MetaPill>{runtimeAvailabilityLabel}</MetaPill>

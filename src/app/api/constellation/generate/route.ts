@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { assertPart1Owner } from "@/lib/benyuan-auth";
+import { recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
 import { generateConstellationWithAgent } from "@/lib/benyuan-v3-agent";
 import { createBenyuanV3Id, getPart1Record, getPart2Record, saveConstellationRecord } from "@/lib/benyuan-v3-store";
 import type { AgentRuntimeOverride } from "@/lib/benyuan-v3-types";
@@ -12,8 +14,27 @@ export async function POST(request: Request) {
   const [part1, part2] = await Promise.all([getPart1Record(body.part1_id), getPart2Record(body.part2_id)]);
   if (!part1) return NextResponse.json({ error: "part1_not_found" }, { status: 404 });
   if (!part2) return NextResponse.json({ error: "part2_not_found" }, { status: 404 });
+  const ownership = await assertPart1Owner(request, part1);
+  if (!ownership.ok) {
+    return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+  }
+  if (part2.part1_id !== part1.part1_id) {
+    return NextResponse.json({ error: "part2_part1_mismatch" }, { status: 409 });
+  }
 
+  const startedAt = Date.now();
   const result = await generateConstellationWithAgent(part1, part2, body.runtime_override);
+  const timing = await recordBenyuanAgentTiming({
+    stage: "constellation",
+    duration_ms: Date.now() - startedAt,
+    runtime_mode: result.runtime.mode,
+    provider: result.runtime.provider,
+    model: result.runtime.model,
+    error: result.runtime.error,
+    request_id: result.runtime.request_id,
+    part1_id: part1.part1_id,
+    part2_id: part2.part2_id,
+  });
   const record = {
     constellation_id: createBenyuanV3Id("const"),
     part1_id: part1.part1_id,
@@ -28,6 +49,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     constellation_id: record.constellation_id,
     runtime: record.runtime,
+    timing,
     psyche_constellation: record.psyche_constellation,
   });
 }

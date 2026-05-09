@@ -1,0 +1,198 @@
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { registerHooks } from "node:module";
+import test from "node:test";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.startsWith("@/")) {
+      const targetPath = path.resolve("src", specifier.slice(2));
+      const resolvedPath = existsSync(targetPath) ? targetPath : `${targetPath}.ts`;
+      return nextResolve(pathToFileURL(resolvedPath).href, context);
+    }
+
+    return nextResolve(specifier);
+  },
+});
+
+const { benyuanPart1Questions, getQuestionOption } = await import("../src/lib/benyuan-v3-schema.ts");
+const {
+  ANALYST_SYSTEM_PROMPT,
+  DIRECTOR_SYSTEM_PROMPT,
+  buildAnalystUserPrompt,
+  buildDirectorUserPrompt,
+} = await import("../src/lib/benyuan-v3-prompts.ts");
+const {
+  generateDeterministicConstellation,
+  generateDeterministicTheaterScript,
+} = await import("../src/lib/benyuan-v3-engine.ts");
+
+function createPart1Record() {
+  return {
+    part1_id: "part1_content_v4",
+    user_id: "usr_content_v4",
+    created_at: "2026-05-09T00:00:00.000Z",
+    updated_at: "2026-05-09T00:00:00.000Z",
+    answers: {
+      A1_core_image: "A1-1",
+      A3_literature: ["A3-4", "A3-5"],
+      A4_cinema: "A4-1",
+      A5_inspiration_scene: "A5-2",
+      B1_night_thoughts: "B1-6",
+      B2_decision_style: "B2-2",
+      B3_emotion_pattern: "B3-2",
+      B4_time_philosophy: { past: 48, present: 22, future: 30 },
+      B5_relationship_philosophy: "B5-1",
+      C3_resonance_moments: ["C3-1", "C3-4"],
+    },
+    part1_data: {
+      aesthetics: {
+        core_desire_image: "A1-1",
+        literature: ["A3-4", "A3-5"],
+        cinema: "A4-1",
+        inspiration_scene: "A5-2",
+        music_analysis: {
+          primary_genres: ["ambient", "post-rock"],
+          emotional_tone: "melancholic_introspective",
+          era_distribution: { "2000s": 35, "2010s": 45 },
+          language_diversity: ["instrumental", "english"],
+          personality_signals: { openness: "high", emotional_depth: "high" },
+        },
+      },
+      philosophy: {
+        night_thoughts: "B1-6",
+        decision_style: "B2-2",
+        emotion_pattern: "B3-2",
+        time_orientation: { past: 48, present: 22, future: 30 },
+        relationship_philosophy: "B5-1",
+      },
+      narrative: {
+        social_posts_analysis: [
+          {
+            post_id: 1,
+            text_content: "深夜的海像一封没有寄出的信。",
+            emotional_tone: "melancholic_nostalgic",
+            themes: ["solitude", "sea", "unsent_words"],
+            expression_style: "poetic_implicit",
+            self_presentation: "authentic_vulnerable",
+            time_clue: "late_night_post",
+            psychological_signals: ["high_sensitivity", "emotional_depth"],
+          },
+        ],
+        social_posts_overall_pattern: {
+          dominant_emotion: "melancholic",
+          core_themes: ["solitude", "meaning", "sea"],
+          expression_authenticity: "high",
+        },
+        precious_photo_analysis: {
+          visual_content: "lone_figure_seascape_sunset",
+          composition: "centered_figure_vast_background",
+          lighting: "backlit_silhouette",
+          color_mood: "warm_melancholic",
+          symbolic_elements: ["sea", "horizon", "solitude"],
+          psychological_interpretation: {
+            core_themes: ["solitude", "meaning_seeking", "aesthetic_sensitivity"],
+            emotional_tone: "peaceful_yet_melancholic",
+            self_concept: "lone_seeker",
+            existential_stance: "facing_infinity",
+            traits: ["high_openness", "introversion", "meaning_seeking"],
+          },
+        },
+        resonance_moments: ["C3-1", "C3-4"],
+      },
+    },
+    aggregated_traits: {
+      big_five: {
+        openness: 84,
+        conscientiousness: 52,
+        extraversion: 38,
+        agreeableness: 55,
+        neuroticism: 66,
+      },
+      core_themes: ["meaning_seeking", "solitude", "aesthetic_sensitivity"],
+      archetype_hints: ["lone_seeker", "existential_wanderer"],
+    },
+  };
+}
+
+function createPart2Record() {
+  return {
+    part2_id: "part2_content_v4",
+    part1_id: "part1_content_v4",
+    theater_script_id: "theater_content_v4",
+    created_at: "2026-05-09T00:00:00.000Z",
+    act2_choices: [
+      { choice_id: 1, selected: "1C", hesitation_time: 4.2, timestamp: "2026-05-09T00:01:00.000Z" },
+      { choice_id: 2, selected: "2A", hesitation_time: 8.6, timestamp: "2026-05-09T00:02:00.000Z" },
+      { choice_id: 3, selected: "3D", hesitation_time: 12.1, timestamp: "2026-05-09T00:03:00.000Z" },
+    ],
+    act3_responses: [
+      { question_id: 1, selected: "3A-2", hesitation_time: 9.4, timestamp: "2026-05-09T00:04:00.000Z" },
+      { question_id: 2, selected: "3B-5", hesitation_time: 7.3, timestamp: "2026-05-09T00:05:00.000Z" },
+    ],
+    metadata: {
+      total_time: 420,
+      device: "ios-native",
+      phase_durations: { act1: 38, act2: 130, act3: 95, epilogue: 20 },
+    },
+  };
+}
+
+function allVisibleOptionText() {
+  return benyuanPart1Questions.flatMap((question) => question.options?.map((option) => option.text) ?? []);
+}
+
+test("part1 questions use everyday entry points without visible clinical labels", () => {
+  const optionText = allVisibleOptionText().join("\n");
+
+  assert.doesNotMatch(optionText, /\p{Emoji_Presentation}/u);
+  assert.doesNotMatch(optionText, /存在焦虑|依恋|神经质|精英意识|压抑型|低神经质|毁灭与重生/);
+  assert.match(benyuanPart1Questions.find((question) => question.id === "A1_core_image")?.prompt ?? "", /手机相册|反复留下/);
+  assert.match(getQuestionOption("B1_night_thoughts", "B1-6")?.text ?? "", /世界为什么会这样|人为什么这样活/);
+  assert.match(getQuestionOption("B2_decision_style", "B2-2")?.text ?? "", /身体|收紧|放松/);
+  assert.match(getQuestionOption("B5_relationship_philosophy", "B5-1")?.text ?? "", /大多数时候自己待着|真正聊到深处/);
+});
+
+test("director prompt v4 requires continuous destiny-like theater generated from collected traces", () => {
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /剧场导演 Agent Prompt v4/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /一条镜头连续推进/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /宿命感不是预言/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /物件、声音、颜色或距离/);
+
+  const prompt = buildDirectorUserPrompt(createPart1Record());
+  assert.match(prompt, /连续行动链/);
+  assert.match(prompt, /深夜的海像一封没有寄出的信/);
+  assert.match(prompt, /lone_figure_seascape_sunset/);
+});
+
+test("fallback theater is a continuous role-play scene rather than a questionnaire", () => {
+  const theater = generateDeterministicTheaterScript(createPart1Record());
+  const visibleText = JSON.stringify(theater);
+  const actionStart = /^(靠近|停下|沿着|伸手|绕开|留在|回望|推开|等待|把|走向)/;
+
+  assert.match(theater.act1.scene_description, /深夜的海像一封没有寄出的信|lone_figure_seascape_sunset|海/);
+  assert.match(theater.act2.choices[1].scene, /第一幕|那封没有寄出的信|潮声|照片/);
+  assert(theater.act2.choices.every((choice) => choice.options.every((option) => actionStart.test(option.text))), "act2 options must start with embodied actions");
+  assert.doesNotMatch(visibleText, /镜像测试|选择最接近|你已经知道答案了|正确的答案/);
+  assert.match(theater.act3.mirror_questions[0].dialogue, /剧场|镜面|声音|物件|海/);
+});
+
+test("analyst prompt and fallback constellation bind star language to psychoanalytic and philosophical mirrors", () => {
+  assert.match(ANALYST_SYSTEM_PROMPT, /精神分析师 Agent Prompt v4/);
+  assert.match(ANALYST_SYSTEM_PROMPT, /短引或转述/);
+  assert.match(ANALYST_SYSTEM_PROMPT, /荣格|温尼科特|克尔凯郭尔|尼采|海德格尔|加缪/);
+
+  const part1 = createPart1Record();
+  const part2 = createPart2Record();
+  const fallback = generateDeterministicConstellation(part1, part2);
+  const prompt = buildAnalystUserPrompt(part1, part2, fallback);
+  const reportText = JSON.stringify(fallback);
+
+  assert.match(prompt, /星体语言/);
+  assert.match(prompt, /精神分析、哲学与文艺旁证/);
+  assert.match(reportText, /荣格|温尼科特|加缪|尼采|海德格尔|卡夫卡|博尔赫斯|卡尔维诺/);
+  assert.doesNotMatch(reportText, /孤独求索者|敏感而复杂的人|关系哲学“/);
+  assert(fallback.recommendations.books.some((item) => /精神旁证|镜面|存在主义|个体化|时间/.test(item.reason)));
+});
