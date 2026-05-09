@@ -110,6 +110,32 @@ stream_to_remote() {
   fi
 }
 
+detect_expected_live() {
+  if [ -n "${BENYUAN_EXPECT_LIVE:-}" ]; then
+    printf '%s' "$BENYUAN_EXPECT_LIVE"
+    return
+  fi
+
+  if [ "$dry_run" != "0" ]; then
+    printf '0'
+    return
+  fi
+
+  local live_value
+  live_value="$("${ssh_base[@]}" "set -euo pipefail
+if [ -f '$runtime_env_file' ]; then
+  set -a
+  . '$runtime_env_file'
+  set +a
+fi
+printf '%s' \"\${BENYUAN_LLM_LIVE:-0}\"" 2>/dev/null || true)"
+  if [ "$live_value" = "1" ] || [ "$live_value" = "true" ]; then
+    printf '1'
+  else
+    printf '0'
+  fi
+}
+
 cd "$repo_root"
 
 require_command git
@@ -286,11 +312,12 @@ wc -c /tmp/benyuan-next-root.html /tmp/benyuan-nginx-root.html"
 
 log "Public smoke checks"
 if [ "$dry_run" = "0" ]; then
-  BENYUAN_BASE_URL="$public_base_url" BENYUAN_EXPECT_LIVE="${BENYUAN_EXPECT_LIVE:-0}" npm run smoke:runtime:gate
+  expected_live="$(detect_expected_live)"
+  BENYUAN_BASE_URL="$public_base_url" BENYUAN_EXPECT_LIVE="$expected_live" npm run smoke:runtime:gate
   BENYUAN_BASE_URL="$public_base_url" npm run smoke:runtime:page
   BENYUAN_BASE_URL="$public_base_url" node --input-type=module -e "const base=process.env.BENYUAN_BASE_URL; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); if(!res.ok) throw new Error('runtime API failed: ' + res.status); const data=await res.json(); console.log(JSON.stringify(data.runtime ?? data).slice(0, 500));"
 else
-  echo "+ BENYUAN_BASE_URL=$public_base_url BENYUAN_EXPECT_LIVE=${BENYUAN_EXPECT_LIVE:-0} npm run smoke:runtime:gate"
+  echo "+ BENYUAN_BASE_URL=$public_base_url BENYUAN_EXPECT_LIVE=<from BENYUAN_EXPECT_LIVE or server BENYUAN_LLM_LIVE> npm run smoke:runtime:gate"
   echo "+ BENYUAN_BASE_URL=$public_base_url npm run smoke:runtime:page"
   echo "+ BENYUAN_BASE_URL=$public_base_url node --input-type=module -e <runtime-api-smoke>"
 fi

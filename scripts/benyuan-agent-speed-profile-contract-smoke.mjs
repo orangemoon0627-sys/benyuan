@@ -21,8 +21,9 @@ assert.match(agent, /fast[\s\S]*constellation[\s\S]*maxOutputTokens:\s*3800/, "f
 assert.match(agent, /fast[\s\S]*multimodal[\s\S]*reasoningEffort:\s*"low"/, "fast multimodal profile should use low reasoning");
 assert.match(agent, /transport:\s*"json_first"/, "fast text agents should avoid wasting a stream attempt before JSON");
 assert.match(agent, /allowSecondaryAttempts:\s*false/, "fast text agents should not stack multiple long provider attempts");
-assert.match(agent, /timeoutMs:\s*70000/, "fast theater profile should cap provider wait near 70s");
+assert.match(agent, /timeoutMs:\s*120000/, "fast theater profile should allow live gpt-5.5 theater runs beyond the observed 70s abort boundary");
 assert.match(agent, /timeoutMs:\s*90000/, "fast constellation profile should cap provider wait near 90s");
+assert.match(agent, /constellation:\s*\{[\s\S]*allowSecondaryAttempts:\s*true/, "fast constellation profile should retry once so transient upstream 502s do not force fallback");
 
 assert.match(runtimeRoute, /agentSpeedProfile/, "runtime endpoint should expose the active speed profile");
 assert.match(configureScript, /BENYUAN_AGENT_SPEED_PROFILE/, "staging LLM configure script should persist speed profile");

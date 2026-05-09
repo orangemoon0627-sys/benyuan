@@ -278,7 +278,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
     theater: {
       maxOutputTokens: 2600,
       reasoningEffort: "medium",
-      timeoutMs: 70000,
+      timeoutMs: 120000,
       transport: "json_first",
       allowSecondaryAttempts: false,
     },
@@ -287,7 +287,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       reasoningEffort: "medium",
       timeoutMs: 90000,
       transport: "json_first",
-      allowSecondaryAttempts: false,
+      allowSecondaryAttempts: true,
     },
   },
 };
