@@ -1,5 +1,6 @@
 import { benyuanQuestionsById, getQuestionOption, getQuestionOptionTags } from "@/lib/benyuan-v3-schema";
 import { getBenyuanArchetypeProfile } from "@/lib/benyuan-v3-report-profile";
+import { getTheaterAct2ChoiceText, getTheaterMirrorChoiceText } from "@/lib/benyuan-v3-theater-labels";
 import type {
   AggregatedTraits,
   MusicAnalysis,
@@ -696,18 +697,29 @@ function buildDeterministicNarrativeOverview(params: {
   socialText: string;
   photo: string;
   music: string;
+  act2Path: string[];
+  mirrorPath: string[];
+  longestPause: number;
 }) {
-  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music } = params;
+  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music, act2Path, mirrorPath, longestPause } = params;
   const topDimensions = pickTopDimensionLabels(scores);
   const themeSummary = formatThemeSummary(themes);
+  const act2PathText = formatJoined(act2Path, "靠近、停留与回望之间的路径");
+  const mirrorPathText = formatJoined(mirrorPath, "把问题交还给自己");
+  const pauseTexture = longestPause >= 10
+    ? "那一次停留明显慢了下来，像你在让身体先确认轨道是否真的贴合自己。"
+    : longestPause >= 6
+      ? "几次短暂迟疑让这条路径多了一层辨认感：你没有急着按下答案，而是在看它是否会回应你。"
+      : "你的选择节奏比较连贯，像是先让直觉带路，再回头理解它。";
   const supportLine = scores.emotional_depth >= 78 && scores.meaning_seeking >= 74 && scores.action_tendency <= 58
     ? "如果最近这些感受已经持续压缩睡眠、食欲或日常节律，先把现实照料放到前面，联系可信任的人或本地专业支持，并不意味着你变得脆弱，只是说明你愿意让自己先被接住。"
     : "";
 
   return [
-    `${profile.narrativeLead} 当你把“${selectedA1}”选为核心意象时，星图里最先亮起的是月相边缘：一半显露，一半保留。荣格会把这种反复辨认称作个体化的入口，不是变得特殊，而是把散落的自己慢慢收回同一条轨道。${profile.narrativeFocus}`,
+    `当你把“${selectedA1}”选为核心意象时，星图里最先亮起的是月相边缘：一半显露，一半保留。荣格会把这种反复辨认称作个体化的入口，不是变得特殊，而是把散落的自己慢慢收回同一条轨道。${profile.narrativeFocus}`,
     `你的证据并不抽象：那句“${socialText}”、${photo}，以及${music}，都像同一个黑色天体周围的碎光。它们说明你不是被宏大词语打动，而是会从一句话、一张图、一段声音里确认：这里有我的一部分。`,
     `在思维方式上，你更靠近“${selectedB1}”与“${selectedB2}”。这不是简单的直觉或犹豫，而像加缪式的清醒：先承认世界并不会自动给出意义，再用身体和时间去试探什么仍然值得靠近。`,
+    `剧场里，你先${act2PathText}；镜面前，又选择${mirrorPathText}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：你不是只想被理解，也在寻找一种不会过早占有你的理解。`,
     `当你在关系里选择“${selectedB5}”，一条很清楚的轨道浮现出来：${profile.relationshipLens} 温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己。当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
     `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学镜面。${profile.movementLens}`,
     `${profile.closingLens}${supportLine ? ` ${supportLine}` : ""}`,
@@ -729,6 +741,13 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
   const socialText = firstSocialPostText(part1);
   const photo = photoMotif(part1);
   const music = musicMotif(part1);
+  const act2Path = part2?.act2_choices.map((item) => getTheaterAct2ChoiceText(item.selected) ?? item.selected).filter(Boolean) ?? [];
+  const mirrorPath = part2?.act3_responses.map((item) => getTheaterMirrorChoiceText(item.selected) ?? item.selected).filter(Boolean) ?? [];
+  const longestPause = Math.max(
+    0,
+    ...(part2?.act2_choices.map((item) => item.hesitation_time ?? 0) ?? []),
+    ...(part2?.act3_responses.map((item) => item.hesitation_time ?? 0) ?? []),
+  );
 
   return {
     user_id: part1.user_id,
@@ -776,6 +795,9 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
       socialText,
       photo,
       music,
+      act2Path,
+      mirrorPath,
+      longestPause,
     }),
     core_tensions: buildDeterministicCoreTensions(primaryArchetypeHint, selectedB5),
     growth_suggestions: profile.growthSuggestions,

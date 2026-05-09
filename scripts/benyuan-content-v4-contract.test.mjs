@@ -155,14 +155,31 @@ test("part1 questions use everyday entry points without visible clinical labels"
   assert.match(getQuestionOption("B5_relationship_philosophy", "B5-1")?.text ?? "", /大多数时候自己待着|真正聊到深处/);
 });
 
+test("literature options pair philosophical works with everyday self-recognition cues", () => {
+  const literature = benyuanPart1Questions.find((question) => question.id === "A3_literature");
+  assert(literature?.options?.length, "A3 literature options must exist");
+
+  for (const option of literature.options) {
+    assert.match(option.text, /《[^》]+》/, `${option.id} should preserve the work title`);
+    assert.doesNotMatch(option.text, /^[^：:，。；;]+《[^》]+》$/, `${option.id} should not be a bare bibliography item`);
+    assert.match(
+      option.text,
+      /像|那种|时候|突然|觉得|明明|仍然|反复|不合群|隔着|命运|时间|想要|说不清/,
+      `${option.id} should expose an everyday entry point before the deeper signal`,
+    );
+  }
+});
+
 test("director prompt v4 requires continuous destiny-like theater generated from collected traces", () => {
   assert.match(DIRECTOR_SYSTEM_PROMPT, /剧场导演 Agent Prompt v4/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /一条镜头连续推进/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /宿命感不是预言/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /物件、声音、颜色或距离/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /反复母题/);
 
   const prompt = buildDirectorUserPrompt(createPart1Record());
   assert.match(prompt, /连续行动链/);
+  assert.match(prompt, /上传素材不是素材库/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);
   assert.match(prompt, /lone_figure_seascape_sunset/);
 });
@@ -189,10 +206,17 @@ test("analyst prompt and fallback constellation bind star language to psychoanal
   const fallback = generateDeterministicConstellation(part1, part2);
   const prompt = buildAnalystUserPrompt(part1, part2, fallback);
   const reportText = JSON.stringify(fallback);
+  const overview = fallback.narrative_overview;
 
   assert.match(prompt, /星体语言/);
   assert.match(prompt, /精神分析、哲学与文艺旁证/);
+  assert.match(prompt, /沿着回声回应一句话/);
+  assert.match(prompt, /寻找没有标出的出口/);
   assert.match(reportText, /荣格|温尼科特|加缪|尼采|海德格尔|卡夫卡|博尔赫斯|卡尔维诺/);
+  assert.match(overview, /沿着回声回应一句话|回声回应/);
+  assert.match(overview, /没有标出的出口|第三条细线/);
+  assert.match(overview, /停顿|停留|迟疑|慢/);
   assert.doesNotMatch(reportText, /孤独求索者|敏感而复杂的人|关系哲学“/);
+  assert.doesNotMatch(overview, /你给人的核心印象|你给人的第一印象/);
   assert(fallback.recommendations.books.some((item) => /精神旁证|镜面|存在主义|个体化|时间/.test(item.reason)));
 });

@@ -1,5 +1,6 @@
 import { BENYUAN_V3_CONSTELLATION_ENGINE, deriveConstellationSupportTone, getBenyuanArchetypeProfile } from "@/lib/benyuan-v3-report-profile";
 import { benyuanQuestionsById, getQuestionOption } from "@/lib/benyuan-v3-schema";
+import { describeTheaterAct2Selection, describeTheaterMirrorSelection } from "@/lib/benyuan-v3-theater-labels";
 import type { Part1Record, Part2Record, PsycheConstellation } from "@/lib/benyuan-v3-types";
 
 const dimensionLabels: Record<string, string> = {
@@ -137,10 +138,10 @@ ${formatPhotoEvidence(record)}
 
 function formatPart2EvidenceDossier(part2: Part2Record) {
   const act2 = part2.act2_choices.length > 0
-    ? part2.act2_choices.map((item, index) => `- 第 ${index + 1} 次选择：${item.selected}；choice_id ${item.choice_id}；停顿 ${item.hesitation_time ?? 0} 秒；时间 ${item.timestamp}`).join("\n")
+    ? part2.act2_choices.map((item, index) => `- 第 ${index + 1} 次选择：${describeTheaterAct2Selection(item.selected)}；choice_id ${item.choice_id}；停顿 ${item.hesitation_time ?? 0} 秒；时间 ${item.timestamp}`).join("\n")
     : "- 尚无 Act2 选择";
   const act3 = part2.act3_responses.length > 0
-    ? part2.act3_responses.map((item, index) => `- 镜面回答 ${index + 1}：${item.selected}；question_id ${item.question_id}；停顿 ${item.hesitation_time ?? 0} 秒；时间 ${item.timestamp}`).join("\n")
+    ? part2.act3_responses.map((item, index) => `- 镜面回答 ${index + 1}：${describeTheaterMirrorSelection(item.selected)}；question_id ${item.question_id}；停顿 ${item.hesitation_time ?? 0} 秒；时间 ${item.timestamp}`).join("\n")
     : "- 尚无 Act3 镜面回答";
   const phaseDurations = Object.entries(part2.metadata.phase_durations ?? {}).map(([key, value]) => `${key}:${value}s`).join(" / ") || "unknown";
 
@@ -195,6 +196,7 @@ Act1 必须从“证据档案”里抽取用户最强的空间意象、光线、
 第二幕的 choice 应形成连续行动链：进入、停留、靠近、避开、触碰、放下、回望。
 第三幕的 mirror_questions 也必须嵌在剧情中，像场景里的角色、镜面、声音或物件对用户发问，不要写成问卷。
 如果输入里出现明确的音乐、社交文本或照片线索，连续剧情必须让这些线索转化为可感知的物件、声音、颜色或距离，也可以进一步变成镜面里的回声，而不是只复用抽象原型名。
+上传素材不是素材库，而是剧场的反复母题：一段声音可以先是远处的呼吸，再变成桥下潮声，最后成为镜面里的低频回声；一张照片可以先是地面轮廓，再变成通路、裂纹或光线距离；一句社交文本可以先是空气里的句子，再变成信、回声或被角色递回来的物件。
 
 6. 宿命感边界
 剧场可以有宿命感，但宿命感不是预言，不是“命中注定你会怎样”，而是让用户感觉自己此前留下的照片、声音、文字和选择在同一条路上重新相遇。
@@ -717,7 +719,7 @@ export const MULTIMODAL_SYSTEM_PROMPT = `你是「本源」系统的多模态预
 export function buildDirectorUserPrompt(record: Part1Record) {
   const evidenceDossier = formatPart1EvidenceDossier(record);
 
-  return `请根据以下用户 Part 1 数据，生成个性化三幕式剧场脚本。\n\n风格补充：\n- 这是“黑洞入口 / 精神剧场 / 星图显形”产品体验里的个人剧场。\n- 氛围应是深黑、暗紫、银白、暗金点亮、星尘、玻璃层与深场柔光。\n- 文案要落在具体空间、具体物件、具体动作上，不要像产品说明。\n- 第二幕更像“靠近某个方向”，第三幕更像“被镜像反问”。\n- 必须优先使用证据档案里的具体回答、音乐、社交文本与照片构图，生成连续剧情。\n- Act2 要形成连续行动链：第一步进入，第二步改变距离，第三步触碰或放下某个物件。\n- Act3 的镜面问题必须从 Act2 变形而来，不要突然跳成问卷。\n- 宿命感来自证据回环：同一句话、同一个声音、同一张照片里的构图，在不同幕里改变形态后再次出现。\n- 内部证据可以使用，但不要在用户可见文本中解释证据来源。\n\n用户 ID: ${record.user_id}\n\n${evidenceDossier}\n\nPart 1 JSON:\n${JSON.stringify({ part1_data: record.part1_data, aggregated_traits: record.aggregated_traits })}\n\n请严格输出 {"theater_script": {...}}。`;
+  return `请根据以下用户 Part 1 数据，生成个性化三幕式剧场脚本。\n\n风格补充：\n- 这是“黑洞入口 / 精神剧场 / 星图显形”产品体验里的个人剧场。\n- 氛围应是深黑、暗紫、银白、暗金点亮、星尘、玻璃层与深场柔光。\n- 文案要落在具体空间、具体物件、具体动作上，不要像产品说明。\n- 第二幕更像“靠近某个方向”，第三幕更像“被镜像反问”。\n- 必须优先使用证据档案里的具体回答、音乐、社交文本与照片构图，生成连续剧情。\n- 上传素材不是素材库，而是反复母题：同一段声音、同一句话、同一张照片里的构图，必须在 Act1/Act2/Act3 中改变形态后再次出现。\n- Act2 要形成连续行动链：第一步进入，第二步改变距离，第三步触碰或放下某个物件。\n- Act3 的镜面问题必须从 Act2 变形而来，不要突然跳成问卷。\n- 宿命感来自证据回环：同一句话、同一个声音、同一张照片里的构图，在不同幕里改变形态后再次出现。\n- 内部证据可以使用，但不要在用户可见文本中解释证据来源。\n\n用户 ID: ${record.user_id}\n\n${evidenceDossier}\n\nPart 1 JSON:\n${JSON.stringify({ part1_data: record.part1_data, aggregated_traits: record.aggregated_traits })}\n\n请严格输出 {"theater_script": {...}}。`;
 }
 
 export function buildAnalystUserPrompt(part1: Part1Record, part2: Part2Record, fallback: PsycheConstellation) {
@@ -749,6 +751,8 @@ ${part2EvidenceDossier}
 
 精神分析、哲学与文艺旁证要求：
 - narrative_overview 至少有一段交叉使用“可读回答 + 多模态线索 + 剧场选择轨迹”。
+- 剧场选择轨迹里的可读行动文字要进入 narrative_overview，尤其是用户怎样靠近、停留、回望、绕开、触碰或放下；不要只复述 1A/2B/3D 这类内部编号。
+- 停顿时间只能转译成“停留、迟疑、慢下来、反复看了一会儿”等体验语言，不要写成技术埋点。
 - 推荐与解释可以调用精神分析、分析心理学、存在主义、现象学、时间哲学、文学/电影/音乐旁证，但必须回到用户证据，不要堆知识名词。
 - 避免“孤独求索者”“敏感而复杂的人”这类网络模板表达，把原型写成更具体的精神姿态。
 
