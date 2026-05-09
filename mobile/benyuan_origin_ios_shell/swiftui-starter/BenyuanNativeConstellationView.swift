@@ -245,41 +245,85 @@ struct BenyuanNativeConstellationView: View {
     }
 
     private var finalDock: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            BenyuanColor.bgVoid.opacity(0),
-                            BenyuanColor.bgVoid.opacity(0.72),
-                            BenyuanColor.bgVoid
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+        BenyuanConstellationActionDock(
+            onShare: { model.shareConstellation() },
+            onSave: { model.saveConstellationImage() },
+            onRestart: { model.restart() }
+        )
+    }
+}
+
+struct BenyuanConstellationActionDock: View {
+    let onShare: () -> Void
+    let onSave: () -> Void
+    let onRestart: () -> Void
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let phase = timeline.date.timeIntervalSinceReferenceDate
+            let pulse = 0.5 + 0.5 * sin(phase * 0.44)
+
+            VStack(spacing: 0) {
+                ZStack(alignment: .bottom) {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    BenyuanColor.bgVoid.opacity(0),
+                                    BenyuanColor.bgVoid.opacity(0.72),
+                                    BenyuanColor.bgVoid
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    .clear,
+                                    BenyuanColor.accentGold.opacity(0.08 + pulse * 0.04),
+                                    .clear
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: 190 + pulse * 28, height: 2)
+                        .blur(radius: 0.6)
+                        .blendMode(BlendMode.screen)
+                }
                 .frame(height: 44)
                 .allowsHitTesting(false)
 
-            HStack(spacing: BenyuanSpacing.x3) {
-                dockButton("分享") { model.shareConstellation() }
-                dockButton("保存") { model.saveConstellationImage() }
-                dockButton("重新探索") { model.restart() }
+                HStack(spacing: BenyuanSpacing.x3) {
+                    dockButton("分享", phase: phase, offset: 0, action: onShare)
+                    dockButton("保存", phase: phase, offset: 1.2, action: onSave)
+                    dockButton("重新探索", phase: phase, offset: 2.4, action: onRestart)
+                }
+                .padding(.horizontal, BenyuanSpacing.x4)
+                .padding(.top, BenyuanSpacing.x3)
+                .padding(.bottom, 18)
+                .background(
+                    Rectangle()
+                        .fill(BenyuanColor.bgVoid)
+                        .overlay(alignment: .top) {
+                            Rectangle()
+                                .fill(BenyuanColor.textPrimary.opacity(0.035))
+                                .frame(height: 1)
+                        }
+                        .ignoresSafeArea()
+                )
             }
-            .padding(.horizontal, BenyuanSpacing.x4)
-            .padding(.top, BenyuanSpacing.x3)
-            .padding(.bottom, 18)
-            .background(
-                Rectangle()
-                    .fill(BenyuanColor.bgVoid)
-                    .ignoresSafeArea()
-            )
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
     }
 
-    private func dockButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func dockButton(_ title: String, phase: TimeInterval, offset: Double, action: @escaping () -> Void) -> some View {
+        let pulse = 0.5 + 0.5 * sin(phase * 0.54 + offset)
+
+        return Button(action: action) {
             Text(title)
                 .font(.system(size: 14, weight: .black))
                 .foregroundStyle(BenyuanColor.textPrimary)
@@ -295,9 +339,11 @@ struct BenyuanNativeConstellationView: View {
                         )
                         .overlay(
                             Capsule()
-                                .stroke(BenyuanColor.accentGold.opacity(0.10), lineWidth: 1)
+                                .stroke(BenyuanColor.accentGold.opacity(0.08 + pulse * 0.08), lineWidth: 1)
+                                .blendMode(BlendMode.screen)
                         )
                 )
+                .shadow(color: BenyuanColor.accentGold.opacity(0.05 + pulse * 0.03), radius: 12, y: 4)
         }
         .buttonStyle(.plain)
     }

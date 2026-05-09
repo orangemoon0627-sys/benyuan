@@ -13,8 +13,13 @@ assert.match(backdrop, /struct BenyuanDeepCelestialBody/, "iOS shell must expose
 assert.match(backdrop, /TimelineView\(\.animation/, "deep celestial body must be animation-driven");
 assert.match(backdrop, /BenyuanAccretionRing/, "deep celestial body must include a richer accretion ring");
 assert.match(backdrop, /BenyuanSpectralParticleField/, "deep celestial body must include subtle spectral particles");
+assert.match(backdrop, /struct BenyuanEventHorizon/, "deep celestial body must include a dedicated event horizon core");
+assert.match(backdrop, /struct BenyuanGravitationalLens/, "deep celestial body must include a gravitational lensing layer");
+assert.match(backdrop, /struct BenyuanOrbitalDustBand/, "deep celestial body must include orbital dust bands for real depth");
+assert.match(backdrop, /struct BenyuanLivingDistantMoon/, "shell backdrop must use an animated distant moon instead of a static circle");
 assert.match(backdrop, /RadialGradient/, "deep celestial body must use radial shading for depth");
 assert.match(backdrop, /AngularGradient/, "deep celestial body must use angular shading for dimensional texture");
+assert.match(backdrop, /BlendMode\.screen/, "deep celestial light must use screen blending for luminous depth");
 
 assert.match(primitives, /struct BenyuanRevealedStack/, "native flow must expose a staged reveal stack for entrance motion");
 assert.match(primitives, /struct BenyuanQuestionSignalField/, "native flow must expose a question signal field for Part 1 motion");
@@ -58,6 +63,8 @@ assert.doesNotMatch(
 );
 assert.match(constellation, /BenyuanConstellationDeepFieldMask/, "native constellation hero must include a deeper first-viewport field mask");
 assert.match(constellation, /BenyuanRevealedStack/, "native constellation result sections must reveal cinematically instead of landing as a static document");
+assert.match(constellation, /BenyuanConstellationActionDock/, "native constellation final actions must use a dedicated animated action dock");
+assert.match(constellation, /TimelineView\(\.animation\(minimumInterval:\s*1\.0\s*\/\s*30\.0\)/, "native constellation final dock must have subtle real-time motion");
 assert.match(constellation, /\.fill\(BenyuanColor\.bgVoid\)/, "native constellation final dock must use an opaque deep-field mask so orbit labels do not bleed through action buttons");
 
 console.log("ios-celestial-ui-contract:ok");
