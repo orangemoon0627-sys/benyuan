@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "deploy:staging": "bash scripts/deploy-staging.sh",
     "deploy:staging:dry": "bash scripts/deploy-staging.sh --dry-run",
+    "backup:staging:data": "bash scripts/backup-staging-data.sh",
     "test:product:gate": "node scripts/benyuan-product-test-gate.mjs",
     "smoke:product:gate:contract": "node scripts/benyuan-product-test-gate-contract-smoke.mjs",
     "smoke:beta:kit": "node scripts/benyuan-beta-kit-contract-smoke.mjs",

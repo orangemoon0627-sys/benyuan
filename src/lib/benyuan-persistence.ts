@@ -2,8 +2,50 @@ import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { BenyuanV3Store } from "@/lib/benyuan-v3-types";
 
+export type BenyuanPersistenceBackend = "json-file" | "postgres";
+export type BenyuanObjectStorageBackend = "local-fs" | "oss" | "s3";
+
 function configuredDataRoot() {
   return process.env.BENYUAN_DATA_ROOT?.trim();
+}
+
+function normalizePersistenceBackend(value: string | undefined): BenyuanPersistenceBackend {
+  if (value === "postgres") return value;
+  return "json-file";
+}
+
+function normalizeObjectStorageBackend(value: string | undefined): BenyuanObjectStorageBackend {
+  if (value === "oss" || value === "s3") return value;
+  return "local-fs";
+}
+
+export function readBenyuanPersistenceReadiness() {
+  const recordBackend = normalizePersistenceBackend(process.env.BENYUAN_PERSISTENCE_BACKEND?.trim());
+  const assetBackend = normalizeObjectStorageBackend(process.env.BENYUAN_OBJECT_STORAGE_BACKEND?.trim());
+  const databaseConfigured = Boolean(process.env.BENYUAN_DATABASE_URL?.trim());
+  const objectStorageBucketConfigured = Boolean(process.env.BENYUAN_OBJECT_STORAGE_BUCKET?.trim());
+  const recordStoreProductionReady = recordBackend === "postgres" && databaseConfigured;
+  const assetStoreProductionReady = assetBackend !== "local-fs" && objectStorageBucketConfigured;
+  const blockers: string[] = [];
+
+  if (!recordStoreProductionReady) {
+    blockers.push(recordBackend === "postgres" ? "missing_database_url" : "record_store_json_file");
+  }
+  if (!assetStoreProductionReady) {
+    blockers.push(assetBackend === "local-fs" ? "asset_store_local_fs" : "missing_object_storage_bucket");
+  }
+
+  return {
+    recordBackend,
+    assetBackend,
+    databaseConfigured,
+    objectStorageBucketConfigured,
+    recordStoreProductionReady,
+    assetStoreProductionReady,
+    productionReady: recordStoreProductionReady && assetStoreProductionReady,
+    backupRequiredBeforeMigration: recordBackend === "json-file" || assetBackend === "local-fs",
+    blockers,
+  };
 }
 
 export function getBenyuanDataRoot() {
@@ -52,6 +94,7 @@ export async function getBenyuanPersistenceHealth(store?: BenyuanV3Store) {
   const dataRoot = getBenyuanDataRoot();
   const storePath = getBenyuanV3StorePath();
   const uploadsDir = getBenyuanV3UploadsDir();
+  const readiness = readBenyuanPersistenceReadiness();
 
   return {
     dataRoot,
@@ -61,6 +104,7 @@ export async function getBenyuanPersistenceHealth(store?: BenyuanV3Store) {
     storeExists: await pathExists(storePath),
     uploadsDirExists: await pathExists(uploadsDir),
     persistentDataRoot: Boolean(configuredDataRoot()) || dataRoot.endsWith(path.join("shared", "data")),
+    readiness,
     counts: store ? summarizeBenyuanStoreCounts(store) : null,
   };
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { summarizeBenyuanAgentTimings } from "@/lib/benyuan-agent-timing";
+import { readBenyuanPersistenceReadiness } from "@/lib/benyuan-persistence";
 import { getBenyuanV3StoreHealth } from "@/lib/benyuan-v3-store";
 import { readBenyuanServerRuntimeStatus } from "@/lib/benyuan-server-runtime";
 import { readBenyuanAgentSpeedProfile } from "@/lib/benyuan-v3-agent";
@@ -11,6 +12,7 @@ export async function GET() {
     getBenyuanV3StoreHealth(),
   ]);
   const agentSpeedProfile = readBenyuanAgentSpeedProfile();
+  const persistenceReadiness = readBenyuanPersistenceReadiness();
 
   return NextResponse.json({
     provider: runtime.provider,
@@ -30,5 +32,6 @@ export async function GET() {
     agentSpeedProfile,
     agentTiming,
     persistence,
+    persistenceReadiness,
   });
 }
