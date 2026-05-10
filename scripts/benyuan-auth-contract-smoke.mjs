@@ -12,6 +12,7 @@ function readRequired(relativePath) {
 const auth = readRequired("src/lib/benyuan-auth.ts");
 const types = readRequired("src/lib/benyuan-v3-types.ts");
 const store = readRequired("src/lib/benyuan-v3-store.ts");
+const persistence = readRequired("src/lib/benyuan-persistence.ts");
 const anonymousRoute = readRequired("src/app/api/auth/anonymous/route.ts");
 const appleRoute = readRequired("src/app/api/auth/apple/route.ts");
 const phoneRequestRoute = readRequired("src/app/api/auth/phone/request-code/route.ts");
@@ -61,7 +62,7 @@ assert.match(store, /auth_sessions:\s*raw\?\.auth_sessions/, "store merge must p
 assert.match(store, /phone_otps:\s*raw\?\.phone_otps/, "store merge must preserve phone OTP records");
 assert.match(store, /auth_provider_index:\s*raw\?\.auth_provider_index/, "store merge must preserve auth provider indexes");
 assert.match(store, /auth_rate_limits:\s*raw\?\.auth_rate_limits/, "store merge must preserve auth rate limit buckets");
-assert.match(store, /BENYUAN_V3_STORE_PATH/, "store must support an isolated test/runtime store path");
+assert.match(persistence, /BENYUAN_V3_STORE_PATH/, "persistence must support an isolated test/runtime store path");
 assert.match(store, /saveAuthUserAndSession/, "store must expose auth persistence");
 assert.match(store, /findUserByProviderSubject/, "store must look up existing users by provider subject");
 assert.match(store, /revokeAuthSession/, "store must revoke sessions for logout");

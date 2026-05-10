@@ -20,6 +20,8 @@
     "smoke:runtime:hybrid": "node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL??'http://localhost:3000'; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); const data=await res.json(); if(!data.runtime.fallbackActive) throw new Error('expected fallback'); console.log(JSON.stringify(data.runtime));\"",
     "smoke:runtime:page": "node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL??'http://localhost:3000'; const res=await fetch(base + '/lab/runtime'); if(!res.ok) throw new Error('runtime page not reachable'); console.log('runtime-page:ok');\"",
     "smoke:runtime:gate": "node scripts/benyuan-runtime-gate-smoke.mjs",
+    "smoke:server-runtime:contract": "node scripts/benyuan-server-runtime-contract-smoke.mjs",
+    "smoke:persistence:contract": "node scripts/benyuan-persistence-contract-smoke.mjs",
     "smoke:content:v4": "node --test scripts/benyuan-content-v4-contract.test.mjs",
     "smoke:runtime:client-config": "node --test scripts/benyuan-runtime-client-config-smoke.mjs",
     "smoke:agent:timing": "node scripts/benyuan-agent-timing-contract-smoke.mjs",

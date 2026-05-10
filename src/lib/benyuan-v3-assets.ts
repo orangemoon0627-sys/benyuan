@@ -1,9 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createBenyuanV3Id, getUploadedAsset, saveUploadedAsset } from "@/lib/benyuan-v3-store";
+import { getBenyuanV3UploadsDir } from "@/lib/benyuan-persistence";
 import type { BenyuanStoredAsset, BenyuanUploadedAssetRef } from "@/lib/benyuan-v3-types";
-
-const UPLOADS_DIR = path.join(process.cwd(), "data", "benyuan-v3-uploads");
 
 function sanitizeName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "upload";
@@ -21,13 +20,14 @@ export async function persistUploadedAsset(params: {
   buffer: Buffer;
   uploadOrigin?: string;
 }) {
-  await mkdir(UPLOADS_DIR, { recursive: true });
+  const uploadsDir = getBenyuanV3UploadsDir();
+  await mkdir(uploadsDir, { recursive: true });
 
   const assetId = createBenyuanV3Id("upload");
   const extension = extensionFromName(params.fileName);
   const safeBaseName = sanitizeName(path.basename(params.fileName, extension));
   const storedFileName = `${assetId}-${safeBaseName}${extension}`;
-  const absolutePath = path.join(UPLOADS_DIR, storedFileName);
+  const absolutePath = path.join(uploadsDir, storedFileName);
 
   await writeFile(absolutePath, params.buffer);
 

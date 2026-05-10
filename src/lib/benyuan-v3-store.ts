@@ -19,9 +19,9 @@ import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { generateDeterministicConstellation } from "@/lib/benyuan-v3-engine";
 import { uploadedAssetsFromAnswer } from "@/lib/benyuan-upload-assets";
+import { ensureBenyuanDataDirs, getBenyuanPersistenceHealth, getBenyuanV3StorePath } from "@/lib/benyuan-persistence";
 
-const configuredStorePath = process.env.BENYUAN_V3_STORE_PATH?.trim();
-const STORE_PATH = configuredStorePath ? path.resolve(configuredStorePath) : path.join(process.cwd(), "data", "benyuan-v3-store.json");
+const STORE_PATH = getBenyuanV3StorePath();
 const TEMP_STORE_PATH = `${STORE_PATH}.${process.pid}.tmp`;
 
 const EMPTY_STORE: BenyuanV3Store = {
@@ -87,6 +87,7 @@ function uid(prefix: string) {
 }
 
 async function ensureStoreFile() {
+  await ensureBenyuanDataDirs();
   await mkdir(path.dirname(STORE_PATH), { recursive: true });
   try {
     await readFile(STORE_PATH, "utf8");
@@ -139,6 +140,11 @@ async function withStoreWrite<T>(updater: (store: BenyuanV3Store) => T | Promise
 export async function readBenyuanV3Store() {
   await storeWriteQueue;
   return parseStoreFile();
+}
+
+export async function getBenyuanV3StoreHealth() {
+  const store = await readBenyuanV3Store();
+  return getBenyuanPersistenceHealth(store);
 }
 
 export function createBenyuanV3Id(prefix: "upload" | "part1" | "theater" | "part2" | "const") {

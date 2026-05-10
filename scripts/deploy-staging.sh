@@ -287,6 +287,8 @@ if [ -f '$runtime_env_file' ]; then
   set +a
 fi
 export NODE_ENV=production
+export BENYUAN_RUNTIME_ENV_FILE='$runtime_env_file'
+export BENYUAN_DATA_ROOT='$app_root/shared/data'
 pm2 delete '$process_name' >/dev/null 2>&1 || true
 pm2 start ./node_modules/next/dist/bin/next --name '$process_name' --update-env -- start -p '$app_port' -H 127.0.0.1
 pm2 save

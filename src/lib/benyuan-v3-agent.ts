@@ -18,7 +18,7 @@ import { readUploadedAssetDataUrl } from "@/lib/benyuan-v3-assets";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
 import { dedupeMirrorQuestions } from "@/lib/benyuan-v3-theater-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
-import { readCodexProviderDefaults } from "@/lib/codex-runtime";
+import { readBenyuanAgentRuntime } from "@/lib/benyuan-server-runtime";
 import { parseProviderJsonOrSsePayload } from "@/lib/benyuan-agent-response-parser";
 import type {
   AgentRuntimeOverride,
@@ -308,33 +308,7 @@ function getAgentStageProfile(stage: AgentStage) {
 }
 
 function resolveRuntime(override?: AgentRuntimeOverride) {
-  const runtime = readAnalysisRuntimeConfig("deep", { provider: "custom" });
-  const codexDefaults = readCodexProviderDefaults();
-  const apiKey = override?.api_key ?? process.env.OPENAI_API_KEY ?? codexDefaults.apiKey;
-  const baseUrl = override?.base_url ?? runtime.customBaseUrl ?? codexDefaults.baseUrl;
-  const model = override?.model ?? runtime.customModel ?? codexDefaults.model ?? "gpt-5.5";
-  const providerName = override?.provider_name ?? runtime.customProviderName ?? codexDefaults.providerName ?? "custom";
-  const reasoningEffort =
-    override?.reasoning_effort ??
-    (process.env.BENYUAN_CUSTOM_REASONING_EFFORT as AgentReasoningEffort | undefined) ??
-    codexDefaults.reasoningEffort ??
-    "xhigh";
-  const disableStorage = override?.disable_response_storage ?? codexDefaults.disableResponseStorage ?? true;
-  const live = override?.live ?? runtime.liveProviderEnabled;
-  const available = Boolean(live && apiKey && baseUrl);
-  const timeoutMs = Math.max(runtime.providerSoftTimeoutMs, Math.min(runtime.providerTimeoutMs, 120000));
-
-  return {
-    apiKey,
-    baseUrl,
-    model,
-    providerName,
-    reasoningEffort,
-    disableStorage,
-    live,
-    available,
-    timeoutMs,
-  };
+  return readBenyuanAgentRuntime(override);
 }
 
 type LiveAgentRuntime = ReturnType<typeof resolveRuntime> & { baseUrl: string };

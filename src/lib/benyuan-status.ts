@@ -1,11 +1,10 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { readAnalysisRuntimeConfig } from "@/lib/analysis/config";
 import { benyuanBetaFreezeCurrent } from "@/lib/benyuan-beta-freeze";
 import { getConstellationRecord, readBenyuanV3Store } from "@/lib/benyuan-v3-store";
 import { BENYUAN_V3_CONSTELLATION_ENGINE, deriveConstellationSupportTone } from "@/lib/benyuan-v3-report-profile";
 import { readBenyuanIosRealDeviceAcceptance } from "@/lib/benyuan-ios-real-device";
-import { readCodexProviderDefaults } from "@/lib/codex-runtime";
+import { readBenyuanServerRuntimeStatus } from "@/lib/benyuan-server-runtime";
 
 type StageRuntime = {
   provider?: string;
@@ -426,8 +425,7 @@ function summarizeLatestConstellation(record: Awaited<ReturnType<typeof getConst
 }
 
 export async function getBenyuanStatusSnapshot() {
-  const runtime = readAnalysisRuntimeConfig("deep", { provider: "custom" });
-  const codexDefaults = readCodexProviderDefaults();
+  const runtime = readBenyuanServerRuntimeStatus();
 
   const [
     snapshots,
@@ -535,14 +533,17 @@ export async function getBenyuanStatusSnapshot() {
 
   return {
     runtime: {
-      provider: runtime.customProviderName ?? codexDefaults.providerName ?? "custom",
-      model: runtime.customModel ?? codexDefaults.model ?? "gpt-5.5",
-      baseUrl: runtime.customBaseUrl ?? codexDefaults.baseUrl ?? null,
+      provider: runtime.provider,
+      model: runtime.model,
+      baseUrl: runtime.defaultBaseUrl ?? null,
       liveProviderEnabled: runtime.liveProviderEnabled,
-      softTimeoutMs: runtime.providerSoftTimeoutMs,
-      wireApi: codexDefaults.wireApi ?? "responses",
-      source: codexDefaults.apiKey && codexDefaults.baseUrl ? "codex-config" : "environment",
-      apiKeyConfigured: runtime.customKeyConfigured || Boolean(codexDefaults.apiKey),
+      softTimeoutMs: runtime.softTimeoutMs,
+      wireApi: runtime.wireApi,
+      source: runtime.source,
+      apiKeyConfigured: runtime.apiKeyConfigured,
+      apiKeySource: runtime.apiKeySource,
+      secretStorage: runtime.secretStorage,
+      serverIndependent: runtime.serverIndependent,
     },
     reportEngine: {
       mode: BENYUAN_V3_CONSTELLATION_ENGINE.mode,
