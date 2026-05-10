@@ -124,9 +124,11 @@ struct BenyuanNativeCollectView: View {
         case .single:
             VStack(spacing: BenyuanSpacing.x3) {
                 ForEach(Array((question.options ?? []).enumerated()), id: \.element.id) { index, option in
-                    BenyuanNativeOptionButton(index: index, title: option.text, active: model.session.answers[question.id]?.stringValue == option.id) {
+                    let selected = model.session.answers[question.id]?.stringValue == option.id
+                    BenyuanNativeOptionButton(index: index, title: option.text, active: selected) {
                         model.setSingleAnswer(option.id)
                     }
+                    .overlay(BenyuanSelectionPulseLayer(isActive: selected, cornerRadius: 24))
                 }
             }
         case .multi:
@@ -136,6 +138,7 @@ struct BenyuanNativeCollectView: View {
                     BenyuanNativeOptionButton(index: index, title: option.text, active: selected) {
                         model.toggleMultiAnswer(option.id)
                     }
+                    .overlay(BenyuanSelectionPulseLayer(isActive: selected, cornerRadius: 24))
                 }
             }
         case .distribution:
@@ -223,14 +226,18 @@ struct BenyuanNativeCollectView: View {
                 )
             }
             .buttonStyle(.plain)
+            .buttonStyle(BenyuanPressableMotionStyle(scale: 0.986, glow: hasAssets ? 0.14 : 0.08))
             .disabled(model.uploadingQuestionId != nil || !canAddMore)
 
             uploadActionRow(question: question, hasAssets: hasAssets, canAddMore: canAddMore)
 
             if hasAssets {
-                uploadThumbnailStrip(question: question, assets: assets)
+                BenyuanAssetMutationMotion(mutationKey: assets.map(\.assetId).joined(separator: "|")) {
+                    uploadThumbnailStrip(question: question, assets: assets)
+                }
             }
         }
+        .animation(.easeOut(duration: 0.24), value: assets.map(\.assetId))
     }
 
     private func uploadThumbnailStrip(question: BenyuanQuestion, assets: [BenyuanUploadedAssetRef]) -> some View {
@@ -277,6 +284,7 @@ struct BenyuanNativeCollectView: View {
                     .background(Circle().fill(Color.black.opacity(0.74)))
             }
             .padding(7)
+            .buttonStyle(BenyuanPressableMotionStyle(scale: 0.90, glow: 0.16, haptic: .light))
 
             VStack {
                 Spacer()
@@ -357,7 +365,7 @@ struct BenyuanNativeCollectView: View {
             .frame(maxWidth: .infinity, minHeight: 42)
             .background(Capsule().fill(BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BenyuanPressableMotionStyle(scale: 0.972, glow: 0.10, haptic: .light))
         .disabled(model.uploadingQuestionId != nil)
         .opacity(model.uploadingQuestionId != nil ? 0.46 : 1)
     }
@@ -369,11 +377,13 @@ struct BenyuanNativeCollectView: View {
                 .foregroundStyle(BenyuanColor.textSecondary)
                 .frame(width: 84, height: 54)
                 .background(Capsule().fill(BenyuanColor.glassFill))
+                .buttonStyle(BenyuanPressableMotionStyle(scale: 0.96, glow: 0.08, haptic: .light))
             Button("下一题") { model.nextQuestion() }
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(BenyuanColor.textSecondary)
                 .frame(width: 84, height: 54)
                 .background(Capsule().fill(BenyuanColor.glassFill))
+                .buttonStyle(BenyuanPressableMotionStyle(scale: 0.96, glow: 0.08, haptic: .light))
             BenyuanNativePrimaryButton(title: model.allQuestionsAnswered ? "进入剧场生成" : "继续收集", disabled: model.uploadingQuestionId != nil) {
                 if model.allQuestionsAnswered {
                     Task { await model.submitPart1AndGenerateTheater() }

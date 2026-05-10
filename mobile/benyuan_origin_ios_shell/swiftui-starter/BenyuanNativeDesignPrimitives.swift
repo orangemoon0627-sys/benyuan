@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BenyuanFlowTransitionLayer: View {
     var progress: Double
@@ -223,6 +224,97 @@ struct BenyuanFlowOrbitTrail: View {
     }
 }
 
+struct BenyuanPressableMotionStyle: ButtonStyle {
+    var scale: CGFloat = 0.972
+    var glow: Double = 0.10
+    var haptic: UIImpactFeedbackGenerator.FeedbackStyle? = .soft
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !accessibilityReduceMotion ? scale : 1)
+            .brightness(configuration.isPressed ? 0.025 : 0)
+            .shadow(color: BenyuanColor.accentGold.opacity(configuration.isPressed ? glow : 0), radius: configuration.isPressed ? 18 : 0, y: 8)
+            .animation(.easeOut(duration: accessibilityReduceMotion ? 0.08 : 0.16), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { isPressed in
+                guard isPressed, let haptic else { return }
+                UIImpactFeedbackGenerator(style: haptic).impactOccurred()
+            }
+    }
+}
+
+struct BenyuanSelectionPulseLayer: View {
+    var isActive: Bool
+    var cornerRadius: CGFloat = 24
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            let pulse = isActive ? (accessibilityReduceMotion ? 0.45 : 0.5 + 0.5 * sin(phase * 3.2)) : 0
+
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(BenyuanColor.accentGold.opacity(isActive ? 0.18 + pulse * 0.18 : 0), lineWidth: 1)
+                .scaleEffect(isActive && !accessibilityReduceMotion ? 1.006 + pulse * 0.006 : 1)
+                .shadow(color: BenyuanColor.accentGold.opacity(isActive ? 0.08 + pulse * 0.08 : 0), radius: isActive ? 16 : 0)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct BenyuanMomentaryChoiceFeedback: View {
+    var isActive: Bool
+    var label: String = "已记录选择"
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            let pulse = isActive ? (accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 5.2)) : 0
+
+            VStack(spacing: BenyuanSpacing.x2) {
+                Circle()
+                    .stroke(BenyuanColor.accentGold.opacity(0.22 + pulse * 0.18), lineWidth: 1.2)
+                    .frame(width: 62 + pulse * 8, height: 62 + pulse * 8)
+                    .overlay(
+                        Circle()
+                            .fill(BenyuanColor.accentGold.opacity(0.14 + pulse * 0.10))
+                            .frame(width: 12 + pulse * 5, height: 12 + pulse * 5)
+                    )
+                Text(label)
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(BenyuanColor.accentGold.opacity(0.82))
+            }
+            .opacity(isActive ? 1 : 0)
+            .scaleEffect(isActive && !accessibilityReduceMotion ? 1 + pulse * 0.015 : 1)
+            .animation(.easeOut(duration: accessibilityReduceMotion ? 0.08 : 0.18), value: isActive)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(!isActive)
+    }
+}
+
+struct BenyuanAssetMutationMotion<Content: View>: View {
+    var mutationKey: String
+    @ViewBuilder var content: () -> Content
+
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    var body: some View {
+        content()
+            .transition(
+                .opacity
+                    .combined(with: .scale(scale: accessibilityReduceMotion ? 1 : 0.94))
+                    .combined(with: .move(edge: .bottom))
+            )
+            .animation(.spring(response: accessibilityReduceMotion ? 0.12 : 0.36, dampingFraction: 0.84), value: mutationKey)
+    }
+}
+
 struct BenyuanNativeTopBar: View {
     let progress: Double
     let label: String
@@ -338,9 +430,9 @@ struct BenyuanNativeOptionButton: View {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(active ? BenyuanColor.accentGold.opacity(0.36) : BenyuanColor.glassStroke, lineWidth: 1)
                     )
-            )
+                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BenyuanPressableMotionStyle(scale: 0.982, glow: active ? 0.14 : 0.08))
     }
 }
 

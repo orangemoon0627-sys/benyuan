@@ -15,6 +15,9 @@ struct BenyuanNativeTheaterView: View {
                         .frame(height: max(260, proxy.size.height * 0.44))
                         .padding(.top, proxy.size.height * 0.10)
                         .allowsHitTesting(false)
+                    BenyuanMomentaryChoiceFeedback(isActive: model.selectedTheaterOptionId != nil)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .allowsHitTesting(false)
 
                     ScrollView(showsIndicators: false) {
                         phaseContent
@@ -97,6 +100,7 @@ struct BenyuanNativeTheaterView: View {
                         BenyuanNativeOptionButton(index: index, title: option.text, active: model.selectedTheaterOptionId == option.id) {
                             model.chooseAct2(option)
                         }
+                        .overlay(BenyuanSelectionPulseLayer(isActive: model.selectedTheaterOptionId == option.id, cornerRadius: 24))
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
                 }

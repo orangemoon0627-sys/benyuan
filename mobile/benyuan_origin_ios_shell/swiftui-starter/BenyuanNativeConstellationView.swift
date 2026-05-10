@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct BenyuanNativeConstellationView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
@@ -326,7 +327,7 @@ struct BenyuanConstellationActionDock: View {
     private func dockButton(_ title: String, phase: TimeInterval, offset: Double, action: @escaping () -> Void) -> some View {
         let pulse = 0.5 + 0.5 * sin(phase * 0.54 + offset)
 
-        return Button(action: action) {
+        return Button(action: dockAction(action)) {
             Text(title)
                 .font(.system(size: 14, weight: .black))
                 .foregroundStyle(BenyuanColor.textPrimary)
@@ -348,7 +349,14 @@ struct BenyuanConstellationActionDock: View {
                 )
                 .shadow(color: BenyuanColor.accentGold.opacity(0.05 + pulse * 0.03), radius: 12, y: 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BenyuanPressableMotionStyle(scale: 0.966, glow: 0.13, haptic: nil))
+    }
+
+    private func dockAction(_ action: @escaping () -> Void) -> () -> Void {
+        {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }
     }
 }
 
