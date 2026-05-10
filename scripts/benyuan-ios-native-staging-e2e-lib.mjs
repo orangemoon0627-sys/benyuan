@@ -26,6 +26,21 @@ export function shouldTreatAppLogsAsNativeError(logText) {
   return String(logText ?? "").includes("BENYUAN_E2E_ERROR");
 }
 
+export function assertAllRequiredRuntimeStagesLive(latestRuntime) {
+  for (const stage of ["multimodal", "theater", "constellation"]) {
+    const latest = latestRuntime?.[stage];
+    if (!latest) {
+      throw new Error(`ios_staging_e2e_stage_missing:${stage}`);
+    }
+    if (latest.runtime_mode === "fallback") {
+      throw new Error(`ios_staging_e2e_stage_fallback:${stage}:${latest.error ?? "unknown"}`);
+    }
+    if (latest.runtime_mode !== "live") {
+      throw new Error(`ios_staging_e2e_stage_not_live:${stage}:${latest.runtime_mode ?? "unknown"}`);
+    }
+  }
+}
+
 export function safeNativeSessionSummary(session) {
   if (!session || typeof session !== "object") return null;
   const auth = session.auth_session;

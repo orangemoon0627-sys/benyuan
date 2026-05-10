@@ -24,6 +24,7 @@
     "smoke:runtime:client-config": "node --test scripts/benyuan-runtime-client-config-smoke.mjs",
     "smoke:agent:timing": "node scripts/benyuan-agent-timing-contract-smoke.mjs",
     "smoke:agent:speed-profile": "node scripts/benyuan-agent-speed-profile-contract-smoke.mjs",
+    "smoke:agent:transient-retry": "node scripts/benyuan-agent-transient-retry-contract-smoke.mjs",
     "smoke:auth:contract": "node scripts/benyuan-auth-contract-smoke.mjs",
     "smoke:auth:runtime": "node scripts/benyuan-auth-runtime-smoke.mjs",
     "smoke:auth:sms-webhook": "node scripts/benyuan-auth-sms-webhook-smoke.mjs",

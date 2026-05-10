@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildLaunchArgs,
+  assertAllRequiredRuntimeStagesLive,
   safeNativeE2EEvents,
   safeNativeSessionSummary,
   shouldTreatAppLogsAsNativeError,
@@ -103,4 +104,32 @@ test("safeNativeE2EEvents keeps a bounded list of diagnostic messages", () => {
     { recordedAt: "2026-05-09T00:00:01.000Z", message: "theater_saved theater_script_id=theater_1" },
     { recordedAt: "2026-05-09T00:00:02.000Z", message: "constellation_generated constellation_id=const_1" },
   ]);
+});
+
+test("assertAllRequiredRuntimeStagesLive rejects any same-run fallback stage", () => {
+  assert.throws(
+    () => assertAllRequiredRuntimeStagesLive({
+      multimodal: { runtime_mode: "fallback", error: "multimodal_responses_json_failed_502" },
+      theater: { runtime_mode: "live" },
+      constellation: { runtime_mode: "live" },
+    }),
+    /ios_staging_e2e_stage_fallback:multimodal:multimodal_responses_json_failed_502/
+  );
+});
+
+test("assertAllRequiredRuntimeStagesLive requires multimodal theater and constellation live", () => {
+  assert.doesNotThrow(() => assertAllRequiredRuntimeStagesLive({
+    multimodal: { runtime_mode: "live" },
+    theater: { runtime_mode: "live" },
+    constellation: { runtime_mode: "live" },
+  }));
+
+  assert.throws(
+    () => assertAllRequiredRuntimeStagesLive({
+      multimodal: { runtime_mode: "live" },
+      theater: null,
+      constellation: { runtime_mode: "live" },
+    }),
+    /ios_staging_e2e_stage_missing:theater/
+  );
 });

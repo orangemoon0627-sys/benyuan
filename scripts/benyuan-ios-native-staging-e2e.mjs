@@ -10,6 +10,7 @@ import {
   extractInstalledSimulatorSdkVersion,
 } from "./benyuan-ios-native-smoke-lib.mjs";
 import {
+  assertAllRequiredRuntimeStagesLive,
   buildLaunchArgs,
   safeNativeE2EEvents,
   safeNativeSessionSummary,
@@ -304,6 +305,11 @@ async function main() {
   const appLogs = [appStdout, appStderr].filter(Boolean).join("\n");
   const showsNativeError = shouldTreatAppLogsAsNativeError(appLogs);
   const nativeSession = collectNativeSessionSummary(device.udid, bundleId);
+  const latestRuntime = {
+    multimodal: runtimePayload?.agentTiming?.stages?.multimodal?.latest,
+    theater: runtimePayload?.agentTiming?.stages?.theater?.latest,
+    constellation: runtimePayload?.agentTiming?.stages?.constellation?.latest,
+  };
 
   const summary = {
     generatedAt: new Date().toISOString(),
@@ -327,11 +333,7 @@ async function main() {
     appStderr,
     nativeSession,
     latestConstellation: latest,
-    latestRuntime: {
-      multimodal: runtimePayload?.agentTiming?.stages?.multimodal?.latest,
-      theater: runtimePayload?.agentTiming?.stages?.theater?.latest,
-      constellation: runtimePayload?.agentTiming?.stages?.constellation?.latest,
-    },
+    latestRuntime,
     error: e2eError instanceof Error ? e2eError.message : (e2eError ? String(e2eError) : null),
   };
 
@@ -347,6 +349,7 @@ async function main() {
   if (showsNativeError) {
     throw new Error("ios_staging_e2e_native_error_page");
   }
+  assertAllRequiredRuntimeStagesLive(latestRuntime);
 }
 
 main().catch((error) => {

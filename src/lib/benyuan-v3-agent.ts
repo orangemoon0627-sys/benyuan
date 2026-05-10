@@ -261,6 +261,13 @@ type AgentStageProfile = {
   allowSecondaryAttempts?: boolean;
 };
 
+type ProviderAttemptResult = {
+  parsed: unknown | null;
+  requestId?: string;
+  error?: string;
+  status?: number;
+};
+
 const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentStageProfile>> = {
   quality: {
     multimodal: {},
@@ -372,13 +379,90 @@ function formatStatusError(prefix: string, status: number, detail?: string) {
   return detail ? `${prefix}_${status}:${detail}` : `${prefix}_${status}`;
 }
 
+function snippet(value: string, maxLength = 160) {
+  const compact = value.replace(/\s+/g, " ").trim();
+  return compact.length > maxLength ? compact.slice(0, maxLength) : compact;
+}
+
+function looksLikeHtmlResponse(value: string | undefined) {
+  if (!value) return false;
+  return /<(!doctype|html|head|body|center|title)\b/i.test(value);
+}
+
+function formatParseError(prefix: string, outputText: string, errorDetail?: string) {
+  if (errorDetail) return formatEventError(prefix, errorDetail);
+  if (looksLikeHtmlResponse(outputText)) {
+    return `${prefix}_parse_failed_html:${snippet(outputText)}`;
+  }
+  return `${prefix}_parse_failed`;
+}
+
+function isTransientProviderAttemptFailure(result: ProviderAttemptResult) {
+  if (result.parsed) return false;
+  if (typeof result.status === "number" && [408, 429, 500, 502, 503, 504, 520, 521, 522, 524].includes(result.status)) {
+    return true;
+  }
+
+  const error = result.error?.toLocaleLowerCase("en-US") ?? "";
+  return [
+    "bad gateway",
+    "gateway timeout",
+    "service unavailable",
+    "temporarily unavailable",
+    "too many requests",
+    "nginx",
+    "upstream",
+    "fetch failed",
+    "econnreset",
+    "socket hang up",
+    "parse_failed_html",
+    "unexpected token '<'",
+    "<!doctype",
+    "<html",
+  ].some((marker) => error.includes(marker));
+}
+
+async function retryProviderAttempt<T extends ProviderAttemptResult>(
+  runAttempt: () => Promise<T>,
+  options: { maxAttempts?: number; backoffMs?: number[]; marker?: string } = {},
+) {
+  const maxAttempts = Math.max(1, options.maxAttempts ?? 2);
+  const backoffMs = options.backoffMs ?? [1200];
+  const marker = options.marker ?? "provider_transient_retry";
+  const retryErrors: string[] = [];
+
+  for (let attemptIndex = 1; attemptIndex <= maxAttempts; attemptIndex += 1) {
+    const result = await runAttempt().catch((error) => ({
+      parsed: null,
+      requestId: undefined,
+      error: error instanceof Error ? error.message : "provider_request_failed",
+      status: undefined,
+    }) as T);
+    const canRetry = attemptIndex < maxAttempts && isTransientProviderAttemptFailure(result);
+    if (!canRetry) {
+      if (!result.parsed && retryErrors.length > 0) {
+        return {
+          ...result,
+          error: appendError(retryErrors.join(" | "), result.error),
+        };
+      }
+      return result;
+    }
+
+    retryErrors.push(`${marker}_${attemptIndex}:${result.error ?? `status_${result.status ?? "unknown"}`}`);
+    await wait(backoffMs[Math.min(attemptIndex - 1, backoffMs.length - 1)] ?? 1200);
+  }
+
+  return runAttempt();
+}
+
 async function attemptResponsesStreamJson(params: {
   runtime: LiveAgentRuntime;
   headers: Record<string, string>;
   body: Record<string, unknown>;
   errorPrefix: string;
 }) {
-  try {
+  return retryProviderAttempt(async () => {
     const response = await fetchWithTimeout(joinBaseUrl(params.runtime.baseUrl, "responses"), {
       method: "POST",
       headers: { ...params.headers, Accept: "text/event-stream" },
@@ -395,22 +479,33 @@ async function attemptResponsesStreamJson(params: {
       };
     }
 
+    const contentType = response.headers.get("content-type") ?? "";
+    if (/text\/html/i.test(contentType)) {
+      const rawText = await response.text();
+      return {
+        parsed: null,
+        requestId: undefined,
+        error: formatParseError(params.errorPrefix, rawText),
+        status: response.status,
+      };
+    }
+
     const { outputText, requestId, errorDetail } = await readSsePayload(response);
     const parsed = extractJsonObject(outputText);
     return {
       parsed,
       requestId,
-      error: parsed ? undefined : (errorDetail ? formatEventError(params.errorPrefix, errorDetail) : `${params.errorPrefix}_parse_failed`),
+      error: parsed ? undefined : formatParseError(params.errorPrefix, outputText, errorDetail),
       status: response.status,
     };
-  } catch (error) {
+  }).catch((error) => {
     return {
       parsed: null,
       requestId: undefined,
       error: error instanceof Error ? error.message : `${params.errorPrefix}_request_failed`,
       status: undefined,
     };
-  }
+  });
 }
 
 async function attemptResponsesJson(params: {
@@ -419,7 +514,7 @@ async function attemptResponsesJson(params: {
   body: Record<string, unknown>;
   errorPrefix: string;
 }) {
-  try {
+  return retryProviderAttempt(async () => {
     const response = await fetchWithTimeout(joinBaseUrl(params.runtime.baseUrl, "responses"), {
       method: "POST",
       headers: params.headers,
@@ -443,17 +538,17 @@ async function attemptResponsesJson(params: {
     return {
       parsed,
       requestId: payload.requestId,
-      error: parsed ? undefined : (payload.errorDetail ? formatEventError(params.errorPrefix, payload.errorDetail) : `${params.errorPrefix}_parse_failed`),
+      error: parsed ? undefined : formatParseError(params.errorPrefix, payload.outputText, payload.errorDetail),
       status: response.status,
     };
-  } catch (error) {
+  }).catch((error) => {
     return {
       parsed: null,
       requestId: undefined,
       error: error instanceof Error ? error.message : `${params.errorPrefix}_request_failed`,
       status: undefined,
     };
-  }
+  });
 }
 
 async function requestAgentJson(params: {
