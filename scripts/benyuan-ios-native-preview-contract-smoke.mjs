@@ -10,6 +10,12 @@ for (const stage of ["auth", "account", "collect", "upload", "processing", "thea
   assert.match(script, new RegExp(`benyuan-ios-preview-${stage}\\.png`), `native preview screenshot script must write ${stage} screenshot`);
 }
 
+assert.match(script, /debugPreviewDir/, "native preview screenshots must create cache-safe presentation copies");
+assert.match(script, /presentationScreenshotPath/, "native preview summary must expose a unique presentation screenshot path");
+assert.match(script, /stableScreenshotPath/, "native preview summary must keep the stable overwrite screenshot path");
+assert.match(script, /previewRunStamp/, "native preview screenshot names must include a per-run timestamp");
+assert.match(script, /copyFile\(config\.screenshotPath,\s*presentationScreenshotPath\)/, "native preview must copy stable screenshots to unique presentation paths");
+
 assert.match(script, /for \(const config of previewConfigs\)/, "native preview screenshots must run stages sequentially");
 assert.match(script, /stage:\s*"auth"[\s\S]*?waitMs:\s*3600/, "native auth preview must wait long enough to avoid capturing the launch blur transition");
 assert.doesNotMatch(script, /Promise\.all/, "native preview screenshots must not run simulator launches concurrently");

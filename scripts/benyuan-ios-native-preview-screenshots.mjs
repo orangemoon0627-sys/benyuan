@@ -18,8 +18,13 @@ const configuration = process.env.BENYUAN_IOS_CONFIGURATION ?? "Debug";
 const desiredDeviceName = process.env.BENYUAN_SIM_DEVICE ?? "iPhone 17";
 const baseUrl = process.env.BENYUAN_BASE_URL ?? "http://127.0.0.1:3015";
 const outputDir = path.join(root, "output");
+const debugPreviewDir = path.join(outputDir, "debug-previews");
 const tempDir = path.join(os.tmpdir(), "benyuan-ios-native-preview");
 const jsonPath = path.join(outputDir, "benyuan-ios-native-preview-screenshots.json");
+const previewRunStamp = new Date()
+  .toISOString()
+  .replace(/[-:]/g, "")
+  .replace(/\.\d{3}Z$/, "Z");
 
 const previewConfigs = [
   { stage: "auth", screenshotPath: path.join(outputDir, "benyuan-ios-preview-auth.png"), waitMs: 3600 },
@@ -131,6 +136,11 @@ async function capturePreview(device, bundleId, config) {
   const tempScreenshotPath = path.join(tempDir, path.basename(config.screenshotPath));
   run("xcrun", ["simctl", "io", device.udid, "screenshot", tempScreenshotPath]);
   await copyFile(tempScreenshotPath, config.screenshotPath);
+  const presentationScreenshotPath = path.join(
+    debugPreviewDir,
+    `benyuan-ios-preview-${config.stage}-${previewRunStamp}.png`
+  );
+  await copyFile(config.screenshotPath, presentationScreenshotPath);
   const screenshot = await readFile(config.screenshotPath);
   const screenshotText = screenshot.toString("latin1");
   const showsShellError =
@@ -145,6 +155,8 @@ async function capturePreview(device, bundleId, config) {
     stage: config.stage,
     launchedAt,
     screenshotPath: config.screenshotPath,
+    stableScreenshotPath: config.screenshotPath,
+    presentationScreenshotPath,
     launchOutput,
     showsShellError,
   };
@@ -152,6 +164,7 @@ async function capturePreview(device, bundleId, config) {
 
 async function main() {
   await mkdir(outputDir, { recursive: true });
+  await mkdir(debugPreviewDir, { recursive: true });
   await mkdir(tempDir, { recursive: true });
   run("xcodegen", ["generate"], { cwd: shellProjectDir });
 
