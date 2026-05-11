@@ -558,13 +558,13 @@ struct BenyuanNativeAccountView: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.82)
                         }
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(model.feedbackKind == kind ? BenyuanColor.bgVoid : BenyuanColor.textSecondary)
+                            .font(.system(size: 12, weight: model.feedbackKind == kind ? .black : .semibold))
+                            .foregroundStyle(model.feedbackKind == kind ? Color.black : BenyuanColor.textSecondary)
                             .frame(maxWidth: .infinity, minHeight: 36)
                             .background(
                                 Capsule()
-                                    .fill(model.feedbackKind == kind ? BenyuanColor.textPrimary : BenyuanColor.bgSurface.opacity(0.86))
-                                    .overlay(Capsule().stroke(model.feedbackKind == kind ? BenyuanColor.textPrimary.opacity(0.68) : BenyuanColor.glassStroke))
+                                    .fill(model.feedbackKind == kind ? Color.white : BenyuanColor.bgSurface.opacity(0.86))
+                                    .overlay(Capsule().stroke(model.feedbackKind == kind ? Color.white.opacity(0.78) : BenyuanColor.glassStroke))
                             )
                     }
                     .buttonStyle(.plain)

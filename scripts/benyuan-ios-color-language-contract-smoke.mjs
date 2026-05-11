@@ -46,14 +46,14 @@ assert.doesNotMatch(
 
 assert.match(
   account,
-  /foregroundStyle\(model\.feedbackKind == kind \? BenyuanColor\.bgVoid : BenyuanColor\.textSecondary\)/,
-  "selected feedback kind chip must render dark text on its light selected capsule"
+  /foregroundStyle\(model\.feedbackKind == kind \? Color\.black : BenyuanColor\.textSecondary\)/,
+  "selected feedback kind chip must render pure black text on its white selected capsule"
 );
 
 assert.match(
   account,
-  /fill\(model\.feedbackKind == kind \? BenyuanColor\.textPrimary : BenyuanColor\.bgSurface\.opacity\(0\.86\)\)/,
-  "selected feedback kind chip must use a high-contrast light capsule, not muted gold"
+  /fill\(model\.feedbackKind == kind \? Color\.white : BenyuanColor\.bgSurface\.opacity\(0\.86\)\)/,
+  "selected feedback kind chip must use a pure white capsule, not muted gold or off-white"
 );
 
 assert.match(
