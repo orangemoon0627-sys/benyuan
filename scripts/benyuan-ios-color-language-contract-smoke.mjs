@@ -44,4 +44,22 @@ assert.doesNotMatch(
   "native account bottom dock must not render white CTA text on a white capsule"
 );
 
+assert.match(
+  account,
+  /foregroundStyle\(model\.feedbackKind == kind \? BenyuanColor\.bgVoid : BenyuanColor\.textSecondary\)/,
+  "selected feedback kind chip must render dark text on its light selected capsule"
+);
+
+assert.match(
+  account,
+  /fill\(model\.feedbackKind == kind \? BenyuanColor\.textPrimary : BenyuanColor\.bgSurface\.opacity\(0\.86\)\)/,
+  "selected feedback kind chip must use a high-contrast light capsule, not muted gold"
+);
+
+assert.match(
+  account,
+  /if model\.feedbackKind == kind \{[\s\S]*?Image\(systemName: "checkmark"\)/,
+  "selected feedback kind chip must include an explicit checkmark indicator"
+);
+
 console.log("ios-color-language-contract:ok");

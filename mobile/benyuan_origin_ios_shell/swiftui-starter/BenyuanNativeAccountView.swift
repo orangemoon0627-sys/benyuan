@@ -548,14 +548,23 @@ struct BenyuanNativeAccountView: View {
                     Button {
                         model.feedbackKind = kind
                     } label: {
-                        Text(kind.label)
+                        HStack(spacing: 6) {
+                            if model.feedbackKind == kind {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 10, weight: .black))
+                            }
+
+                            Text(kind.label)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.82)
+                        }
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(model.feedbackKind == kind ? BenyuanColor.bgVoid : BenyuanColor.textSecondary)
                             .frame(maxWidth: .infinity, minHeight: 36)
                             .background(
                                 Capsule()
-                                    .fill(model.feedbackKind == kind ? BenyuanColor.accentGold : BenyuanColor.bgSurface.opacity(0.86))
-                                    .overlay(Capsule().stroke(model.feedbackKind == kind ? BenyuanColor.accentGold.opacity(0.64) : BenyuanColor.glassStroke))
+                                    .fill(model.feedbackKind == kind ? BenyuanColor.textPrimary : BenyuanColor.bgSurface.opacity(0.86))
+                                    .overlay(Capsule().stroke(model.feedbackKind == kind ? BenyuanColor.textPrimary.opacity(0.68) : BenyuanColor.glassStroke))
                             )
                     }
                     .buttonStyle(.plain)
