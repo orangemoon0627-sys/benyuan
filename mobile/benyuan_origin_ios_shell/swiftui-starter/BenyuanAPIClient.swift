@@ -64,6 +64,13 @@ final class BenyuanAPIClient {
 
     func url(path: String) -> URL {
         let normalized = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        if let separatorIndex = normalized.firstIndex(of: "?") {
+            let pathPart = String(normalized[..<separatorIndex])
+            let queryPart = String(normalized[normalized.index(after: separatorIndex)...])
+            var components = URLComponents(url: baseURL.appendingPathComponent(pathPart), resolvingAgainstBaseURL: false)
+            components?.percentEncodedQuery = queryPart
+            return components?.url ?? baseURL.appendingPathComponent(normalized)
+        }
         return baseURL.appendingPathComponent(normalized)
     }
 
@@ -89,6 +96,14 @@ final class BenyuanAPIClient {
 
     func fetchPart1HistoryRecord(part1Id: String) async throws -> BenyuanPart1HistoryRecordResponse {
         try await get("/api/account/history/\(part1Id)/part1")
+    }
+
+    func fetchPart2HistoryRecord(part1Id: String, part2Id: String? = nil) async throws -> BenyuanPart2HistoryRecordResponse {
+        let basePath = "/api/account/history/\(part1Id)/part2"
+        guard let part2Id else {
+            return try await get(basePath)
+        }
+        return try await get("\(basePath)?part2_id=\(part2Id)")
     }
 
     func submitFeedback(

@@ -158,6 +158,14 @@ final class BenyuanNativeFlowModel: ObservableObject {
         theater?.theaterScript.act3.mirrorQuestions[safe: theaterMirrorIndex]
     }
 
+    var choiceLogCount: Int {
+        choiceLogs.count
+    }
+
+    var mirrorLogCount: Int {
+        mirrorLogs.count
+    }
+
     var isPhoneAuthReady: Bool {
         authProviders?.provider(.phone)?.status == .ready
     }
@@ -472,12 +480,21 @@ final class BenyuanNativeFlowModel: ObservableObject {
                 let record = try await client.fetchTheaterScript(theaterScriptId: theaterScriptId)
                 theater = record.generateResponse()
                 constellation = nil
-                resetTheaterState()
+                if item.stage == .part2 {
+                    let part2 = try await client.fetchPart2HistoryRecord(part1Id: item.part1Id, part2Id: item.part2Id)
+                    restorePart2Replay(part2)
+                } else {
+                    resetTheaterState()
+                }
                 stage = .theater
             case .constellation:
                 if let theaterScriptId = item.theaterScriptId, theater?.theaterScriptId != theaterScriptId {
                     let record = try await client.fetchTheaterScript(theaterScriptId: theaterScriptId)
                     theater = record.generateResponse()
+                }
+                if let part2Id = item.part2Id {
+                    let part2 = try await client.fetchPart2HistoryRecord(part1Id: item.part1Id, part2Id: part2Id)
+                    restorePart2Replay(part2)
                 }
                 guard let constellationId = item.constellationId else {
                     throw BenyuanHistoryRestoreError.missingConstellation
@@ -1073,6 +1090,49 @@ final class BenyuanNativeFlowModel: ObservableObject {
         session.uploadedAssets = record.uploadedAssets
         let restoredAssetIds = Set(record.uploadedAssets.values.flatMap { $0.map(\.assetId) })
         thumbnails = thumbnails.filter { restoredAssetIds.contains($0.key) }
+        persist()
+    }
+
+    private func restorePart2Replay(_ record: BenyuanPart2HistoryRecordResponse) {
+        session.part1Id = record.part1Id
+        session.part2Id = record.part2Id
+        session.theaterScriptId = record.theaterScriptId
+        if let phaseDurations = record.metadata["phase_durations"]?.objectValue {
+            session.phaseDurations = phaseDurations.reduce(into: [:]) { result, entry in
+                if case .number(let value) = entry.value {
+                    result[entry.key] = value
+                }
+            }
+        }
+        choiceLogs = record.act2Choices
+        mirrorLogs = record.act3Responses
+        selectedTheaterOptionId = nil
+
+        let act2Count = theater?.theaterScript.act2.choices.count ?? 0
+        let act3Count = theater?.theaterScript.act3.mirrorQuestions.count ?? 0
+        if act2Count > 0 {
+            theaterChoiceIndex = min(max(choiceLogs.count - 1, 0), act2Count - 1)
+        } else {
+            theaterChoiceIndex = 0
+        }
+        if act3Count > 0 {
+            theaterMirrorIndex = min(max(mirrorLogs.count - 1, 0), act3Count - 1)
+        } else {
+            theaterMirrorIndex = 0
+        }
+
+        if act2Count > 0, choiceLogs.count < act2Count {
+            theaterPhase = .act2
+            theaterChoiceIndex = min(choiceLogs.count, act2Count - 1)
+        } else if act3Count > 0, mirrorLogs.count < act3Count {
+            theaterPhase = .act3
+            theaterMirrorIndex = min(mirrorLogs.count, act3Count - 1)
+        } else {
+            theaterPhase = .epilogue
+        }
+
+        phaseStartedAt = Date()
+        interactionStartedAt = Date()
         persist()
     }
 

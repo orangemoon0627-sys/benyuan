@@ -551,6 +551,15 @@ export async function getPart2Record(part2Id: string) {
   return store.part2_records[part2Id];
 }
 
+export async function getPart2RecordForPart1(part1Id: string, part2Id?: string) {
+  const store = await readBenyuanV3Store();
+  if (part2Id) {
+    const record = store.part2_records[part2Id];
+    return record?.part1_id === part1Id ? record : undefined;
+  }
+  return findPart2ForPart1(store, part1Id);
+}
+
 export async function saveConstellationRecord(record: ConstellationRecord) {
   return withStoreWrite((store) => {
     store.constellations[record.constellation_id] = record;

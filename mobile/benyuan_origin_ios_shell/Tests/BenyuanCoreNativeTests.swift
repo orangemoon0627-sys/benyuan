@@ -526,6 +526,34 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(response.uploadedAssets["C2_precious_photo_analysis"]?.map(\.assetId), ["asset_photo"])
     }
 
+    func testPart2HistoryRecordDecodesSavedTheaterChoices() throws {
+        let data = """
+        {
+          "part2_id": "part2_replay",
+          "part1_id": "part1_replay",
+          "theater_script_id": "theater_replay",
+          "created_at": "2026-05-08T00:20:00.000Z",
+          "act2_choices": [
+            { "choice_id": 1, "selected": "open_now", "hesitation_time": 1.2, "hover_sequence": ["open_now"], "timestamp": "2026-05-08T00:11:00.000Z" },
+            { "choice_id": 2, "selected": "silent_light", "hesitation_time": 2.4, "hover_sequence": [], "timestamp": "2026-05-08T00:12:00.000Z" }
+          ],
+          "act3_responses": [
+            { "question_id": 1, "selected": "name_boundary", "hesitation_time": 3.1, "timestamp": "2026-05-08T00:13:00.000Z" }
+          ],
+          "metadata": {
+            "phase_durations": { "act1": 4.0, "act2": 8.0, "act3": 5.0 }
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder.benyuan.decode(BenyuanPart2HistoryRecordResponse.self, from: data)
+
+        XCTAssertEqual(response.part2Id, "part2_replay")
+        XCTAssertEqual(response.act2Choices.map(\.selected), ["open_now", "silent_light"])
+        XCTAssertEqual(response.act3Responses.map(\.selected), ["name_boundary"])
+        XCTAssertEqual(response.metadata["phase_durations"]?.objectValue?["act2"]?.intValue, 8)
+    }
+
     @MainActor
     func testWechatAuthClientRequiresRealOpenPlatformConfig() throws {
         let client = BenyuanWechatAuthClient.shared
@@ -762,6 +790,79 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertFalse(model.isFeedbackComposerPresented)
         XCTAssertNil(model.activeBindingProvider)
         XCTAssertFalse(model.isDeleteHistoryConfirmationPresented)
+    }
+
+    @MainActor
+    func testLoadCompletedTheaterHistoryRestoresPart2ReplayProgress() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-history.test")!,
+            session: URLSession(configuration: config)
+        )
+        let suiteName = "benyuan-history-part2-restore-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            BenyuanMockURLProtocol.handler = nil
+        }
+        let model = BenyuanNativeFlowModel(client: client, store: BenyuanFlowStore(defaults: defaults))
+        let item = BenyuanAccountHistoryItem(
+            part1Id: "part1_replay",
+            theaterScriptId: "theater_replay",
+            part2Id: "part2_replay",
+            constellationId: nil,
+            stage: .part2,
+            title: "剧场完成的月相",
+            subtitle: "影像线索 1 个 / 剧场已完成",
+            archetypeName: nil,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:20:00.000Z",
+            assetCount: 1
+        )
+
+        BenyuanMockURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            if request.httpMethod == "GET", path == "/api/theater/theater_replay" {
+                return BenyuanMockURLProtocol.json(200, Self.theaterRecordFixture(
+                    theaterScriptId: "theater_replay",
+                    part1Id: "part1_replay"
+                ))
+            }
+            if request.httpMethod == "GET", path == "/api/account/history/part1_replay/part2" {
+                return BenyuanMockURLProtocol.json(200, """
+                {
+                  "part2_id": "part2_replay",
+                  "part1_id": "part1_replay",
+                  "theater_script_id": "theater_replay",
+                  "created_at": "2026-05-08T00:20:00.000Z",
+                  "act2_choices": [
+                    { "choice_id": 1, "selected": "open_now", "hesitation_time": 1.2, "hover_sequence": ["open_now"], "timestamp": "2026-05-08T00:11:00.000Z" },
+                    { "choice_id": 2, "selected": "silent_light", "hesitation_time": 2.4, "hover_sequence": [], "timestamp": "2026-05-08T00:12:00.000Z" }
+                  ],
+                  "act3_responses": [
+                    { "question_id": 1, "selected": "name_boundary", "hesitation_time": 3.1, "timestamp": "2026-05-08T00:13:00.000Z" }
+                  ],
+                  "metadata": {
+                    "phase_durations": { "act1": 4.0, "act2": 8.0, "act3": 5.0 }
+                  }
+                }
+                """)
+            }
+            return BenyuanMockURLProtocol.json(500, #"{ "error": "unexpected_request" }"#)
+        }
+
+        await model.loadHistoryItem(item)
+
+        XCTAssertEqual(model.stage, .theater)
+        XCTAssertEqual(model.session.part2Id, "part2_replay")
+        XCTAssertEqual(model.theaterPhase, .epilogue)
+        XCTAssertEqual(model.theaterChoiceIndex, 1)
+        XCTAssertEqual(model.theaterMirrorIndex, 0)
+        XCTAssertEqual(model.choiceLogCount, 2)
+        XCTAssertEqual(model.mirrorLogCount, 1)
+        XCTAssertEqual(model.session.phaseDurations["act2"], 8)
+        XCTAssertNil(model.restoringHistoryPart1Id)
     }
 
     @MainActor
@@ -1225,6 +1326,89 @@ final class BenyuanCoreNativeTests: XCTestCase {
             uploadedAt: "2026-05-08T00:00:00.000Z",
             uploadOrigin: "native-library"
         )
+    }
+
+    private static func theaterRecordFixture(theaterScriptId: String, part1Id: String) -> String {
+        """
+        {
+          "theater_script_id": "\(theaterScriptId)",
+          "part1_id": "\(part1Id)",
+          "created_at": "2026-05-08T00:10:00.000Z",
+          "runtime": {
+            "provider": "fixture",
+            "model": "fixture",
+            "mode": "fallback"
+          },
+          "theater_script": {
+            "user_id": "usr_replay",
+            "generated_at": "2026-05-08T00:10:00.000Z",
+            "personalization_summary": {
+              "core_archetype": "深月观测者",
+              "aesthetic_style": "deep_lunar",
+              "emotional_tone": "reflective",
+              "key_themes": ["boundary", "memory"]
+            },
+            "act1": {
+              "scene_description": "黑色月面像一座缓慢转身的剧场。",
+              "visual_prompt": "deep lunar theater",
+              "ambient_sound": "low_tide",
+              "duration": 30
+            },
+            "act2": {
+              "choices": [
+                {
+                  "choice_id": 1,
+                  "scene": "第一扇门向你打开，里面有一盏迟来的灯。",
+                  "options": [
+                    {
+                      "id": "open_now",
+                      "text": "现在推门进去",
+                      "trait_signal": "approach",
+                      "response": "门后的光线先照见你的手。"
+                    }
+                  ]
+                },
+                {
+                  "choice_id": 2,
+                  "scene": "第二个房间没有声音，只有墙面浮起的银色潮线。",
+                  "options": [
+                    {
+                      "id": "silent_light",
+                      "text": "站在安静的光里",
+                      "trait_signal": "containment",
+                      "response": "你听见自己没有说出口的名字。"
+                    }
+                  ]
+                }
+              ]
+            },
+            "act3": {
+              "scene_description": "镜面把海和月亮折成同一个圆。",
+              "mirror_questions": [
+                {
+                  "question_id": 1,
+                  "dialogue": "镜中的人把问题还给你。",
+                  "question": "你愿意给自己的边界起什么名字？",
+                  "options": [
+                    {
+                      "id": "name_boundary",
+                      "text": "给边界一个清晰的名字",
+                      "trait_signal": "self_boundary"
+                    }
+                  ]
+                }
+              ],
+              "mirror_final_words": "你已经把边界从沉默里领出来。"
+            },
+            "epilogue": {
+              "scene_description": "深月落下，剧场只剩一条发亮的边。",
+              "closing_text": "故事没有结束，只是把主语还给了你。",
+              "transition_prompt": "星图正在显影。",
+              "transition_animation": "lunar_convergence"
+            }
+          }
+        }
+        """
     }
 
     func testSchemaDecodesPart1Questions() throws {

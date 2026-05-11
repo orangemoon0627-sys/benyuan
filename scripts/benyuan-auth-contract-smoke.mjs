@@ -24,6 +24,7 @@ const logoutRoute = readRequired("src/app/api/auth/logout/route.ts");
 const accountHistoryRoute = readRequired("src/app/api/account/history/route.ts");
 const accountHistoryItemRoute = readRequired("src/app/api/account/history/[part1Id]/route.ts");
 const accountHistoryPart1Route = readRequired("src/app/api/account/history/[part1Id]/part1/route.ts");
+const accountHistoryPart2Route = readRequired("src/app/api/account/history/[part1Id]/part2/route.ts");
 const part1Route = readRequired("src/app/api/part1/submit/route.ts");
 const multimodalRoute = readRequired("src/app/api/analyze/multimodal/route.ts");
 const theaterRoute = readRequired("src/app/api/theater/generate/route.ts");
@@ -120,6 +121,11 @@ assert.match(accountHistoryPart1Route, /getCurrentAuthSession/, "part1 history d
 assert.match(accountHistoryPart1Route, /getPart1Record/, "part1 history detail route must read the saved draft record");
 assert.match(accountHistoryPart1Route, /part1\.user_id\s*!==\s*auth\.user\.user_id/, "part1 history detail route must reject cross-account reads");
 assert.match(accountHistoryPart1Route, /answers/, "part1 history detail route must return saved answers for native draft restore");
+assert.match(accountHistoryPart2Route, /getCurrentAuthSession/, "part2 history detail route must require auth");
+assert.match(accountHistoryPart2Route, /getPart1Record/, "part2 history detail route must resolve parent part1 ownership");
+assert.match(accountHistoryPart2Route, /getPart2Record/, "part2 history detail route must read the saved theater choices");
+assert.match(accountHistoryPart2Route, /part1\.user_id\s*!==\s*auth\.user\.user_id/, "part2 history detail route must reject cross-account reads");
+assert.match(accountHistoryPart2Route, /act2_choices/, "part2 history detail route must return saved act2 choices for theater replay");
 assert.match(theaterDetailRoute, /getCurrentAuthSession/, "theater history detail route must require auth");
 assert.match(theaterDetailRoute, /getPart1Record/, "theater history detail route must resolve parent part1");
 assert.match(theaterDetailRoute, /part1\.user_id\s*!==\s*auth\.user\.user_id/, "theater history detail route must reject cross-account reads");
@@ -154,6 +160,7 @@ assert.match(nativeClient, /fetchCurrentAccount/, "native API client must fetch 
 assert.match(nativeClient, /fetchAccountHistory/, "native API client must fetch account history");
 assert.match(nativeClient, /deleteAccountHistoryItem/, "native API client must delete history items");
 assert.match(nativeClient, /fetchPart1HistoryRecord/, "native API client must fetch saved Part1 detail for draft restore");
+assert.match(nativeClient, /fetchPart2HistoryRecord/, "native API client must fetch saved Part2 detail for theater replay");
 assert.match(nativeClient, /fetchTheaterScript/, "native API client must fetch theater detail for history restore");
 assert.match(nativeClient, /fetchConstellationRecord/, "native API client must fetch constellation detail for history restore");
 assert.match(nativeClient, /logout/, "native API client must support logout");
@@ -169,6 +176,7 @@ assert.match(nativeFlow, /pendingDeleteHistoryItem/, "native flow must keep pend
 assert.match(nativeFlow, /activeBindingProvider/, "native flow must keep account binding information state");
 assert.match(nativeFlow, /openHistoryItem/, "native flow must open a history item");
 assert.match(nativeFlow, /loadHistoryItem/, "native flow must load history details before routing");
+assert.match(nativeFlow, /restorePart2Replay/, "native flow must restore saved Part2 choices before replaying completed theater history");
 assert.match(nativeFlow, /confirmDeleteHistoryItem/, "native flow must confirm history deletion before calling the API");
 assert.match(nativeFlow, /deleteHistoryItem/, "native flow must delete a history item");
 assert.match(nativeFlow, /logout/, "native flow must clear auth locally after logout");

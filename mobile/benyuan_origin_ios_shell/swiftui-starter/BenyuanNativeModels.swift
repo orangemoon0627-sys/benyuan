@@ -316,6 +316,16 @@ struct Part2SubmitResponse: Codable, Equatable {
     let act3ResponseCount: Int
 }
 
+struct BenyuanPart2HistoryRecordResponse: Codable, Equatable {
+    let part2Id: String
+    let part1Id: String
+    let theaterScriptId: String
+    let createdAt: String
+    let act2Choices: [Part2ChoiceRecord]
+    let act3Responses: [Part2MirrorRecord]
+    let metadata: [String: BenyuanJSONValue]
+}
+
 struct PsycheDimension: Codable, Equatable {
     let score: Int
     let interpretation: String

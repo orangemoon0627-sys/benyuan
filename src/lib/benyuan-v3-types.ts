@@ -253,6 +253,8 @@ export type Part2Record = {
   metadata: Part2Metadata;
 };
 
+export type BenyuanPart2HistoryRecordResponse = Part2Record;
+
 export type PsycheArchetype = {
   name: string;
   english_name: string;
