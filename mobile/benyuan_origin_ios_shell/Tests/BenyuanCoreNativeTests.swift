@@ -267,6 +267,54 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(response.feedbackId, "feedback_test")
     }
 
+    @MainActor
+    func testFeedbackSubmitRequiresActionableMessage() async throws {
+        let client = BenyuanAPIClient(baseURL: URL(string: "http://native-feedback-validation.test")!)
+        let model = BenyuanNativeFlowModel(client: client)
+
+        model.showFeedbackComposer()
+        model.feedbackDraft = " 卡 "
+
+        await model.submitFeedback()
+
+        XCTAssertTrue(model.isFeedbackComposerPresented)
+        XCTAssertEqual(model.feedbackDraft, " 卡 ")
+        XCTAssertEqual(model.feedbackStatus, "至少写 4 个字，方便我定位问题。")
+        XCTAssertFalse(model.canSubmitFeedback)
+    }
+
+    @MainActor
+    func testFeedbackSuccessKeepsComposerOpenWithArchivedState() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-feedback-success.test")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+        let model = BenyuanNativeFlowModel(client: client)
+        model.showFeedbackComposer()
+        model.feedbackDraft = "按钮挡住文字"
+
+        BenyuanMockURLProtocol.handler = { _ in
+            BenyuanMockURLProtocol.json(200, """
+            {
+              "ok": true,
+              "feedback_id": "feedback_archived",
+              "created_at": "2026-05-11T00:00:00.000Z"
+            }
+            """)
+        }
+
+        await model.submitFeedback()
+
+        XCTAssertTrue(model.isFeedbackComposerPresented)
+        XCTAssertEqual(model.feedbackDraft, "")
+        XCTAssertEqual(model.feedbackStatus, "已归档到测试清单：feedback_archived")
+        XCTAssertEqual(model.toast, "反馈已归档。")
+        XCTAssertFalse(model.canSubmitFeedback)
+    }
+
     func testAPIClientUsesLongTimeoutForConstellationGeneration() async throws {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [BenyuanMockURLProtocol.self]

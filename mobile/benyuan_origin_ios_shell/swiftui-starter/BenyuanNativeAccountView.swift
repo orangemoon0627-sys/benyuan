@@ -562,22 +562,46 @@ struct BenyuanNativeAccountView: View {
                 }
             }
 
-            TextEditor(text: $model.feedbackDraft)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(BenyuanColor.textPrimary)
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: 126)
-                .padding(BenyuanSpacing.x3)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(BenyuanColor.bgVoid.opacity(0.92))
-                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke))
-                )
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $model.feedbackDraft)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                    .scrollContentBackground(.hidden)
+                    .frame(height: 154)
+                    .padding(BenyuanSpacing.x3)
+
+                if model.feedbackDraft.isEmpty {
+                    Text("写下最影响测试判断的一处问题，越具体越容易进入下一轮修正。")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(BenyuanColor.textTertiary)
+                        .lineSpacing(5)
+                        .padding(.horizontal, BenyuanSpacing.x4 + 1)
+                        .padding(.vertical, BenyuanSpacing.x4)
+                        .allowsHitTesting(false)
+                }
+            }
+            .frame(height: 178)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(BenyuanColor.bgVoid.opacity(0.92))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke))
+            )
+
+            HStack {
+                Text(model.canSubmitFeedback ? "可归档到测试清单" : "至少 \(model.feedbackMinimumCharacterCount) 个字后可提交")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(model.canSubmitFeedback ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
+                Spacer()
+                Text("\(model.feedbackCharacterCount) 字")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(BenyuanColor.textTertiary)
+            }
 
             if let feedbackStatus = model.feedbackStatus {
                 Text(feedbackStatus)
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(BenyuanColor.accentGold)
+                    .foregroundStyle(feedbackStatus.contains("至少") ? BenyuanColor.textSecondary : BenyuanColor.accentGold)
+                    .lineSpacing(4)
             }
 
             Button {
@@ -592,12 +616,13 @@ struct BenyuanNativeAccountView: View {
                     Text(model.isFeedbackSubmitting ? "正在记录" : "提交反馈")
                 }
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(BenyuanColor.bgVoid)
+                .foregroundStyle(model.canSubmitFeedback ? BenyuanColor.bgVoid : BenyuanColor.textTertiary)
                 .frame(maxWidth: .infinity, minHeight: 50)
-                .background(Capsule().fill(BenyuanColor.textPrimary))
+                .background(Capsule().fill(model.canSubmitFeedback ? BenyuanColor.textPrimary : BenyuanColor.glassFill))
+                .overlay(Capsule().stroke(model.canSubmitFeedback ? Color.clear : BenyuanColor.glassStroke))
             }
             .buttonStyle(.plain)
-            .disabled(model.isFeedbackSubmitting)
+            .disabled(!model.canSubmitFeedback)
         }
         .padding(BenyuanSpacing.x6)
         .background(

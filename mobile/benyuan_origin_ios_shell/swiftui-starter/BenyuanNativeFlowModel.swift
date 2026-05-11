@@ -174,6 +174,22 @@ final class BenyuanNativeFlowModel: ObservableObject {
         authProviders?.provider(.wechat)?.status == .ready
     }
 
+    var feedbackMinimumCharacterCount: Int {
+        4
+    }
+
+    var feedbackTrimmedMessage: String {
+        feedbackDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var feedbackCharacterCount: Int {
+        feedbackTrimmedMessage.count
+    }
+
+    var canSubmitFeedback: Bool {
+        feedbackCharacterCount >= feedbackMinimumCharacterCount && !isFeedbackSubmitting
+    }
+
     func start() async {
         if let previewStage = BenyuanShellConfig.nativePreviewStage {
             applyNativePreview(previewStage)
@@ -575,9 +591,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
     }
 
     func submitFeedback() async {
-        let message = feedbackDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else {
-            feedbackStatus = "先写下你遇到的问题或想改的地方。"
+        let message = feedbackTrimmedMessage
+        guard message.count >= feedbackMinimumCharacterCount else {
+            feedbackStatus = "至少写 4 个字，方便我定位问题。"
             return
         }
 
@@ -586,16 +602,16 @@ final class BenyuanNativeFlowModel: ObservableObject {
         defer { isFeedbackSubmitting = false }
 
         do {
-            _ = try await client.submitFeedback(
+            let response = try await client.submitFeedback(
                 kind: feedbackKind,
                 message: message,
                 stage: stage,
                 session: session
             )
             feedbackDraft = ""
-            feedbackStatus = "已收到，会进入下一轮测试清单。"
-            toast = "反馈已记录。"
-            isFeedbackComposerPresented = false
+            feedbackStatus = "已归档到测试清单：\(response.feedbackId)"
+            toast = "反馈已归档。"
+            isFeedbackComposerPresented = true
         } catch {
             feedbackStatus = error.localizedDescription
         }
