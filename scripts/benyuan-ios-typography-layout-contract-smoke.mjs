@@ -55,6 +55,16 @@ assert.match(
   /Text\("反馈这次体验"\)[\s\S]*?\.font\(\.system\(size:\s*22,\s*weight:\s*\.semibold\)\)/,
   "feedback composer title should feel like an app sheet, not a poster block"
 );
+assert.doesNotMatch(
+  account,
+  /\.safeAreaInset\(edge:\s*\.bottom/,
+  "native account bottom dock should be a layout sibling, not an overlay that can cover account binding or history content"
+);
+assert.match(
+  account,
+  /GeometryReader \{ geometry in[\s\S]*?VStack\(spacing:\s*0\) \{[\s\S]*?ScrollView\(showsIndicators:\s*false\)[\s\S]*?\.padding\(\.bottom,\s*BenyuanSpacing\.x6\)[\s\S]*?accountBottomActionDock[\s\S]*?\.frame\(height:\s*accountDockHeight \+ geometry\.safeAreaInsets\.bottom\)/,
+  "native account scroll content should reserve visible layout space above the fixed bottom dock"
+);
 assert.match(
   account,
   /TextEditor\(text:\s*\$model\.feedbackDraft\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.regular\)\)/,

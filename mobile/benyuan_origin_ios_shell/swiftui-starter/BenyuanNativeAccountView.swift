@@ -11,17 +11,18 @@ struct BenyuanNativeAccountView: View {
                 BenyuanNativeTopBar(progress: 1, label: "我的本源")
 
                 GeometryReader { geometry in
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
-                            accountIdentityPanel
-                            bindingOrbitSection
-                            historyTimelineSection
+                    VStack(spacing: 0) {
+                        ScrollView(showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
+                                accountIdentityPanel
+                                bindingOrbitSection
+                                historyTimelineSection
+                            }
+                            .padding(.horizontal, BenyuanSpacing.x4)
+                            .padding(.top, BenyuanSpacing.x6)
+                            .padding(.bottom, BenyuanSpacing.x6)
                         }
-                        .padding(.horizontal, BenyuanSpacing.x4)
-                        .padding(.top, BenyuanSpacing.x6)
-                        .padding(.bottom, accountDockHeight + geometry.safeAreaInsets.bottom + BenyuanSpacing.x8)
-                    }
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
+
                         accountBottomActionDock
                             .frame(height: accountDockHeight + geometry.safeAreaInsets.bottom)
                     }
