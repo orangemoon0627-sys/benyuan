@@ -87,6 +87,10 @@ final class BenyuanAPIClient {
         try await delete("/api/account/history/\(part1Id)")
     }
 
+    func fetchPart1HistoryRecord(part1Id: String) async throws -> BenyuanPart1HistoryRecordResponse {
+        try await get("/api/account/history/\(part1Id)/part1")
+    }
+
     func submitFeedback(
         kind: BenyuanFeedbackKind,
         message: String,

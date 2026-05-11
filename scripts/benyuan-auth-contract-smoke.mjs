@@ -23,6 +23,7 @@ const meRoute = readRequired("src/app/api/auth/me/route.ts");
 const logoutRoute = readRequired("src/app/api/auth/logout/route.ts");
 const accountHistoryRoute = readRequired("src/app/api/account/history/route.ts");
 const accountHistoryItemRoute = readRequired("src/app/api/account/history/[part1Id]/route.ts");
+const accountHistoryPart1Route = readRequired("src/app/api/account/history/[part1Id]/part1/route.ts");
 const part1Route = readRequired("src/app/api/part1/submit/route.ts");
 const multimodalRoute = readRequired("src/app/api/analyze/multimodal/route.ts");
 const theaterRoute = readRequired("src/app/api/theater/generate/route.ts");
@@ -115,6 +116,10 @@ assert.match(logoutRoute, /logoutAuthSession/, "logout route must revoke the bea
 assert.match(accountHistoryRoute, /getCurrentAuthSession/, "account history route must require auth");
 assert.match(accountHistoryRoute, /listAccountHistoryForUser/, "account history route must list owned exploration records");
 assert.match(accountHistoryItemRoute, /deleteAccountHistoryForUser/, "account history item route must delete owned exploration records");
+assert.match(accountHistoryPart1Route, /getCurrentAuthSession/, "part1 history detail route must require auth");
+assert.match(accountHistoryPart1Route, /getPart1Record/, "part1 history detail route must read the saved draft record");
+assert.match(accountHistoryPart1Route, /part1\.user_id\s*!==\s*auth\.user\.user_id/, "part1 history detail route must reject cross-account reads");
+assert.match(accountHistoryPart1Route, /answers/, "part1 history detail route must return saved answers for native draft restore");
 assert.match(theaterDetailRoute, /getCurrentAuthSession/, "theater history detail route must require auth");
 assert.match(theaterDetailRoute, /getPart1Record/, "theater history detail route must resolve parent part1");
 assert.match(theaterDetailRoute, /part1\.user_id\s*!==\s*auth\.user\.user_id/, "theater history detail route must reject cross-account reads");
@@ -148,6 +153,7 @@ assert.match(nativeClient, /createWechatSession/, "native API client must suppor
 assert.match(nativeClient, /fetchCurrentAccount/, "native API client must fetch the current account");
 assert.match(nativeClient, /fetchAccountHistory/, "native API client must fetch account history");
 assert.match(nativeClient, /deleteAccountHistoryItem/, "native API client must delete history items");
+assert.match(nativeClient, /fetchPart1HistoryRecord/, "native API client must fetch saved Part1 detail for draft restore");
 assert.match(nativeClient, /fetchTheaterScript/, "native API client must fetch theater detail for history restore");
 assert.match(nativeClient, /fetchConstellationRecord/, "native API client must fetch constellation detail for history restore");
 assert.match(nativeClient, /logout/, "native API client must support logout");

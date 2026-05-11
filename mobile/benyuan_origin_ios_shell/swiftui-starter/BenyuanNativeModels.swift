@@ -153,6 +153,27 @@ struct BenyuanPart1SubmitResponse: Codable, Equatable {
     let pendingMultimodal: [String]?
 }
 
+struct BenyuanPart1HistoryRecordResponse: Codable, Equatable {
+    let part1Id: String
+    let userId: String
+    let createdAt: String
+    let updatedAt: String
+    let answers: [String: BenyuanJSONValue]
+
+    var uploadedAssets: [String: [BenyuanUploadedAssetRef]] {
+        answers.reduce(into: [String: [BenyuanUploadedAssetRef]]()) { result, entry in
+            guard case .array(let values) = entry.value else { return }
+            let assets = values.compactMap { value -> BenyuanUploadedAssetRef? in
+                guard let data = try? JSONEncoder.benyuan.encode(value) else { return nil }
+                return try? JSONDecoder.benyuan.decode(BenyuanUploadedAssetRef.self, from: data)
+            }
+            if !assets.isEmpty {
+                result[entry.key] = assets
+            }
+        }
+    }
+}
+
 struct BenyuanMultimodalResponse: Codable, Equatable {
     let part1Id: String
     let runtime: AgentRuntimeResult?

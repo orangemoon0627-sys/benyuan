@@ -434,6 +434,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     }
 
     func openHistoryItem(_ item: BenyuanAccountHistoryItem) {
+        dismissAccountTransientSurfaces()
         restoringHistoryPart1Id = item.part1Id
         session.part1Id = item.part1Id
         session.theaterScriptId = item.theaterScriptId
@@ -453,12 +454,15 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     func loadHistoryItem(_ item: BenyuanAccountHistoryItem) async {
         do {
+            dismissAccountTransientSurfaces()
             switch item.stage {
             case .part1:
                 if questions.isEmpty {
                     let schema = try await client.fetchSchema()
                     questions = schema.questions
                 }
+                let record = try await client.fetchPart1HistoryRecord(part1Id: item.part1Id)
+                restorePart1Draft(record)
                 activeQuestionIndex = firstIncompleteQuestionIndex()
                 stage = .collect
             case .theater, .part2:
@@ -543,6 +547,12 @@ final class BenyuanNativeFlowModel: ObservableObject {
     func dismissFeedbackComposer() {
         isFeedbackComposerPresented = false
         feedbackStatus = nil
+    }
+
+    private func dismissAccountTransientSurfaces() {
+        cancelDeleteHistoryItem()
+        dismissBindingInfo()
+        dismissFeedbackComposer()
     }
 
     func submitFeedback() async {
@@ -1055,6 +1065,15 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     func uploadedAssets(for questionId: String) -> [BenyuanUploadedAssetRef] {
         session.uploadedAssets[questionId] ?? []
+    }
+
+    private func restorePart1Draft(_ record: BenyuanPart1HistoryRecordResponse) {
+        session.part1Id = record.part1Id
+        session.answers.merge(record.answers) { _, restored in restored }
+        session.uploadedAssets = record.uploadedAssets
+        let restoredAssetIds = Set(record.uploadedAssets.values.flatMap { $0.map(\.assetId) })
+        thumbnails = thumbnails.filter { restoredAssetIds.contains($0.key) }
+        persist()
     }
 
     func isAnswered(_ question: BenyuanQuestion) -> Bool {

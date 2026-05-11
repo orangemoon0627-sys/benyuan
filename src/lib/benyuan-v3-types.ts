@@ -120,6 +120,8 @@ export type Part1Record = {
   aggregated_traits: AggregatedTraits;
 };
 
+export type BenyuanPart1HistoryRecordResponse = Pick<Part1Record, "part1_id" | "user_id" | "created_at" | "updated_at" | "answers">;
+
 export type BenyuanUploadedAssetRef = {
   asset_id: string;
   question_id: string;

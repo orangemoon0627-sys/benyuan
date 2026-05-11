@@ -494,6 +494,38 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(generate.psycheConstellation.archetype.name, "月下观察者")
     }
 
+    func testPart1HistoryRecordDecodesSavedAnswersAndUploadedAssets() throws {
+        let data = """
+        {
+          "part1_id": "part1_draft",
+          "user_id": "usr_test",
+          "created_at": "2026-05-08T00:00:00.000Z",
+          "updated_at": "2026-05-08T00:05:00.000Z",
+          "answers": {
+            "A1_core_image": "A1_2",
+            "B4_time_philosophy": { "past": 42, "present": 34, "future": 24 },
+            "C2_precious_photo_analysis": [
+              {
+                "asset_id": "asset_photo",
+                "question_id": "C2_precious_photo_analysis",
+                "name": "moon.jpg",
+                "size": 2048,
+                "mime_type": "image/jpeg",
+                "uploaded_at": "2026-05-08T00:03:00.000Z",
+                "upload_origin": "native-library"
+              }
+            ]
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder.benyuan.decode(BenyuanPart1HistoryRecordResponse.self, from: data)
+
+        XCTAssertEqual(response.part1Id, "part1_draft")
+        XCTAssertEqual(response.answers["A1_core_image"]?.stringValue, "A1_2")
+        XCTAssertEqual(response.uploadedAssets["C2_precious_photo_analysis"]?.map(\.assetId), ["asset_photo"])
+    }
+
     @MainActor
     func testWechatAuthClientRequiresRealOpenPlatformConfig() throws {
         let client = BenyuanWechatAuthClient.shared
@@ -627,6 +659,109 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.session.constellationId, "const_test")
         XCTAssertEqual(model.stage, .processing)
         XCTAssertEqual(model.restoringHistoryPart1Id, "part1_test")
+    }
+
+    @MainActor
+    func testLoadPart1HistoryItemRestoresSavedDraftAnswersAndAssets() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-history.test")!,
+            session: URLSession(configuration: config)
+        )
+        let suiteName = "benyuan-history-part1-restore-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            BenyuanMockURLProtocol.handler = nil
+        }
+        let model = BenyuanNativeFlowModel(client: client, store: BenyuanFlowStore(defaults: defaults))
+        let item = BenyuanAccountHistoryItem(
+            part1Id: "part1_draft",
+            theaterScriptId: nil,
+            part2Id: nil,
+            constellationId: nil,
+            stage: .part1,
+            title: "未完成的月相",
+            subtitle: "影像线索 1 个 / 收集中",
+            archetypeName: nil,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:05:00.000Z",
+            assetCount: 1
+        )
+
+        model.isFeedbackComposerPresented = true
+        model.feedbackDraft = "残留弹层"
+        model.showBindingInfo(.apple)
+        model.requestDeleteHistoryItem(item)
+
+        BenyuanMockURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            if request.httpMethod == "GET", path == "/api/part1/schema" {
+                return BenyuanMockURLProtocol.json(200, """
+                {
+                  "questions": [
+                    {
+                      "id": "A1_core_image",
+                      "module": "A",
+                      "title": "A1",
+                      "prompt": "你会先被哪一种画面牵引？",
+                      "kind": "single",
+                      "outputKey": "A1_core_image",
+                      "options": [{ "id": "A1_2", "text": "月下的门" }]
+                    },
+                    {
+                      "id": "C2_precious_photo_analysis",
+                      "module": "C",
+                      "title": "C2",
+                      "prompt": "放入一张仍在发光的照片。",
+                      "kind": "upload",
+                      "outputKey": "C2_precious_photo_analysis",
+                      "uploadRange": { "min": 1, "max": 3 }
+                    }
+                  ],
+                  "modules": {}
+                }
+                """)
+            }
+            if request.httpMethod == "GET", path == "/api/account/history/part1_draft/part1" {
+                return BenyuanMockURLProtocol.json(200, """
+                {
+                  "part1_id": "part1_draft",
+                  "user_id": "usr_test",
+                  "created_at": "2026-05-08T00:00:00.000Z",
+                  "updated_at": "2026-05-08T00:05:00.000Z",
+                  "answers": {
+                    "A1_core_image": "A1_2",
+                    "C2_precious_photo_analysis": [
+                      {
+                        "asset_id": "asset_photo",
+                        "question_id": "C2_precious_photo_analysis",
+                        "name": "moon.jpg",
+                        "size": 2048,
+                        "mime_type": "image/jpeg",
+                        "uploaded_at": "2026-05-08T00:03:00.000Z",
+                        "upload_origin": "native-library"
+                      }
+                    ]
+                  }
+                }
+                """)
+            }
+            return BenyuanMockURLProtocol.json(500, #"{ "error": "unexpected_request" }"#)
+        }
+
+        await model.loadHistoryItem(item)
+
+        XCTAssertEqual(model.stage, .collect)
+        XCTAssertEqual(model.session.part1Id, "part1_draft")
+        XCTAssertEqual(model.session.answers["A1_core_image"]?.stringValue, "A1_2")
+        XCTAssertEqual(model.uploadedAssets(for: "C2_precious_photo_analysis").map(\.assetId), ["asset_photo"])
+        XCTAssertEqual(model.activeQuestionIndex, 0)
+        XCTAssertNil(model.restoringHistoryPart1Id)
+        XCTAssertFalse(model.isFeedbackComposerPresented)
+        XCTAssertNil(model.activeBindingProvider)
+        XCTAssertFalse(model.isDeleteHistoryConfirmationPresented)
     }
 
     @MainActor
