@@ -16,7 +16,7 @@ struct BenyuanConstellationLayoutBudget {
     static let defaults = BenyuanConstellationLayoutBudget(
         bottomDockHeight: 116,
         topMaskHeight: 52,
-        firstViewportReserve: 36,
+        firstViewportReserve: 320,
         bottomContentReserve: 292,
         endPreviewAnchor: .center
     )

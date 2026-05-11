@@ -1179,6 +1179,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(budget.topMaskHeight, 44)
         XCTAssertEqual(budget.endPreviewAnchor, .center)
+        XCTAssertGreaterThanOrEqual(budget.firstViewportReserve, 300)
         XCTAssertGreaterThanOrEqual(
             budget.scrollBottomPadding(safeAreaBottom: 34),
             budget.bottomDockHeight + 260 + 34

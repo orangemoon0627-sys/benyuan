@@ -60,15 +60,15 @@ assert.match(constellation, /BenyuanDimensionOrbitMap/, "native constellation vi
 assert.match(constellation, /TimelineView\(\.animation/, "native constellation orbit map must be animation-driven");
 assert.match(constellation, /sevenDimensions/, "native constellation orbit map must be driven by real dimension scores");
 assert.match(constellation, /safeAreaInset\(edge:\s*\.bottom\)/, "native constellation final actions must reserve bottom safe-area space instead of covering the orbit map");
-assert.match(constellation, /constellationBottomDockHeight/, "native constellation scroll content must reserve explicit bottom dock clearance");
-assert.match(constellation, /constellationFirstViewportReserve/, "native constellation first viewport must keep orbit content clear of the final dock");
-assert.match(constellation, /constellationTopViewportReserve:\s*CGFloat\s*=\s*28/, "native constellation scroll content must reserve a stable top viewport buffer below the progress rail");
+assert.match(constellation, /bottomDockHeight:\s*116/, "native constellation scroll content must reserve explicit bottom dock clearance");
+assert.match(constellation, /firstViewportReserve:\s*320/, "native constellation first viewport must keep the next section clear of the final dock");
+assert.match(constellation, /topMaskHeight:\s*52/, "native constellation scroll content must reserve a stable top viewport buffer below the progress rail");
 assert.match(constellation, /safeAreaInset\(edge:\s*\.top,\s*spacing:\s*0\)/, "native constellation scroll content must use a top inset so scrolled sections do not collide with the progress rail");
 assert.match(constellation, /constellationTopScrollMask/, "native constellation top inset should use a deep-field fade instead of a hard blank gap");
-assert.match(constellation, /frame\(height:\s*constellationTopViewportReserve\)/, "native constellation top inset must use the measured top reserve token");
-assert.match(constellation, /constellationBottomContentReserve:\s*CGFloat\s*=\s*240/, "native constellation ending must keep enough scroll reserve so final text is not hidden behind the dock");
-assert.match(constellation, /constellationBottomDockHeight\s*\+\s*constellationBottomContentReserve\s*\+\s*geometry\.safeAreaInsets\.bottom/, "native constellation bottom padding must include actual device safe-area inset");
-assert.match(constellation, /finalDock[\s\S]*?\.frame\(height:\s*constellationBottomDockHeight\s*\+\s*geometry\.safeAreaInsets\.bottom\)/, "native constellation final dock must have stable measured height for screenshot parity");
+assert.match(constellation, /frame\(height:\s*layoutBudget\.topMaskHeight\)/, "native constellation top inset must use the measured top reserve token");
+assert.match(constellation, /bottomContentReserve:\s*292/, "native constellation ending must keep enough scroll reserve so final text is not hidden behind the dock");
+assert.match(constellation, /bottomDockHeight \+ bottomContentReserve \+ safeAreaBottom/, "native constellation bottom padding must include actual device safe-area inset");
+assert.match(constellation, /finalDock[\s\S]*?\.frame\(height:\s*layoutBudget\.bottomDockHeight \+ geometry\.safeAreaInsets\.bottom\)/, "native constellation final dock must have stable measured height for screenshot parity");
 assert.match(constellation, /constellationEndAnchor/, "native constellation must expose an end anchor for bottom-of-report screenshot checks");
 assert.match(constellation, /prefersConstellationEndPreview/, "native constellation preview must be able to scroll to the report ending");
 assert.doesNotMatch(
