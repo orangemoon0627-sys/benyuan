@@ -41,6 +41,45 @@ export function assertAllRequiredRuntimeStagesLive(latestRuntime) {
   }
 }
 
+export function assertAllRequiredRuntimeStagesBelongToSession({
+  latestRuntime,
+  nativeSession,
+  launchedAtMs,
+}) {
+  const session = nativeSession?.session;
+  const expectedPart1Id = session?.part1Id;
+  const expectedPart2Id = session?.part2Id;
+
+  if (!expectedPart1Id) {
+    throw new Error("ios_staging_e2e_native_session_missing_part1");
+  }
+
+  for (const stage of ["multimodal", "theater", "constellation"]) {
+    const latest = latestRuntime?.[stage];
+    if (!latest) {
+      throw new Error(`ios_staging_e2e_stage_missing:${stage}`);
+    }
+
+    const recordedAtMs = Date.parse(latest.recorded_at ?? "");
+    if (!Number.isFinite(recordedAtMs) || recordedAtMs < launchedAtMs) {
+      throw new Error(`ios_staging_e2e_stage_stale:${stage}:${latest.recorded_at ?? "unknown"}`);
+    }
+
+    if (latest.part1_id !== expectedPart1Id) {
+      throw new Error(`ios_staging_e2e_stage_part1_mismatch:${stage}:${latest.part1_id ?? "missing"}:${expectedPart1Id}`);
+    }
+
+    if (stage === "constellation") {
+      if (!expectedPart2Id) {
+        throw new Error("ios_staging_e2e_native_session_missing_part2");
+      }
+      if (latest.part2_id !== expectedPart2Id) {
+        throw new Error(`ios_staging_e2e_stage_part2_mismatch:${stage}:${latest.part2_id ?? "missing"}:${expectedPart2Id}`);
+      }
+    }
+  }
+}
+
 export function safeNativeSessionSummary(session) {
   if (!session || typeof session !== "object") return null;
   const auth = session.auth_session;

@@ -87,6 +87,11 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var pendingDeleteHistoryItem: BenyuanAccountHistoryItem?
     @Published var isDeleteHistoryConfirmationPresented = false
     @Published var activeBindingProvider: BenyuanAuthProvider?
+    @Published var isFeedbackComposerPresented = false
+    @Published var feedbackKind: BenyuanFeedbackKind = .issue
+    @Published var feedbackDraft = ""
+    @Published var feedbackStatus: String?
+    @Published var isFeedbackSubmitting = false
     @Published var questionMotionDirection: BenyuanQuestionMotionDirection = .reset
     @Published var questionMotionToken = UUID()
 
@@ -282,7 +287,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
             session.authSession = nil
             session.user = nil
             stage = .auth
-        case .account:
+        case .account, .accountFeedback:
             authProviders = Self.previewAuthProviders
             session.authSession = Self.previewAuthSession
             session.user = Self.previewUser
@@ -293,6 +298,11 @@ final class BenyuanNativeFlowModel: ObservableObject {
             client.setAuthSession(session.authSession)
             accountHistory = Self.previewAccountHistory
             stage = .account
+            if previewStage == .accountFeedback {
+                feedbackKind = .issue
+                feedbackDraft = "星图生成后，底部按钮偶尔会遮住最后一段文字。"
+                isFeedbackComposerPresented = true
+            }
         case .collect:
             authProviders = Self.previewAuthProviders
             session.authSession = Self.previewAuthSession
@@ -498,6 +508,46 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     func dismissBindingInfo() {
         activeBindingProvider = nil
+    }
+
+    func showFeedbackComposer() {
+        feedbackStatus = nil
+        if feedbackDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            feedbackDraft = ""
+        }
+        isFeedbackComposerPresented = true
+    }
+
+    func dismissFeedbackComposer() {
+        isFeedbackComposerPresented = false
+        feedbackStatus = nil
+    }
+
+    func submitFeedback() async {
+        let message = feedbackDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else {
+            feedbackStatus = "先写下你遇到的问题或想改的地方。"
+            return
+        }
+
+        isFeedbackSubmitting = true
+        feedbackStatus = nil
+        defer { isFeedbackSubmitting = false }
+
+        do {
+            _ = try await client.submitFeedback(
+                kind: feedbackKind,
+                message: message,
+                stage: stage,
+                session: session
+            )
+            feedbackDraft = ""
+            feedbackStatus = "已收到，会进入下一轮测试清单。"
+            toast = "反馈已记录。"
+            isFeedbackComposerPresented = false
+        } catch {
+            feedbackStatus = error.localizedDescription
+        }
     }
 
     func refreshAuthProviders() async {

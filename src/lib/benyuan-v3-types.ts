@@ -384,6 +384,57 @@ export type BenyuanAccountHistoryResponse = {
   items: BenyuanAccountHistoryItem[];
 };
 
+export type BenyuanFeedbackKind = "issue" | "ui" | "content" | "speed" | "other";
+
+export type BenyuanFeedbackStage = "auth" | "account" | "collect" | "processing" | "theater" | "constellation" | "unknown";
+
+export type BenyuanFeedbackStatus = "new" | "processing" | "completed" | "declined";
+
+export type BenyuanFeedbackRecord = {
+  feedback_id: string;
+  user_id: string;
+  auth_session_id: string;
+  kind: BenyuanFeedbackKind;
+  status?: BenyuanFeedbackStatus;
+  status_updated_at?: string;
+  message: string;
+  stage: BenyuanFeedbackStage;
+  part1_id?: string;
+  theater_script_id?: string;
+  part2_id?: string;
+  constellation_id?: string;
+  device_context?: Record<string, unknown>;
+  created_at: string;
+};
+
+export type BenyuanFeedbackSubmitResponse = {
+  ok: true;
+  feedback_id: string;
+  created_at: string;
+};
+
+export type BenyuanTestPlanStatus = "pending" | "testing" | "needs_fix" | "passed";
+
+export type BenyuanTestPlanSource = "system_regression" | "feedback_derived";
+
+export type BenyuanTestPlanExecutionState =
+  | "implemented_needs_verification"
+  | "needs_hardening"
+  | "blocked_external_resources";
+
+export type BenyuanTestPlanItem = {
+  test_plan_item_id: string;
+  title: string;
+  area: string;
+  source: BenyuanTestPlanSource;
+  execution_state: BenyuanTestPlanExecutionState;
+  status: BenyuanTestPlanStatus;
+  verification: string;
+  feedback_keywords: string[];
+  created_at: string;
+  updated_at: string;
+};
+
 export type BenyuanV3Store = {
   users: Record<string, BenyuanUser>;
   auth_sessions: Record<string, BenyuanAuthSession>;
@@ -395,4 +446,6 @@ export type BenyuanV3Store = {
   theater_scripts: Record<string, TheaterScriptRecord>;
   part2_records: Record<string, Part2Record>;
   constellations: Record<string, ConstellationRecord>;
+  feedback_records: Record<string, BenyuanFeedbackRecord>;
+  test_plan_items: Record<string, BenyuanTestPlanItem>;
 };

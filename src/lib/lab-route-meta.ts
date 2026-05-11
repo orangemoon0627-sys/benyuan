@@ -36,6 +36,16 @@ export const labRouteMeta: LabRouteMeta[] = [
     detail: "看 freeze/apply/archive 队列、动作池和路由压力。",
   },
   {
+    href: "/lab/feedback",
+    title: "反馈清单",
+    detail: "看 TestFlight 与本地测试反馈、阶段、设备上下文和用户链路。",
+  },
+  {
+    href: "/lab/test-plan",
+    title: "测试任务清单",
+    detail: "看 App 测试项、验证方式、关联反馈和当前推进状态。",
+  },
+  {
     href: "/lab/release-chain",
     title: "发布链路台",
     detail: "看 content、schema、native、analysis、delivery 的统一发布链。",

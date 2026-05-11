@@ -272,7 +272,11 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
   quality: {
     multimodal: {},
     theater: {},
-    constellation: {},
+    constellation: {
+      timeoutMs: 90000,
+      transport: "json_first",
+      allowSecondaryAttempts: false,
+    },
   },
   fast: {
     multimodal: {
@@ -1034,16 +1038,14 @@ async function requestMultimodalJson(params: {
 }
 
 
-function normalizeTheaterScript(candidate: unknown, fallback: TheaterScript): TheaterScript | null {
+export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScript): TheaterScript | null {
   const source = isRecord(candidate) && isRecord(candidate.theater_script) ? candidate.theater_script : candidate;
   if (!isRecord(source)) return null;
 
-  const liveChoices = Array.isArray(source.act2 && isRecord(source.act2) ? source.act2.choices : [])
-    ? ((source.act2 as { choices?: unknown[] }).choices as unknown[])
-    : [];
-  const liveQuestions = Array.isArray(source.act3 && isRecord(source.act3) ? source.act3.mirror_questions : [])
-    ? ((source.act3 as { mirror_questions?: unknown[] }).mirror_questions as unknown[])
-    : [];
+  const act2 = isRecord(source.act2) ? source.act2 : {};
+  const act3 = isRecord(source.act3) ? source.act3 : {};
+  const liveChoices = Array.isArray(act2.choices) ? act2.choices : [];
+  const liveQuestions = Array.isArray(act3.mirror_questions) ? act3.mirror_questions : [];
   const personalizationSummary = isRecord(source.personalization_summary) ? source.personalization_summary : {};
   const sourceCoreArchetype =
     typeof personalizationSummary.core_archetype === "string"

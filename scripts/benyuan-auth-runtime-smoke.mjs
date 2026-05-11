@@ -29,6 +29,14 @@ async function post(path, body, headers = {}) {
   });
 }
 
+async function patch(path, body, headers = {}) {
+  return request(path, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
 function requireOption(schema, questionId, index = 0) {
   const question = schema.questions.find((item) => item.id === questionId);
   assert.ok(question, `missing question ${questionId}`);
@@ -101,6 +109,56 @@ const initialHistory = await request("/api/account/history", {
 });
 assert.equal(initialHistory.response.status, 200, "history route should return an empty list for new users");
 assert.deepEqual(initialHistory.data.items, []);
+
+const unauthenticatedFeedback = await post("/api/account/feedback", {
+  kind: "issue",
+  message: "未登录反馈应该被拒绝。",
+  stage: "account",
+});
+assert.equal(unauthenticatedFeedback.response.status, 401, "feedback route should require auth");
+assert.equal(unauthenticatedFeedback.data.error, "auth_required");
+
+const accountFeedback = await post(
+  "/api/account/feedback",
+  {
+    kind: "issue",
+    message: "星图生成后，底部按钮偶尔会遮住最后一段文字。",
+    stage: "constellation",
+    part1_id: "part1_feedback_runtime",
+    device_context: {
+      platform: "ios-native",
+      build: "runtime-smoke",
+    },
+  },
+  { authorization: `Bearer ${anonymous.data.session.token}` },
+);
+assert.equal(accountFeedback.response.status, 200, "feedback route should accept authenticated feedback");
+assert.equal(accountFeedback.data.ok, true);
+assert.match(accountFeedback.data.feedback_id, /^feedback_/, "feedback route should return a persisted feedback id");
+assert.ok(accountFeedback.data.created_at, "feedback route should return created_at");
+
+const internalFeedbackList = await request("/api/internal/feedback?kind=issue&stage=constellation&status=new&limit=20");
+assert.equal(internalFeedbackList.response.status, 200, "internal feedback route should list persisted feedback");
+assert.equal(internalFeedbackList.data.status, "ok");
+assert.ok(
+  internalFeedbackList.data.records.some((record) => record.feedback_id === accountFeedback.data.feedback_id),
+  "internal feedback route should return the submitted feedback id",
+);
+
+const feedbackStatusUpdate = await patch("/api/internal/feedback", {
+  feedback_id: accountFeedback.data.feedback_id,
+  status: "processing",
+});
+assert.equal(feedbackStatusUpdate.response.status, 200, "internal feedback route should update feedback status");
+assert.equal(feedbackStatusUpdate.data.status, "ok");
+assert.equal(feedbackStatusUpdate.data.record.status, "processing");
+
+const processingFeedbackList = await request("/api/internal/feedback?status=processing&limit=20");
+assert.equal(processingFeedbackList.response.status, 200, "internal feedback route should filter by updated status");
+assert.ok(
+  processingFeedbackList.data.records.some((record) => record.feedback_id === accountFeedback.data.feedback_id && record.status === "processing"),
+  "internal feedback route should return the submitted feedback after status update",
+);
 
 const fixtureWechat = await post(
   "/api/auth/wechat",

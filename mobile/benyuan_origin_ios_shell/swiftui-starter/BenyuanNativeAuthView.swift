@@ -16,15 +16,15 @@ struct BenyuanNativeAuthView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("本源")
-                            .font(.system(size: 18, weight: .black))
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(BenyuanColor.textPrimary)
                         Text("PRIVATE MOON FIELD")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundStyle(BenyuanColor.textTertiary)
                     }
                     Spacer()
                     Text("登录")
-                        .font(.system(size: 13, weight: .black))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(BenyuanColor.accentGold)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -45,13 +45,13 @@ struct BenyuanNativeAuthView: View {
 
                 VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
                     Text("进入你的私人月相档案")
-                        .font(.system(size: 36, weight: .black))
-                        .lineSpacing(0)
+                        .font(.system(size: 34, weight: .semibold))
+                        .lineSpacing(4)
                         .minimumScaleFactor(0.78)
                         .foregroundStyle(BenyuanColor.textPrimary)
 
                     Text("答案、影像线索、剧场选择与精神星图会归入同一个身份。现在可先以访客进入，之后绑定微信或手机号。")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 15, weight: .regular))
                         .lineSpacing(6)
                         .foregroundStyle(BenyuanColor.textSecondary)
                 }
@@ -84,10 +84,10 @@ struct BenyuanNativeAuthView: View {
                 } label: {
                     HStack {
                         Text("先以访客进入")
-                            .font(.system(size: 15, weight: .black))
+                            .font(.system(size: 15, weight: .semibold))
                         Spacer()
                         Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .black))
+                            .font(.system(size: 14, weight: .semibold))
                     }
                     .foregroundStyle(BenyuanColor.textPrimary)
                     .padding(.horizontal, BenyuanSpacing.x6)
@@ -111,7 +111,7 @@ struct BenyuanNativeAuthView: View {
                         }
                     } label: {
                         Text(model.isPhoneAuthReady ? "手机号绑定" : "手机号绑定")
-                            .font(.system(size: 12, weight: .black))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(model.isPhoneAuthReady ? BenyuanColor.textPrimary : BenyuanColor.textTertiary)
                             .frame(maxWidth: .infinity, minHeight: 34)
                             .background(Capsule().fill(BenyuanColor.glassFill.opacity(model.isPhoneAuthReady ? 0.82 : 0.72)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(model.isPhoneAuthReady ? 0.86 : 0.72))))
@@ -141,9 +141,9 @@ struct BenyuanNativeAuthView: View {
     private var appleLoginLabel: some View {
         HStack(spacing: BenyuanSpacing.x3) {
             Image(systemName: "apple.logo")
-                .font(.system(size: 18, weight: .black))
+                .font(.system(size: 18, weight: .semibold))
             Text("用 Apple 继续")
-                .font(.system(size: 16, weight: .black))
+                .font(.system(size: 16, weight: .semibold))
         }
         .foregroundStyle(BenyuanColor.bgVoid)
         .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)

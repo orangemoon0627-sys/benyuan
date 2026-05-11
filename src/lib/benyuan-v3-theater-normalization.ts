@@ -23,15 +23,42 @@ const fallbackDialogues = [
   "第三道镜面把一线月光移到你的掌心，等待那个尚未命名的答案浮出水面。",
 ];
 
+const fallbackQuestionTexts = [
+  "让镜面停在一个方向上：",
+  "你愿意先移动哪一半光？",
+  "哪一种回声最接近你想带走的答案？",
+];
+
 export function dedupeMirrorQuestions(questions: MirrorQuestion[], fallbackQuestions: MirrorQuestion[]) {
   const seenDialogues = new Set<string>();
+  const seenQuestions = new Set<string>();
 
   return questions.map((question, index) => {
     const dialogue = cleanText(question.dialogue);
     const dialogueKey = fingerprint(dialogue);
+    const visibleQuestion = cleanText(question.question);
+    const questionKey = fingerprint(visibleQuestion);
+    let nextQuestion = question.question;
+
+    if (visibleQuestion && !seenQuestions.has(questionKey)) {
+      seenQuestions.add(questionKey);
+    } else {
+      const fallback = fallbackQuestions[index] ?? fallbackQuestions[fallbackQuestions.length - 1];
+      const fallbackQuestion = cleanText(fallback?.question);
+      const fallbackKey = fingerprint(fallbackQuestion);
+      nextQuestion =
+        fallbackQuestion && !seenQuestions.has(fallbackKey)
+          ? fallbackQuestion
+          : fallbackQuestionTexts[index] ?? "这一次，你愿意让哪一个答案先浮上来？";
+      seenQuestions.add(fingerprint(nextQuestion));
+    }
+
     if (dialogue && !seenDialogues.has(dialogueKey)) {
       seenDialogues.add(dialogueKey);
-      return question;
+      return {
+        ...question,
+        question: nextQuestion,
+      };
     }
 
     const fallback = fallbackQuestions[index] ?? fallbackQuestions[fallbackQuestions.length - 1];
@@ -46,6 +73,7 @@ export function dedupeMirrorQuestions(questions: MirrorQuestion[], fallbackQuest
     return {
       ...question,
       dialogue: nextDialogue,
+      question: nextQuestion,
     };
   });
 }

@@ -65,13 +65,13 @@ struct BenyuanNativeTheaterView: View {
             Spacer(minLength: 24)
             BenyuanDeepCelestialBody(size: 136, progress: theaterProgress, mode: .constellation)
             Text(model.theater?.theaterScript.act1.sceneDescription ?? "剧场正在靠近。")
-                .font(.system(size: theaterTitleSize(model.theater?.theaterScript.act1.sceneDescription ?? ""), weight: .black))
-                .lineSpacing(2)
+                .font(.system(size: theaterTitleSize(model.theater?.theaterScript.act1.sceneDescription ?? ""), weight: .semibold))
+                .lineSpacing(4)
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .minimumScaleFactor(0.72)
                 .fixedSize(horizontal: false, vertical: true)
             Text(model.theater?.theaterScript.personalizationSummary.keyThemes.joined(separator: " · ") ?? "角色 · 场景 · 回声")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 14, weight: .regular))
                 .lineSpacing(5)
                 .foregroundStyle(BenyuanColor.textSecondary)
             Spacer()
@@ -90,8 +90,8 @@ struct BenyuanNativeTheaterView: View {
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(BenyuanColor.accentGold)
                 Text(choice.scene)
-                    .font(.system(size: theaterTitleSize(choice.scene), weight: .black))
-                    .lineSpacing(2)
+                    .font(.system(size: theaterTitleSize(choice.scene), weight: .semibold))
+                    .lineSpacing(4)
                     .foregroundStyle(BenyuanColor.textPrimary)
                     .minimumScaleFactor(0.72)
                     .fixedSize(horizontal: false, vertical: true)
@@ -116,12 +116,12 @@ struct BenyuanNativeTheaterView: View {
             BenyuanRevealedStack(spacing: BenyuanSpacing.x6) {
                 Spacer(minLength: 28)
                 Text(question.dialogue)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .regular))
                     .lineSpacing(5)
                     .foregroundStyle(BenyuanColor.textSecondary)
                 Text(question.question)
-                    .font(.system(size: theaterTitleSize(question.question), weight: .black))
-                    .lineSpacing(2)
+                    .font(.system(size: theaterTitleSize(question.question), weight: .semibold))
+                    .lineSpacing(4)
                     .foregroundStyle(BenyuanColor.textPrimary)
                     .minimumScaleFactor(0.72)
                     .fixedSize(horizontal: false, vertical: true)
@@ -144,11 +144,11 @@ struct BenyuanNativeTheaterView: View {
             Spacer()
             BenyuanDeepCelestialBody(size: 156, progress: theaterProgress, mode: .processing)
             Text("星图正在靠近。")
-                .font(.system(size: 42, weight: .black))
+                .font(.system(size: 36, weight: .semibold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(BenyuanColor.textPrimary)
             Text(model.theater?.theaterScript.epilogue.closingText ?? "最后一镜落下，精神坐标开始显形。")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 16, weight: .regular))
                 .lineSpacing(6)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(BenyuanColor.textSecondary)
@@ -160,8 +160,8 @@ struct BenyuanNativeTheaterView: View {
     }
 
     private func theaterTitleSize(_ value: String) -> CGFloat {
-        if value.count > 86 { return 26 }
-        if value.count > 56 { return 29 }
-        return 34
+        if value.count > 86 { return 22 }
+        if value.count > 56 { return 25 }
+        return 29
     }
 }

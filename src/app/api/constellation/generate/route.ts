@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertPart1Owner } from "@/lib/benyuan-auth";
+import { agentRouteErrorResponse } from "@/lib/benyuan-agent-route-errors";
 import { recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
 import { generateConstellationWithAgent } from "@/lib/benyuan-v3-agent";
 import { createBenyuanV3Id, getPart1Record, getPart2Record, saveConstellationRecord } from "@/lib/benyuan-v3-store";
@@ -23,33 +24,43 @@ export async function POST(request: Request) {
   }
 
   const startedAt = Date.now();
-  const result = await generateConstellationWithAgent(part1, part2, body.runtime_override);
-  const timing = await recordBenyuanAgentTiming({
-    stage: "constellation",
-    duration_ms: Date.now() - startedAt,
-    runtime_mode: result.runtime.mode,
-    provider: result.runtime.provider,
-    model: result.runtime.model,
-    error: result.runtime.error,
-    request_id: result.runtime.request_id,
-    part1_id: part1.part1_id,
-    part2_id: part2.part2_id,
-  });
-  const record = {
-    constellation_id: createBenyuanV3Id("const"),
-    part1_id: part1.part1_id,
-    part2_id: part2.part2_id,
-    created_at: new Date().toISOString(),
-    runtime: result.runtime,
-    psyche_constellation: result.constellation,
-  };
+  try {
+    const result = await generateConstellationWithAgent(part1, part2, body.runtime_override);
+    const timing = await recordBenyuanAgentTiming({
+      stage: "constellation",
+      duration_ms: Date.now() - startedAt,
+      runtime_mode: result.runtime.mode,
+      provider: result.runtime.provider,
+      model: result.runtime.model,
+      error: result.runtime.error,
+      request_id: result.runtime.request_id,
+      part1_id: part1.part1_id,
+      part2_id: part2.part2_id,
+    });
+    const record = {
+      constellation_id: createBenyuanV3Id("const"),
+      part1_id: part1.part1_id,
+      part2_id: part2.part2_id,
+      created_at: new Date().toISOString(),
+      runtime: result.runtime,
+      psyche_constellation: result.constellation,
+    };
 
-  await saveConstellationRecord(record);
+    await saveConstellationRecord(record);
 
-  return NextResponse.json({
-    constellation_id: record.constellation_id,
-    runtime: record.runtime,
-    timing,
-    psyche_constellation: record.psyche_constellation,
-  });
+    return NextResponse.json({
+      constellation_id: record.constellation_id,
+      runtime: record.runtime,
+      timing,
+      psyche_constellation: record.psyche_constellation,
+    });
+  } catch (error) {
+    return agentRouteErrorResponse({
+      error,
+      stage: "constellation",
+      part1Id: part1.part1_id,
+      part2Id: part2.part2_id,
+      startedAt,
+    });
+  }
 }

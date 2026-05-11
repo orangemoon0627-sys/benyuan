@@ -145,6 +145,20 @@ test("director prompt includes readable A/B/C evidence and multimodal summaries"
   assert.match(prompt, /证据档案/);
 });
 
+test("director prompt requires continuous theater motifs instead of generic isolated questions", () => {
+  const prompt = buildDirectorUserPrompt(createPart1Record());
+
+  assert.match(prompt, /上传素材不是素材库，而是反复母题/);
+  assert.match(prompt, /同一段声音、同一句话、同一张照片里的构图，必须在 Act1\/Act2\/Act3 中改变形态后再次出现/);
+  assert.match(prompt, /Act2 要形成连续行动链：第一步进入，第二步改变距离，第三步触碰或放下某个物件/);
+  assert.match(prompt, /Act3 的镜面问题必须从 Act2 变形而来，不要突然跳成问卷/);
+  assert.match(prompt, /motif ledger/i);
+  assert.match(prompt, /每个 choice 的 scene 都必须延续上一幕至少一个母题/);
+  assert.match(prompt, /禁止让 Act2 三组 choice 互相独立/);
+  assert.match(prompt, /Act3 的每个 mirror question 必须问不同的心理动作/);
+  assert.match(prompt, /禁止重复使用同一句可见问题/);
+});
+
 test("analyst prompt includes theater choices as readable trajectory evidence", () => {
   const part1 = createPart1Record();
   const part2 = createPart2Record();

@@ -11,7 +11,7 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
             return "图片暂时无法处理。"
         case .invalidResponse:
             return "服务器返回了无法识别的结果。"
-        case .server(_, let message):
+        case .server(let status, let message):
             if message == "sms_provider_not_configured" {
                 return "手机号登录还在接入短信网关，请先用 Apple 或访客进入。"
             }
@@ -33,7 +33,10 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
             if message == "auth_required" {
                 return "登录状态已过期，请重新进入。"
             }
-            return message
+            if message.isEmpty {
+                return "请求失败（HTTP \(status)）。"
+            }
+            return "请求失败（HTTP \(status)）：\(message)"
         }
     }
 }
@@ -82,6 +85,38 @@ final class BenyuanAPIClient {
 
     func deleteAccountHistoryItem(part1Id: String) async throws -> BenyuanLogoutResponse {
         try await delete("/api/account/history/\(part1Id)")
+    }
+
+    func submitFeedback(
+        kind: BenyuanFeedbackKind,
+        message: String,
+        stage: BenyuanNativeStage,
+        session nativeSession: BenyuanNativeSession
+    ) async throws -> BenyuanFeedbackSubmitResponse {
+        var body: [String: BenyuanJSONValue] = [
+            "kind": .string(kind.rawValue),
+            "message": .string(message),
+            "stage": .string(stage.feedbackStage),
+            "device_context": .object([
+                "platform": .string("ios-native"),
+                "bundle_id": .string(Bundle.main.bundleIdentifier ?? "unknown"),
+                "app_version": .string(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"),
+                "build": .string(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown")
+            ])
+        ]
+        if let part1Id = nativeSession.part1Id {
+            body["part1_id"] = .string(part1Id)
+        }
+        if let theaterScriptId = nativeSession.theaterScriptId {
+            body["theater_script_id"] = .string(theaterScriptId)
+        }
+        if let part2Id = nativeSession.part2Id {
+            body["part2_id"] = .string(part2Id)
+        }
+        if let constellationId = nativeSession.constellationId {
+            body["constellation_id"] = .string(constellationId)
+        }
+        return try await post("/api/account/feedback", body: body)
     }
 
     func fetchTheaterScript(theaterScriptId: String) async throws -> TheaterScriptRecord {
@@ -230,10 +265,61 @@ final class BenyuanAPIClient {
             throw BenyuanAPIError.invalidResponse
         }
         guard (200..<300).contains(http.statusCode) else {
-            let message = (try? JSONDecoder.benyuan.decode([String: String].self, from: data)["error"]) ?? "请求失败"
+            let message = Self.serverErrorMessage(from: data)
             throw BenyuanAPIError.server(status: http.statusCode, message: message)
         }
         return try JSONDecoder.benyuan.decode(Response.self, from: data)
+    }
+
+    private static func serverErrorMessage(from data: Data) -> String {
+        let body = bodyPreview(from: data)
+        guard !data.isEmpty else {
+            return ""
+        }
+
+        if
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let message = preferredErrorMessage(in: object)
+        {
+            return message
+        }
+
+        return body
+    }
+
+    private static func preferredErrorMessage(in object: [String: Any]) -> String? {
+        if
+            let error = object["error"] as? String,
+            let detail = object["detail"] as? String
+        {
+            let trimmedError = error.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedError.isEmpty && !trimmedDetail.isEmpty {
+                return "\(trimmedError): \(trimmedDetail)"
+            }
+        }
+
+        for key in ["error", "message", "detail", "code"] {
+            if let value = object[key] as? String {
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    return trimmed
+                }
+            }
+        }
+        return nil
+    }
+
+    private static func bodyPreview(from data: Data, limit: Int = 240) -> String {
+        guard let raw = String(data: data, encoding: .utf8) else {
+            return "<\(data.count) bytes>"
+        }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > limit else {
+            return trimmed
+        }
+        let endIndex = trimmed.index(trimmed.startIndex, offsetBy: limit)
+        return "\(trimmed[..<endIndex])..."
     }
 
     private func makeMultipartBody(questionId: String, images: [BenyuanImagePayload], origin: String, boundary: String) -> Data {
@@ -255,6 +341,20 @@ final class BenyuanAPIClient {
         body.appendString("--\(boundary)\r\n")
         body.appendString("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
         body.appendString("\(value)\r\n")
+    }
+}
+
+private extension BenyuanNativeStage {
+    var feedbackStage: String {
+        switch self {
+        case .auth: return "auth"
+        case .account: return "account"
+        case .collect: return "collect"
+        case .processing: return "processing"
+        case .theater: return "theater"
+        case .constellation: return "constellation"
+        case .launching, .error: return "unknown"
+        }
     }
 }
 

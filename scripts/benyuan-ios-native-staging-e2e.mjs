@@ -10,6 +10,7 @@ import {
   extractInstalledSimulatorSdkVersion,
 } from "./benyuan-ios-native-smoke-lib.mjs";
 import {
+  assertAllRequiredRuntimeStagesBelongToSession,
   assertAllRequiredRuntimeStagesLive,
   buildLaunchArgs,
   safeNativeE2EEvents,
@@ -350,6 +351,11 @@ async function main() {
     throw new Error("ios_staging_e2e_native_error_page");
   }
   assertAllRequiredRuntimeStagesLive(latestRuntime);
+  assertAllRequiredRuntimeStagesBelongToSession({
+    latestRuntime,
+    nativeSession,
+    launchedAtMs,
+  });
 }
 
 main().catch((error) => {

@@ -78,6 +78,7 @@ export function summarizeBenyuanStoreCounts(store: BenyuanV3Store) {
     theaterScripts: Object.keys(store.theater_scripts).length,
     part2Records: Object.keys(store.part2_records).length,
     constellations: Object.keys(store.constellations).length,
+    feedbackRecords: Object.keys(store.feedback_records).length,
   };
 }
 

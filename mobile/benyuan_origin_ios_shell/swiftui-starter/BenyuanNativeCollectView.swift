@@ -69,8 +69,8 @@ struct BenyuanNativeCollectView: View {
             }
 
             Text(question.prompt)
-                .font(.system(size: titleSize(question.prompt), weight: .black))
-                .lineSpacing(2)
+                .font(.system(size: questionTitleSize(question.prompt), weight: .semibold))
+                .lineSpacing(4)
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .minimumScaleFactor(0.82)
 
@@ -99,8 +99,8 @@ struct BenyuanNativeCollectView: View {
             }
 
             Text(question.prompt)
-                .font(.system(size: uploadTitleSize(question.prompt), weight: .black))
-                .lineSpacing(1)
+                .font(.system(size: uploadQuestionTitleSize(question.prompt), weight: .semibold))
+                .lineSpacing(4)
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .minimumScaleFactor(0.82)
 
@@ -110,7 +110,7 @@ struct BenyuanNativeCollectView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
                 Text(question.helperText ?? "选择图片线索，上传后会进入多模态分析。")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .regular))
                     .lineSpacing(4)
                     .foregroundStyle(BenyuanColor.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,11 +155,11 @@ struct BenyuanNativeCollectView: View {
                 VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
                     HStack {
                         Text(item.label)
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(BenyuanColor.textSecondary)
                         Spacer()
                         Text("\(object[item.key]?.intValue ?? 0)%")
-                            .font(.system(size: 28, weight: .black))
+                            .font(.system(size: 26, weight: .semibold))
                             .foregroundStyle(BenyuanColor.textPrimary)
                     }
                     Slider(value: Binding(
@@ -187,20 +187,20 @@ struct BenyuanNativeCollectView: View {
                     ZStack {
                         BenyuanBlackMoonMark(size: 58, breathes: true)
                         Image(systemName: hasAssets ? "photo.stack.fill" : "plus")
-                            .font(.system(size: hasAssets ? 15 : 17, weight: .black))
+                            .font(.system(size: hasAssets ? 15 : 17, weight: .semibold))
                             .foregroundStyle(hasAssets ? BenyuanColor.accentGold : BenyuanColor.textPrimary)
                             .offset(y: hasAssets ? 0 : 1)
                     }
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text(uploadHeroTitle(hasAssets: hasAssets, isUploading: model.uploadingQuestionId == question.id))
-                            .font(.system(size: 20, weight: .black))
+                            .font(.system(size: 19, weight: .semibold))
                             .foregroundStyle(BenyuanColor.textPrimary)
                             .lineLimit(2)
                             .minimumScaleFactor(0.82)
 
                         Text(uploadHeroDetail(count: assets.count, maxCount: maxCount, canAddMore: canAddMore))
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 13, weight: .regular))
                             .lineSpacing(4)
                             .foregroundStyle(BenyuanColor.textSecondary)
                     }
@@ -208,7 +208,7 @@ struct BenyuanNativeCollectView: View {
                     Spacer(minLength: BenyuanSpacing.x2)
 
                     Image(systemName: canAddMore ? "chevron.right" : "checkmark")
-                        .font(.system(size: 14, weight: .black))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(canAddMore ? BenyuanColor.textTertiary : BenyuanColor.accentGold)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -355,9 +355,9 @@ struct BenyuanNativeCollectView: View {
         Button(action: action) {
             HStack(spacing: 7) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .black))
+                    .font(.system(size: 13, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 13, weight: .black))
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
             }
@@ -397,11 +397,13 @@ struct BenyuanNativeCollectView: View {
         .background(BenyuanColor.bgVoid.opacity(0.76).ignoresSafeArea().blur(radius: 0))
     }
 
-    private func titleSize(_ value: String) -> CGFloat {
-        value.count > 30 ? 30 : 36
+    private func questionTitleSize(_ value: String) -> CGFloat {
+        if value.count > 30 { return 26 }
+        return 30
     }
 
-    private func uploadTitleSize(_ value: String) -> CGFloat {
-        value.count > 30 ? 28 : 32
+    private func uploadQuestionTitleSize(_ value: String) -> CGFloat {
+        if value.count > 30 { return 24 }
+        return 28
     }
 }

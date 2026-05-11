@@ -14,6 +14,7 @@ npm_registry="${BENYUAN_STAGING_NPM_REGISTRY:-https://registry.npmmirror.com}"
 public_base_url="${BENYUAN_STAGING_PUBLIC_BASE_URL:-http://$staging_host}"
 runtime_env_file="${BENYUAN_STAGING_ENV_FILE:-$app_root/shared/benyuan-runtime.env}"
 expected_origin="${BENYUAN_EXPECTED_ORIGIN:-https://github.com/orangemoon0627-sys/benyuan.git}"
+expected_origin_ssh="${BENYUAN_EXPECTED_ORIGIN_SSH:-git@github-benyuan:orangemoon0627-sys/benyuan.git}"
 deploy_remote="${BENYUAN_DEPLOY_REMOTE:-benyuan}"
 keep_releases="${BENYUAN_STAGING_KEEP_RELEASES:-5}"
 
@@ -171,11 +172,12 @@ echo "target: $ssh_target:$app_root"
 echo "public check: $public_base_url"
 echo "runtime env file: $runtime_env_file"
 
-if [ "$deploy_url" != "$expected_origin" ]; then
+if [ "$deploy_url" != "$expected_origin" ] && [ "$deploy_url" != "$expected_origin_ssh" ]; then
   cat >&2 <<EOF
 Deploy remote does not point to the 本源 GitHub repository.
 
 Expected: $expected_origin
+      or: $expected_origin_ssh
 Actual:   $deploy_remote -> $deploy_url
 
 Fix:

@@ -22,8 +22,9 @@ const tempDir = path.join(os.tmpdir(), "benyuan-ios-native-preview");
 const jsonPath = path.join(outputDir, "benyuan-ios-native-preview-screenshots.json");
 
 const previewConfigs = [
-  { stage: "auth", screenshotPath: path.join(outputDir, "benyuan-ios-preview-auth.png"), waitMs: 2600 },
+  { stage: "auth", screenshotPath: path.join(outputDir, "benyuan-ios-preview-auth.png"), waitMs: 3600 },
   { stage: "account", screenshotPath: path.join(outputDir, "benyuan-ios-preview-account.png"), waitMs: 3000 },
+  { stage: "account-feedback", screenshotPath: path.join(outputDir, "benyuan-ios-preview-account-feedback.png"), waitMs: 3000 },
   { stage: "collect", screenshotPath: path.join(outputDir, "benyuan-ios-preview-collect.png"), waitMs: 3000 },
   { stage: "upload", screenshotPath: path.join(outputDir, "benyuan-ios-preview-upload.png"), waitMs: 3000 },
   { stage: "processing", screenshotPath: path.join(outputDir, "benyuan-ios-preview-processing.png"), waitMs: 2800 },

@@ -487,6 +487,32 @@ struct BenyuanAccountHistoryResponse: Codable, Equatable {
     let items: [BenyuanAccountHistoryItem]
 }
 
+enum BenyuanFeedbackKind: String, Codable, CaseIterable, Equatable, Identifiable {
+    case issue
+    case ui
+    case content
+    case speed
+    case other
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .issue: return "问题上报"
+        case .ui: return "界面反馈"
+        case .content: return "内容风格"
+        case .speed: return "速度卡顿"
+        case .other: return "其他"
+        }
+    }
+}
+
+struct BenyuanFeedbackSubmitResponse: Codable, Equatable {
+    let ok: Bool
+    let feedbackId: String
+    let createdAt: String
+}
+
 struct BenyuanNativeSession: Codable, Equatable {
     var authSession: BenyuanAuthSession?
     var user: BenyuanUser?

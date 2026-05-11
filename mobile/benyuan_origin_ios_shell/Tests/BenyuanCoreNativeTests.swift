@@ -46,6 +46,32 @@ final class BenyuanMockURLProtocol: URLProtocol {
     }
 }
 
+private extension URLRequest {
+    var benyuanHTTPBodyData: Data {
+        if let httpBody {
+            return httpBody
+        }
+        guard let httpBodyStream else {
+            return Data()
+        }
+
+        httpBodyStream.open()
+        defer { httpBodyStream.close() }
+
+        let bufferSize = 4096
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+        defer { buffer.deallocate() }
+
+        var data = Data()
+        while httpBodyStream.hasBytesAvailable {
+            let bytesRead = httpBodyStream.read(buffer, maxLength: bufferSize)
+            guard bytesRead > 0 else { break }
+            data.append(buffer, count: bytesRead)
+        }
+        return data
+    }
+}
+
 final class BenyuanCoreNativeTests: XCTestCase {
     func testFlowStorePersistsMinimalNativeSession() throws {
         let suiteName = "benyuan-core-native-tests-\(UUID().uuidString)"
@@ -137,6 +163,108 @@ final class BenyuanCoreNativeTests: XCTestCase {
         ))
 
         XCTAssertEqual(client.authorizationHeaderValue, "Bearer bya_anonymous_test")
+    }
+
+    func testAPIClientServerErrorIncludesHTTPStatusAndBodyPreview() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-error.test")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/api/part1/schema")
+            return BenyuanMockURLProtocol.json(502, "upstream theater worker returned an empty response")
+        }
+
+        do {
+            _ = try await client.fetchSchema()
+            XCTFail("Expected server error")
+        } catch let error as BenyuanAPIError {
+            XCTAssertEqual(error, .server(status: 502, message: "upstream theater worker returned an empty response"))
+            XCTAssertEqual(error.errorDescription, "请求失败（HTTP 502）：upstream theater worker returned an empty response")
+        }
+    }
+
+    func testAPIClientServerErrorCombinesErrorCodeAndDetail() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-error-detail.test")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { _ in
+            BenyuanMockURLProtocol.json(500, #"{ "error": "agent_generation_failed", "detail": "Cannot read properties of undefined (reading 'choices')" }"#)
+        }
+
+        do {
+            _ = try await client.fetchSchema()
+            XCTFail("Expected server error")
+        } catch let error as BenyuanAPIError {
+            XCTAssertEqual(error.errorDescription, "请求失败（HTTP 500）：agent_generation_failed: Cannot read properties of undefined (reading 'choices')")
+        }
+    }
+
+    func testAPIClientSubmitsFeedbackWithAuthAndFlowContext() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-feedback.test")!,
+            session: URLSession(configuration: config)
+        )
+        client.setAuthSession(BenyuanAuthSession(
+            sessionId: "auth_test",
+            userId: "usr_test",
+            token: "bya_anonymous_test",
+            provider: .anonymous,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        ))
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/api/account/feedback")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer bya_anonymous_test")
+            let body = try JSONDecoder.benyuan.decode([String: BenyuanJSONValue].self, from: request.benyuanHTTPBodyData)
+            XCTAssertEqual(body["kind"]?.stringValue, "issue")
+            XCTAssertEqual(body["message"]?.stringValue, "星图页按钮有遮挡")
+            XCTAssertEqual(body["stage"]?.stringValue, "constellation")
+            XCTAssertEqual(body["part1_id"]?.stringValue, "part1_test")
+            XCTAssertEqual(body["theater_script_id"]?.stringValue, "theater_test")
+            XCTAssertEqual(body["part2_id"]?.stringValue, "part2_test")
+            XCTAssertEqual(body["constellation_id"]?.stringValue, "const_test")
+            return BenyuanMockURLProtocol.json(200, """
+            {
+              "ok": true,
+              "feedback_id": "feedback_test",
+              "created_at": "2026-05-10T00:00:00.000Z"
+            }
+            """)
+        }
+
+        let response = try await client.submitFeedback(
+            kind: .issue,
+            message: "星图页按钮有遮挡",
+            stage: .constellation,
+            session: BenyuanNativeSession(
+                authSession: nil,
+                user: nil,
+                part1Id: "part1_test",
+                theaterScriptId: "theater_test",
+                part2Id: "part2_test",
+                constellationId: "const_test",
+                answers: [:],
+                uploadedAssets: [:],
+                phaseDurations: [:]
+            )
+        )
+
+        XCTAssertEqual(response.feedbackId, "feedback_test")
     }
 
     func testAPIClientUsesLongTimeoutForConstellationGeneration() async throws {
@@ -524,6 +652,10 @@ final class BenyuanCoreNativeTests: XCTestCase {
             .account
         )
         XCTAssertEqual(
+            BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "account-feedback"]),
+            .accountFeedback
+        )
+        XCTAssertEqual(
             BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "collect"]),
             .collect
         )
@@ -582,6 +714,18 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertTrue(model.accountHistory.contains { $0.stage == .theater })
         XCTAssertTrue(model.accountHistory.contains { $0.stage == .part1 })
         XCTAssertEqual(model.accountHistory.first?.assetCount, 3)
+    }
+
+    @MainActor
+    func testNativePreviewAccountFeedbackOpensComposer() throws {
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
+
+        model.applyNativePreview(.accountFeedback)
+
+        XCTAssertEqual(model.stage, .account)
+        XCTAssertTrue(model.isFeedbackComposerPresented)
+        XCTAssertEqual(model.feedbackKind, .issue)
+        XCTAssertTrue(model.feedbackDraft.contains("底部按钮"))
     }
 
     @MainActor
@@ -826,7 +970,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         await model.runNativeE2EAutorun()
 
-        XCTAssertEqual(model.stage, .error("invalid_part1_seed"))
+        XCTAssertEqual(model.stage, .error("请求失败（HTTP 400）：invalid_part1_seed"))
     }
 
     @MainActor

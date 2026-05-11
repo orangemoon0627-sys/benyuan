@@ -11,6 +11,7 @@ for (const stage of ["auth", "account", "collect", "upload", "processing", "thea
 }
 
 assert.match(script, /for \(const config of previewConfigs\)/, "native preview screenshots must run stages sequentially");
+assert.match(script, /stage:\s*"auth"[\s\S]*?waitMs:\s*3600/, "native auth preview must wait long enough to avoid capturing the launch blur transition");
 assert.doesNotMatch(script, /Promise\.all/, "native preview screenshots must not run simulator launches concurrently");
 assert.match(script, /terminateApp\(device\.udid,\s*bundleId\)/, "native preview screenshots must terminate the app between stages");
 assert.match(script, /--benyuan-native-preview/, "native preview screenshots must launch the real SwiftUI native preview route");

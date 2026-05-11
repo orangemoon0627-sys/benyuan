@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 const backdrop = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellBackdrop.swift", "utf8");
 const primitives = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeDesignPrimitives.swift", "utf8");
 const auth = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeAuthView.swift", "utf8");
+const account = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeAccountView.swift", "utf8");
 const collect = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeCollectView.swift", "utf8");
 const processing = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeProcessingView.swift", "utf8");
 const theater = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeTheaterView.swift", "utf8");
@@ -39,8 +40,15 @@ assert.match(collect, /uploadThumbnailStrip/, "native upload question must expos
 assert.match(collect, /collectBottomSafeSpace/, "native collect scroll content must reserve explicit bottom navigation clearance");
 
 assert.match(processing, /BenyuanDeepCelestialBody/, "native processing view must use the shared dynamic celestial body");
+assert.match(processing, /BenyuanFlowOrbitTrail/, "native processing view must add a restrained orbit trail so the state page does not feel static");
+assert.match(processing, /processingCardCornerRadius/, "native processing card must use an explicit corner token for screenshot-stable layout");
 assert.doesNotMatch(processing, /BenyuanBlackMoonMark\(size:\s*168/, "native processing view should not use the old flat moon mark as its hero visual");
 assert.match(processing, /processingProgress/, "native processing view must keep the real progress signal");
+
+assert.match(account, /BenyuanFlowOrbitTrail/, "native account history surface must share the deep-field orbit language");
+assert.match(account, /accountCardCornerRadius/, "native account cards must use an explicit corner token for stable visual rhythm");
+assert.match(account, /accountBottomActionDock/, "native account actions should be a compact bottom dock instead of four stacked full-width rows");
+assert.doesNotMatch(account, /Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*21,\s*weight:\s*\.black\)\)/, "native account provider cards must not drift back to oversized black typography");
 
 assert.match(theater, /BenyuanStageLens/, "native theater view must include stage lens motion");
 assert.match(theater, /BenyuanRevealedStack/, "native theater view must reveal acts and choices cinematically");
@@ -54,6 +62,13 @@ assert.match(constellation, /sevenDimensions/, "native constellation orbit map m
 assert.match(constellation, /safeAreaInset\(edge:\s*\.bottom\)/, "native constellation final actions must reserve bottom safe-area space instead of covering the orbit map");
 assert.match(constellation, /constellationBottomDockHeight/, "native constellation scroll content must reserve explicit bottom dock clearance");
 assert.match(constellation, /constellationFirstViewportReserve/, "native constellation first viewport must keep orbit content clear of the final dock");
+assert.match(constellation, /constellationTopViewportReserve:\s*CGFloat\s*=\s*28/, "native constellation scroll content must reserve a stable top viewport buffer below the progress rail");
+assert.match(constellation, /safeAreaInset\(edge:\s*\.top,\s*spacing:\s*0\)/, "native constellation scroll content must use a top inset so scrolled sections do not collide with the progress rail");
+assert.match(constellation, /constellationTopScrollMask/, "native constellation top inset should use a deep-field fade instead of a hard blank gap");
+assert.match(constellation, /frame\(height:\s*constellationTopViewportReserve\)/, "native constellation top inset must use the measured top reserve token");
+assert.match(constellation, /constellationBottomContentReserve:\s*CGFloat\s*=\s*240/, "native constellation ending must keep enough scroll reserve so final text is not hidden behind the dock");
+assert.match(constellation, /constellationBottomDockHeight\s*\+\s*constellationBottomContentReserve\s*\+\s*geometry\.safeAreaInsets\.bottom/, "native constellation bottom padding must include actual device safe-area inset");
+assert.match(constellation, /finalDock[\s\S]*?\.frame\(height:\s*constellationBottomDockHeight\s*\+\s*geometry\.safeAreaInsets\.bottom\)/, "native constellation final dock must have stable measured height for screenshot parity");
 assert.match(constellation, /constellationEndAnchor/, "native constellation must expose an end anchor for bottom-of-report screenshot checks");
 assert.match(constellation, /prefersConstellationEndPreview/, "native constellation preview must be able to scroll to the report ending");
 assert.doesNotMatch(

@@ -2,22 +2,29 @@ import SwiftUI
 
 struct BenyuanNativeAccountView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    private let accountCardCornerRadius: CGFloat = 28
+    private let accountDockHeight: CGFloat = 92
 
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
                 BenyuanNativeTopBar(progress: 1, label: "我的本源")
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
-                        accountIdentityPanel
-                        bindingOrbitSection
-                        historyTimelineSection
-                        actions
+                GeometryReader { geometry in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
+                            accountIdentityPanel
+                            bindingOrbitSection
+                            historyTimelineSection
+                        }
+                        .padding(.horizontal, BenyuanSpacing.x4)
+                        .padding(.top, BenyuanSpacing.x6)
+                        .padding(.bottom, accountDockHeight + geometry.safeAreaInsets.bottom + BenyuanSpacing.x8)
                     }
-                    .padding(.horizontal, BenyuanSpacing.x4)
-                    .padding(.top, BenyuanSpacing.x6)
-                    .padding(.bottom, 112)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        accountBottomActionDock
+                            .frame(height: accountDockHeight + geometry.safeAreaInsets.bottom)
+                    }
                 }
             }
 
@@ -32,9 +39,16 @@ struct BenyuanNativeAccountView: View {
                     bindingInfo(provider)
                 }
             }
+
+            if model.isFeedbackComposerPresented {
+                accountOverlay {
+                    feedbackComposer
+                }
+            }
         }
         .animation(.easeInOut(duration: BenyuanMotion.base), value: model.isDeleteHistoryConfirmationPresented)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: model.activeBindingProvider)
+        .animation(.easeInOut(duration: BenyuanMotion.base), value: model.isFeedbackComposerPresented)
     }
 
     private var accountIdentityPanel: some View {
@@ -63,12 +77,12 @@ struct BenyuanNativeAccountView: View {
             }
 
             Text(model.session.user?.displayName ?? "本源访客")
-                .font(.system(size: 38, weight: .black))
+                .font(.system(size: 32, weight: .semibold))
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .minimumScaleFactor(0.72)
 
             Text("你的答案、图片线索、剧场选择和精神星图会归入这个私人月相档案。")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 15, weight: .regular))
                 .lineSpacing(6)
                 .foregroundStyle(BenyuanColor.textSecondary)
 
@@ -80,10 +94,15 @@ struct BenyuanNativeAccountView: View {
         }
         .padding(BenyuanSpacing.x6)
         .background(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(BenyuanColor.glassFillStrong)
-                .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(BenyuanColor.glassStroke))
+            ZStack {
+                BenyuanFlowOrbitTrail(progress: identityProgress, intensity: 0.34, tilt: -10)
+                    .opacity(0.72)
+                RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous)
+                    .fill(BenyuanColor.glassFillStrong.opacity(0.84))
+                    .overlay(RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.86)))
+            }
         )
+        .clipShape(RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous))
     }
 
     private func identityStat(_ label: String, value: String) -> some View {
@@ -108,16 +127,16 @@ struct BenyuanNativeAccountView: View {
             HStack(alignment: .top, spacing: BenyuanSpacing.x3) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("账户绑定")
-                        .font(.system(size: 24, weight: .black))
+                        .font(.system(size: 21, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
                     Text("Apple、微信和手机号会合并到同一份私人档案，后续换设备也能找回。")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12, weight: .regular))
                         .lineSpacing(4)
                         .foregroundStyle(BenyuanColor.textSecondary)
                 }
                 Spacer()
                 Text("\(boundProviderCount)")
-                    .font(.system(size: 28, weight: .black, design: .monospaced))
+                    .font(.system(size: 24, weight: .semibold, design: .monospaced))
                     .foregroundStyle(BenyuanColor.textPrimary)
                     .frame(width: 58, height: 58)
                     .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.accentGold.opacity(0.26))))
@@ -150,7 +169,7 @@ struct BenyuanNativeAccountView: View {
                 }
 
                 Text(title)
-                    .font(.system(size: 21, weight: .black))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(BenyuanColor.textPrimary)
 
                 Text(detail)
@@ -161,9 +180,9 @@ struct BenyuanNativeAccountView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(BenyuanSpacing.x4)
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(bound ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill)
-                    .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(bound ? BenyuanColor.accentGold.opacity(0.22) : BenyuanColor.glassStroke))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(bound ? BenyuanColor.accentGold.opacity(0.22) : BenyuanColor.glassStroke))
             )
         }
         .buttonStyle(.plain)
@@ -174,10 +193,10 @@ struct BenyuanNativeAccountView: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("我的探索")
-                        .font(.system(size: 24, weight: .black))
+                        .font(.system(size: 21, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
                     Text("草稿、剧场和星图都会按时间留在这里。")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(BenyuanColor.textSecondary)
                 }
                 Spacer()
@@ -242,7 +261,7 @@ struct BenyuanNativeAccountView: View {
                 historyMetaStrip(item)
 
                 Text(item.title)
-                    .font(.system(size: 20, weight: .black))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(BenyuanColor.textPrimary)
                     .lineLimit(2)
 
@@ -292,9 +311,9 @@ struct BenyuanNativeAccountView: View {
             }
             .padding(BenyuanSpacing.x4)
             .background(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(BenyuanColor.glassFillStrong)
-                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(BenyuanColor.glassStroke))
+                RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous)
+                    .fill(BenyuanColor.glassFillStrong.opacity(0.84))
+                    .overlay(RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.86)))
             )
         }
     }
@@ -314,41 +333,65 @@ struct BenyuanNativeAccountView: View {
         }
     }
 
-    private var actions: some View {
-        VStack(spacing: BenyuanSpacing.x3) {
+    private var accountBottomActionDock: some View {
+        HStack(spacing: BenyuanSpacing.x2) {
             Button {
                 model.returnToFlow()
             } label: {
-                Text("返回本源")
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(BenyuanColor.primaryCTAText)
-                    .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(Capsule().fill(BenyuanColor.textPrimary))
+                HStack(spacing: 8) {
+                    Image(systemName: "moonphase.waxing.crescent")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("返回")
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(BenyuanColor.textPrimary)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(Capsule().fill(BenyuanColor.primaryCTA).overlay(Capsule().stroke(BenyuanColor.accentGold.opacity(0.28))))
             }
             .buttonStyle(.plain)
 
-            Button {
+            accountDockIconButton(systemImage: "arrow.clockwise", label: "刷新") {
                 Task { await model.refreshAccount() }
-            } label: {
-                Text("刷新绑定状态")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(BenyuanColor.textPrimary)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(Capsule().fill(BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
             }
-            .buttonStyle(.plain)
 
-            Button(role: .destructive) {
-                Task { await model.logout() }
-            } label: {
-                Text("退出登录")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(BenyuanColor.textSecondary)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(Capsule().fill(BenyuanColor.glassFill.opacity(0.62)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72))))
+            accountDockIconButton(systemImage: "waveform.path.badge.plus", label: "反馈") {
+                model.showFeedbackComposer()
             }
-            .buttonStyle(.plain)
+
+            accountDockIconButton(systemImage: "rectangle.portrait.and.arrow.right", label: "退出", role: .destructive) {
+                Task { await model.logout() }
+            }
+            .accessibilityLabel("退出登录")
         }
+        .padding(.horizontal, BenyuanSpacing.x4)
+        .padding(.top, BenyuanSpacing.x3)
+        .background(
+            LinearGradient(
+                colors: [
+                    BenyuanColor.bgVoid.opacity(0),
+                    BenyuanColor.bgVoid.opacity(0.76),
+                    BenyuanColor.bgVoid
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
+    }
+
+    private func accountDockIconButton(systemImage: String, label: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
+        Button(role: role, action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(role == .destructive ? BenyuanColor.textTertiary : BenyuanColor.textPrimary)
+            .frame(width: 52, height: 48)
+            .background(Capsule().fill(BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.84))))
+        }
+        .buttonStyle(.plain)
     }
 
     private var sessionProviderLabel: String {
@@ -391,11 +434,12 @@ struct BenyuanNativeAccountView: View {
 
     private func accountOverlay<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         ZStack {
-            BenyuanColor.bgVoid.opacity(0.62)
+            BenyuanColor.bgVoid.opacity(0.82)
                 .ignoresSafeArea()
                 .onTapGesture {
                     model.cancelDeleteHistoryItem()
                     model.dismissBindingInfo()
+                    model.dismissFeedbackComposer()
                 }
 
             content()
@@ -472,6 +516,105 @@ struct BenyuanNativeAccountView: View {
                 .fill(BenyuanColor.glassFillStrong)
                 .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(BenyuanColor.glassStroke))
         )
+    }
+
+    private var feedbackComposer: some View {
+        VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("反馈这次体验")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textPrimary)
+                    Text("它会带上当前阶段与探索编号，方便后续定位。")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                }
+                Spacer()
+                Button {
+                    model.dismissFeedbackComposer()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.glassStroke)))
+                }
+                .buttonStyle(.plain)
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BenyuanSpacing.x2) {
+                ForEach(BenyuanFeedbackKind.allCases) { kind in
+                    Button {
+                        model.feedbackKind = kind
+                    } label: {
+                        Text(kind.label)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(model.feedbackKind == kind ? BenyuanColor.bgVoid : BenyuanColor.textSecondary)
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .background(
+                                Capsule()
+                                    .fill(model.feedbackKind == kind ? BenyuanColor.accentGold : BenyuanColor.bgSurface.opacity(0.86))
+                                    .overlay(Capsule().stroke(model.feedbackKind == kind ? BenyuanColor.accentGold.opacity(0.64) : BenyuanColor.glassStroke))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            TextEditor(text: $model.feedbackDraft)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(BenyuanColor.textPrimary)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 126)
+                .padding(BenyuanSpacing.x3)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(BenyuanColor.bgVoid.opacity(0.92))
+                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke))
+                )
+
+            if let feedbackStatus = model.feedbackStatus {
+                Text(feedbackStatus)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(BenyuanColor.accentGold)
+            }
+
+            Button {
+                Task { await model.submitFeedback() }
+            } label: {
+                HStack(spacing: 8) {
+                    if model.isFeedbackSubmitting {
+                        ProgressView()
+                            .tint(BenyuanColor.primaryCTAText)
+                            .scaleEffect(0.74)
+                    }
+                    Text(model.isFeedbackSubmitting ? "正在记录" : "提交反馈")
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(BenyuanColor.bgVoid)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(Capsule().fill(BenyuanColor.textPrimary))
+            }
+            .buttonStyle(.plain)
+            .disabled(model.isFeedbackSubmitting)
+        }
+        .padding(BenyuanSpacing.x6)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            BenyuanColor.bgSurface.opacity(0.98),
+                            BenyuanColor.bgSurface.opacity(0.96),
+                            BenyuanColor.bgVoid.opacity(0.98)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(1.45)))
+        )
+        .shadow(color: BenyuanColor.bgVoid.opacity(0.72), radius: 34, y: 20)
     }
 
     private func bindingTitle(_ provider: BenyuanAuthProvider) -> String {

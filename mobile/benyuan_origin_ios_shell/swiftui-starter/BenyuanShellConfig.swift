@@ -3,6 +3,7 @@ import Foundation
 enum BenyuanNativePreviewStage: String, Equatable {
     case auth
     case account
+    case accountFeedback = "account-feedback"
     case collect
     case upload
     case processing

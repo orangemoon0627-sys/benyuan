@@ -326,7 +326,7 @@ struct BenyuanNativeTopBar: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("本源")
-                        .font(.system(size: 18, weight: .black))
+                        .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(BenyuanColor.textPrimary)
                     Text(label)
                         .font(.system(size: 11, weight: .semibold))
@@ -338,7 +338,7 @@ struct BenyuanNativeTopBar: View {
                 if let onAccount {
                     Button(action: onAccount) {
                         Image(systemName: "person.crop.circle")
-                            .font(.system(size: 15, weight: .black))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(BenyuanColor.textPrimary)
                             .frame(width: 36, height: 36)
                             .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.glassStroke)))
@@ -379,7 +379,7 @@ struct BenyuanNativePrimaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 16, weight: .black))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(BenyuanColor.primaryCTAText)
                 .frame(maxWidth: .infinity)
                 .minHeight(54)

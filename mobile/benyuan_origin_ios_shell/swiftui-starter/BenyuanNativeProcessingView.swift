@@ -2,35 +2,39 @@ import SwiftUI
 
 struct BenyuanNativeProcessingView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    private let processingCardCornerRadius: CGFloat = 42
 
     var body: some View {
         VStack(spacing: BenyuanSpacing.x6) {
             Spacer(minLength: BenyuanSpacing.x12)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 48, style: .continuous)
+                RoundedRectangle(cornerRadius: processingCardCornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                BenyuanColor.glassFillStrong,
-                                BenyuanColor.bgVoid.opacity(0.18),
-                                BenyuanColor.glassFill.opacity(0.54)
+                                BenyuanColor.glassFillStrong.opacity(0.82),
+                                BenyuanColor.bgVoid.opacity(0.36),
+                                BenyuanColor.glassFill.opacity(0.42)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 48, style: .continuous)
-                            .stroke(BenyuanColor.glassStroke.opacity(0.92), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: processingCardCornerRadius, style: .continuous)
+                            .stroke(BenyuanColor.glassStroke.opacity(0.84), lineWidth: 1)
                     )
                     .shadow(color: BenyuanColor.bgVoid.opacity(0.64), radius: 40, y: 28)
+                BenyuanFlowOrbitTrail(progress: model.processingProgress, intensity: 0.48, tilt: -8)
+                    .padding(.horizontal, BenyuanSpacing.x2)
+                    .opacity(0.88)
 
-                VStack(spacing: 28) {
+                VStack(spacing: 24) {
                     ZStack {
                         BenyuanProcessingPhaseCurrent(progress: model.processingProgress)
-                            .frame(width: 270, height: 170)
-                        BenyuanDeepCelestialBody(size: 214, progress: model.processingProgress, mode: .processing)
+                            .frame(width: 248, height: 152)
+                        BenyuanDeepCelestialBody(size: 196, progress: model.processingProgress, mode: .processing)
                     }
                     .padding(.top, BenyuanSpacing.x2)
 
@@ -39,16 +43,16 @@ struct BenyuanNativeProcessingView: View {
                             .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(BenyuanColor.accentGold.opacity(0.9))
                         Text(model.processingTitle)
-                            .font(.system(size: 42, weight: .black))
+                            .font(.system(size: 34, weight: .semibold))
                             .minimumScaleFactor(0.72)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(BenyuanColor.textPrimary)
                         Text(model.processingDetail)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 15, weight: .regular))
                             .lineSpacing(6)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(BenyuanColor.textSecondary)
-                            .padding(.horizontal, BenyuanSpacing.x6)
+                            .padding(.horizontal, BenyuanSpacing.x4)
                     }
 
                     VStack(spacing: BenyuanSpacing.x4) {

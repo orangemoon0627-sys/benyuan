@@ -40,3 +40,26 @@ test("dedupeMirrorQuestions uses a poetic fallback when live and fallback dialog
   assert.equal(normalized[2].dialogue, "第三道镜面把一线月光移到你的掌心，等待那个尚未命名的答案浮出水面。");
   assert.equal(new Set(normalized.map((item) => item.dialogue)).size, 3);
 });
+
+test("dedupeMirrorQuestions replaces repeated visible question text with fallback question text", () => {
+  const repeatedQuestion = "你愿意先移动哪一半光？";
+  const live = [
+    { ...question(1, "第一道镜面发问。"), question: "让镜面停在一个方向上：" },
+    { ...question(2, "第二道镜面发问。"), question: repeatedQuestion },
+    { ...question(3, "第三道镜面发问。"), question: repeatedQuestion },
+  ];
+  const fallback = [
+    { ...question(1, "第一道 fallback。"), question: "让镜面停在一个方向上：" },
+    { ...question(2, "第二道 fallback。"), question: "你愿意先移动哪一半光？" },
+    { ...question(3, "第三道 fallback。"), question: "哪一种回声最接近你想带走的答案？" },
+  ];
+
+  const normalized = dedupeMirrorQuestions(live, fallback);
+
+  assert.deepEqual(normalized.map((item) => item.question), [
+    "让镜面停在一个方向上：",
+    repeatedQuestion,
+    "哪一种回声最接近你想带走的答案？",
+  ]);
+  assert.equal(new Set(normalized.map((item) => item.question)).size, 3);
+});

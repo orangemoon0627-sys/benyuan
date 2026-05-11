@@ -6,8 +6,9 @@ struct BenyuanNativeConstellationView: View {
     @State private var activeDimensionKey: String?
     private let constellationEndAnchor = "constellation-end-anchor"
     private let constellationBottomDockHeight: CGFloat = 116
+    private let constellationTopViewportReserve: CGFloat = 28
     private let constellationFirstViewportReserve: CGFloat = 36
-    private let constellationBottomContentReserve: CGFloat = 196
+    private let constellationBottomContentReserve: CGFloat = 240
 
     private let labels: [String: String] = [
         "openness": "开放性",
@@ -24,7 +25,8 @@ struct BenyuanNativeConstellationView: View {
             BenyuanNativeTopBar(progress: 1, label: "精神星图", onAccount: model.showAccount)
 
             if let data = model.constellation?.psycheConstellation {
-                ScrollViewReader { proxy in
+                GeometryReader { geometry in
+                    ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: BenyuanSpacing.x8) {
                             BenyuanRevealedStack(delay: 0.02) {
@@ -50,10 +52,15 @@ struct BenyuanNativeConstellationView: View {
                         }
                         .padding(.horizontal, BenyuanSpacing.x4)
                         .padding(.top, BenyuanSpacing.x6)
-                        .padding(.bottom, constellationBottomDockHeight + constellationBottomContentReserve)
+                        .padding(.bottom, constellationBottomDockHeight + constellationBottomContentReserve + geometry.safeAreaInsets.bottom)
+                    }
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        constellationTopScrollMask
+                            .frame(height: constellationTopViewportReserve)
                     }
                     .safeAreaInset(edge: .bottom) {
                         finalDock
+                            .frame(height: constellationBottomDockHeight + geometry.safeAreaInsets.bottom)
                     }
                     .task(id: model.prefersConstellationEndPreview) {
                         guard model.prefersConstellationEndPreview else { return }
@@ -64,6 +71,7 @@ struct BenyuanNativeConstellationView: View {
                             }
                         }
                     }
+                }
                 }
             }
         }
@@ -102,7 +110,7 @@ struct BenyuanNativeConstellationView: View {
                         .font(.system(size: 12, weight: .black, design: .monospaced))
                         .foregroundStyle(BenyuanColor.accentGold)
                     Text(data.archetype.name)
-                        .font(.system(size: 40, weight: .black))
+                        .font(.system(size: 38, weight: .semibold))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(BenyuanColor.textPrimary)
                         .minimumScaleFactor(0.62)
@@ -110,7 +118,7 @@ struct BenyuanNativeConstellationView: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(BenyuanColor.accentGold.opacity(0.86))
                     Text(data.archetype.coreEssence)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 17, weight: .regular))
                         .lineSpacing(6)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(BenyuanColor.textSecondary)
@@ -140,7 +148,7 @@ struct BenyuanNativeConstellationView: View {
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(BenyuanColor.accentGold)
             Text(dimensions.prefix(3).map(\.label).joined(separator: " · "))
-                .font(.system(size: 28, weight: .black))
+                .font(.system(size: 27, weight: .semibold))
                 .foregroundStyle(BenyuanColor.textPrimary)
             BenyuanDimensionOrbitMap(
                 dimensions: dimensions.map { dimension in
@@ -174,7 +182,7 @@ struct BenyuanNativeConstellationView: View {
                 }
             }
             Text(active?.interpretation ?? "")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 15, weight: .regular))
                 .lineSpacing(6)
                 .foregroundStyle(BenyuanColor.textSecondary)
         }
@@ -198,10 +206,10 @@ struct BenyuanNativeConstellationView: View {
                 .font(.system(size: 12, weight: .black, design: .monospaced))
                 .foregroundStyle(BenyuanColor.accentGold)
             Text(title)
-                .font(.system(size: 25, weight: .black))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(BenyuanColor.textPrimary)
             Text(body)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 15, weight: .regular))
                 .lineSpacing(6)
                 .foregroundStyle(BenyuanColor.textSecondary)
         }
@@ -242,7 +250,8 @@ struct BenyuanNativeConstellationView: View {
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(BenyuanColor.accentGold)
             Text("是你此刻的精神坐标。")
-                .font(.system(size: 34, weight: .black))
+                .font(.system(size: 30, weight: .semibold))
+                .lineSpacing(4)
                 .foregroundStyle(BenyuanColor.textPrimary)
         }
         .id(constellationEndAnchor)
@@ -254,6 +263,19 @@ struct BenyuanNativeConstellationView: View {
             onSave: { model.saveConstellationImage() },
             onRestart: { model.restart() }
         )
+    }
+
+    private var constellationTopScrollMask: some View {
+        LinearGradient(
+            colors: [
+                BenyuanColor.bgVoid.opacity(0.94),
+                BenyuanColor.bgVoid.opacity(0.72),
+                BenyuanColor.bgVoid.opacity(0)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .allowsHitTesting(false)
     }
 }
 
@@ -329,10 +351,10 @@ struct BenyuanConstellationActionDock: View {
 
         return Button(action: dockAction(action)) {
             Text(title)
-                .font(.system(size: 14, weight: .black))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.82)
+                .minimumScaleFactor(0.78)
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .background(
                     Capsule()

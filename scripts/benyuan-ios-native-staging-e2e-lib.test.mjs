@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildLaunchArgs,
+  assertAllRequiredRuntimeStagesBelongToSession,
   assertAllRequiredRuntimeStagesLive,
   safeNativeE2EEvents,
   safeNativeSessionSummary,
@@ -132,4 +133,45 @@ test("assertAllRequiredRuntimeStagesLive requires multimodal theater and constel
     }),
     /ios_staging_e2e_stage_missing:theater/
   );
+});
+
+test("assertAllRequiredRuntimeStagesBelongToSession rejects stale theater timing records", () => {
+  assert.throws(
+    () => assertAllRequiredRuntimeStagesBelongToSession({
+      latestRuntime: {
+        multimodal: { runtime_mode: "live", part1_id: "part1_current", recorded_at: "2026-05-10T00:01:00.000Z" },
+        theater: { runtime_mode: "live", part1_id: "part1_old", recorded_at: "2026-05-10T00:01:05.000Z" },
+        constellation: { runtime_mode: "live", part1_id: "part1_current", part2_id: "part2_current", recorded_at: "2026-05-10T00:01:30.000Z" },
+      },
+      nativeSession: {
+        session: {
+          part1Id: "part1_current",
+          theaterScriptId: "theater_current",
+          part2Id: "part2_current",
+          constellationId: "const_current",
+        },
+      },
+      launchedAtMs: Date.parse("2026-05-10T00:00:00.000Z"),
+    }),
+    /ios_staging_e2e_stage_part1_mismatch:theater:part1_old:part1_current/
+  );
+});
+
+test("assertAllRequiredRuntimeStagesBelongToSession accepts same-run live records for native session ids", () => {
+  assert.doesNotThrow(() => assertAllRequiredRuntimeStagesBelongToSession({
+    latestRuntime: {
+      multimodal: { runtime_mode: "live", part1_id: "part1_current", recorded_at: "2026-05-10T00:01:00.000Z" },
+      theater: { runtime_mode: "live", part1_id: "part1_current", recorded_at: "2026-05-10T00:01:05.000Z" },
+      constellation: { runtime_mode: "live", part1_id: "part1_current", part2_id: "part2_current", recorded_at: "2026-05-10T00:01:30.000Z" },
+    },
+    nativeSession: {
+      session: {
+        part1Id: "part1_current",
+        theaterScriptId: "theater_current",
+        part2Id: "part2_current",
+        constellationId: "const_current",
+      },
+    },
+    launchedAtMs: Date.parse("2026-05-10T00:00:00.000Z"),
+  }));
 });

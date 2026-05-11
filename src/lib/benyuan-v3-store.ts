@@ -5,6 +5,8 @@ import type {
   BenyuanAuthSession,
   BenyuanAuthProviderIndex,
   BenyuanAuthRateLimit,
+  BenyuanFeedbackRecord,
+  BenyuanTestPlanItem,
   BenyuanAccountHistoryItem,
   BenyuanPhoneOtp,
   BenyuanStoredAsset,
@@ -35,6 +37,8 @@ const EMPTY_STORE: BenyuanV3Store = {
   theater_scripts: {},
   part2_records: {},
   constellations: {},
+  feedback_records: {},
+  test_plan_items: {},
 };
 
 let storeWriteQueue: Promise<void> = Promise.resolve();
@@ -108,6 +112,8 @@ function mergeStore(raw: Partial<BenyuanV3Store> | null | undefined): BenyuanV3S
     theater_scripts: raw?.theater_scripts ?? {},
     part2_records: raw?.part2_records ?? {},
     constellations: raw?.constellations ?? {},
+    feedback_records: raw?.feedback_records ?? {},
+    test_plan_items: raw?.test_plan_items ?? {},
   };
 }
 
@@ -153,6 +159,10 @@ export function createBenyuanV3Id(prefix: "upload" | "part1" | "theater" | "part
 
 export function createBenyuanAuthId(prefix: "usr" | "auth") {
   return uid(prefix);
+}
+
+export function createBenyuanFeedbackId() {
+  return uid("feedback");
 }
 
 export async function saveAuthUserAndSession(user: BenyuanUser, session: BenyuanAuthSession) {
@@ -300,6 +310,196 @@ export async function deleteAccountHistoryForUser(userId: string, part1Id: strin
     }
     delete store.part1_records[part1Id];
     return true;
+  });
+}
+
+export async function saveFeedbackRecord(record: BenyuanFeedbackRecord) {
+  return withStoreWrite((store) => {
+    store.feedback_records[record.feedback_id] = record;
+    return record;
+  });
+}
+
+export async function listFeedbackRecords(filters: {
+  kind?: BenyuanFeedbackRecord["kind"];
+  stage?: BenyuanFeedbackRecord["stage"];
+  status?: NonNullable<BenyuanFeedbackRecord["status"]>;
+  limit?: number;
+} = {}) {
+  const store = await readBenyuanV3Store();
+  const limit = Math.max(1, Math.min(filters.limit ?? 100, 500));
+  const normalizeStoredStatus = (status: BenyuanFeedbackRecord["status"]) =>
+    status === "processing" || status === "completed" || status === "declined" || status === "new" ? status : "new";
+
+  return Object.values(store.feedback_records)
+    .map((record) => ({
+      ...record,
+      status: normalizeStoredStatus(record.status),
+      status_updated_at: record.status_updated_at ?? record.created_at,
+    }))
+    .filter((record) => (filters.kind ? record.kind === filters.kind : true))
+    .filter((record) => (filters.stage ? record.stage === filters.stage : true))
+    .filter((record) => (filters.status ? record.status === filters.status : true))
+    .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
+    .slice(0, limit);
+}
+
+export async function updateFeedbackRecordStatus(
+  feedbackId: string,
+  status: NonNullable<BenyuanFeedbackRecord["status"]>,
+  timestamp = new Date().toISOString(),
+) {
+  return withStoreWrite((store) => {
+    const record = store.feedback_records[feedbackId];
+    if (!record) return undefined;
+    const updated: BenyuanFeedbackRecord = {
+      ...record,
+      status,
+      status_updated_at: timestamp,
+    };
+    store.feedback_records[feedbackId] = updated;
+    return updated;
+  });
+}
+
+const TEST_PLAN_SEED_ITEMS: Array<Omit<BenyuanTestPlanItem, "created_at" | "updated_at">> = [
+  {
+    test_plan_item_id: "image_assets",
+    title: "图片可以自由选择、预览和删除",
+    area: "图片上传",
+    source: "system_regression",
+    execution_state: "implemented_needs_verification",
+    status: "pending",
+    verification: "模拟器和真机分别验证相册选择、多图删除、重新选择后提交。",
+    feedback_keywords: ["图片", "选择", "删除", "相册", "上传"],
+  },
+  {
+    test_plan_item_id: "theater_api",
+    title: "剧场生成必须真实调用 API",
+    area: "剧场",
+    source: "system_regression",
+    execution_state: "implemented_needs_verification",
+    status: "passed",
+    verification: "已通过 staging native E2E：multimodal/theater/constellation 均为 live，theater timing 的 part1_id 属于本次 native session。",
+    feedback_keywords: ["剧场", "api", "调用", "生成"],
+  },
+  {
+    test_plan_item_id: "theater_story",
+    title: "剧场问题要有连续剧情和角色代入",
+    area: "剧场",
+    source: "system_regression",
+    execution_state: "implemented_needs_verification",
+    status: "testing",
+    verification: "已加 prompt contract：Act1/Act2/Act3 必须复现证据母题，Act2 不可拆成三道独立问卷；待真实生成内容抽样。",
+    feedback_keywords: ["剧情", "连续", "代入", "宿命", "角色"],
+  },
+  {
+    test_plan_item_id: "constellation_motion",
+    title: "星图结果页和流程动效保持真实深邃",
+    area: "星图",
+    source: "system_regression",
+    execution_state: "implemented_needs_verification",
+    status: "passed",
+    verification: "已通过本地 iPhone 17 模拟器原生预览截图；星图结尾正文和底部分享/保存/重新探索 dock 不互相遮挡。",
+    feedback_keywords: ["星图", "动效", "月球", "黑洞", "按钮", "遮住"],
+  },
+  {
+    test_plan_item_id: "feedback_modal",
+    title: "App 内反馈弹层只负责收集意见",
+    area: "反馈",
+    source: "system_regression",
+    execution_state: "implemented_needs_verification",
+    status: "pending",
+    verification: "确认 TestFlight 内只显示反馈弹层，不出现 Web 管理端反馈清单。",
+    feedback_keywords: ["反馈", "弹层", "意见", "体验"],
+  },
+  {
+    test_plan_item_id: "auth_binding",
+    title: "Apple、微信和手机号绑定流程可用",
+    area: "登录绑定",
+    source: "system_regression",
+    execution_state: "blocked_external_resources",
+    status: "pending",
+    verification: "模拟器验证 Apple 状态展示，真机验证微信/手机绑定配置就绪后的登录链路。",
+    feedback_keywords: ["Apple", "微信", "手机", "绑定", "登录"],
+  },
+  {
+    test_plan_item_id: "history_account",
+    title: "用户历史记录可查看和删除",
+    area: "我的",
+    source: "system_regression",
+    execution_state: "implemented_needs_verification",
+    status: "pending",
+    verification: "完成一次探索后进入我的页面，验证历史记录展示、删除和重新探索入口。",
+    feedback_keywords: ["历史", "记录", "删除", "重新探索", "我的"],
+  },
+];
+
+const TEST_PLAN_PROGRESS_MIGRATIONS: Record<string, Pick<BenyuanTestPlanItem, "execution_state" | "status">> = {
+  theater_api: {
+    execution_state: "implemented_needs_verification",
+    status: "passed",
+  },
+  theater_story: {
+    execution_state: "implemented_needs_verification",
+    status: "testing",
+  },
+  constellation_motion: {
+    execution_state: "implemented_needs_verification",
+    status: "passed",
+  },
+};
+
+export async function seedBenyuanTestPlanItems() {
+  const timestamp = new Date().toISOString();
+  return withStoreWrite((store) => {
+    for (const item of TEST_PLAN_SEED_ITEMS) {
+      const existing = store.test_plan_items[item.test_plan_item_id];
+      const migration = TEST_PLAN_PROGRESS_MIGRATIONS[item.test_plan_item_id];
+      const isInitialUnverifiedItem = existing?.status === "pending" && existing?.execution_state === "needs_hardening";
+      const isTheaterApiInterimMigration =
+        item.test_plan_item_id === "theater_api" &&
+        existing?.status === "testing" &&
+        existing?.execution_state === "implemented_needs_verification";
+      const shouldApplyProgressMigration =
+        Boolean(migration) &&
+        (isInitialUnverifiedItem || isTheaterApiInterimMigration);
+
+      store.test_plan_items[item.test_plan_item_id] = {
+        ...item,
+        status: shouldApplyProgressMigration ? migration.status : (existing?.status ?? item.status),
+        source: existing?.source ?? item.source,
+        execution_state: shouldApplyProgressMigration ? migration.execution_state : (existing?.execution_state ?? item.execution_state),
+        created_at: existing?.created_at ?? timestamp,
+        updated_at: shouldApplyProgressMigration ? timestamp : (existing?.updated_at ?? timestamp),
+      };
+    }
+    return Object.values(store.test_plan_items);
+  });
+}
+
+export async function listTestPlanItems() {
+  await seedBenyuanTestPlanItems();
+  const store = await readBenyuanV3Store();
+  return TEST_PLAN_SEED_ITEMS.map((item) => store.test_plan_items[item.test_plan_item_id]).filter(Boolean);
+}
+
+export async function updateTestPlanItemStatus(
+  testPlanItemId: string,
+  status: BenyuanTestPlanItem["status"],
+  timestamp = new Date().toISOString(),
+) {
+  await seedBenyuanTestPlanItems();
+  return withStoreWrite((store) => {
+    const item = store.test_plan_items[testPlanItemId];
+    if (!item) return undefined;
+    const updated: BenyuanTestPlanItem = {
+      ...item,
+      status,
+      updated_at: timestamp,
+    };
+    store.test_plan_items[testPlanItemId] = updated;
+    return updated;
   });
 }
 
