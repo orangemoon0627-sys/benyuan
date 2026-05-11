@@ -1126,6 +1126,17 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
     }
 
+    func testConstellationLayoutBudgetKeepsEndPreviewClearOfChrome() throws {
+        let budget = BenyuanConstellationLayoutBudget.defaults
+
+        XCTAssertGreaterThanOrEqual(budget.topMaskHeight, 44)
+        XCTAssertEqual(budget.endPreviewAnchor, .center)
+        XCTAssertGreaterThanOrEqual(
+            budget.scrollBottomPadding(safeAreaBottom: 34),
+            budget.bottomDockHeight + 260 + 34
+        )
+    }
+
     @MainActor
     func testNativeE2EAutorunSeedsAllAnswerKinds() throws {
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())

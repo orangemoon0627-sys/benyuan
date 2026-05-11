@@ -1,14 +1,36 @@
 import SwiftUI
 import UIKit
 
+struct BenyuanConstellationLayoutBudget {
+    enum EndPreviewAnchor {
+        case center
+        case bottom
+    }
+
+    let bottomDockHeight: CGFloat
+    let topMaskHeight: CGFloat
+    let firstViewportReserve: CGFloat
+    let bottomContentReserve: CGFloat
+    let endPreviewAnchor: EndPreviewAnchor
+
+    static let defaults = BenyuanConstellationLayoutBudget(
+        bottomDockHeight: 116,
+        topMaskHeight: 52,
+        firstViewportReserve: 36,
+        bottomContentReserve: 292,
+        endPreviewAnchor: .center
+    )
+
+    func scrollBottomPadding(safeAreaBottom: CGFloat) -> CGFloat {
+        bottomDockHeight + bottomContentReserve + safeAreaBottom
+    }
+}
+
 struct BenyuanNativeConstellationView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
     @State private var activeDimensionKey: String?
     private let constellationEndAnchor = "constellation-end-anchor"
-    private let constellationBottomDockHeight: CGFloat = 116
-    private let constellationTopViewportReserve: CGFloat = 28
-    private let constellationFirstViewportReserve: CGFloat = 36
-    private let constellationBottomContentReserve: CGFloat = 240
+    private let layoutBudget = BenyuanConstellationLayoutBudget.defaults
 
     private let labels: [String: String] = [
         "openness": "开放性",
@@ -32,7 +54,7 @@ struct BenyuanNativeConstellationView: View {
                             BenyuanRevealedStack(delay: 0.02) {
                                 archetype(data)
                             }
-                            .padding(.bottom, constellationFirstViewportReserve)
+                            .padding(.bottom, layoutBudget.firstViewportReserve)
 
                             BenyuanRevealedStack(delay: 0.12) {
                                 dimensions(data)
@@ -52,22 +74,22 @@ struct BenyuanNativeConstellationView: View {
                         }
                         .padding(.horizontal, BenyuanSpacing.x4)
                         .padding(.top, BenyuanSpacing.x6)
-                        .padding(.bottom, constellationBottomDockHeight + constellationBottomContentReserve + geometry.safeAreaInsets.bottom)
+                        .padding(.bottom, layoutBudget.scrollBottomPadding(safeAreaBottom: geometry.safeAreaInsets.bottom))
                     }
                     .safeAreaInset(edge: .top, spacing: 0) {
                         constellationTopScrollMask
-                            .frame(height: constellationTopViewportReserve)
+                            .frame(height: layoutBudget.topMaskHeight)
                     }
                     .safeAreaInset(edge: .bottom) {
                         finalDock
-                            .frame(height: constellationBottomDockHeight + geometry.safeAreaInsets.bottom)
+                            .frame(height: layoutBudget.bottomDockHeight + geometry.safeAreaInsets.bottom)
                     }
                     .task(id: model.prefersConstellationEndPreview) {
                         guard model.prefersConstellationEndPreview else { return }
                         try? await Task.sleep(nanoseconds: 1_450_000_000)
                         await MainActor.run {
                             withAnimation(.easeInOut(duration: 0.82)) {
-                                proxy.scrollTo(constellationEndAnchor, anchor: .bottom)
+                                proxy.scrollTo(constellationEndAnchor, anchor: layoutBudget.scrollAnchor)
                             }
                         }
                     }
@@ -276,6 +298,17 @@ struct BenyuanNativeConstellationView: View {
             endPoint: .bottom
         )
         .allowsHitTesting(false)
+    }
+}
+
+private extension BenyuanConstellationLayoutBudget {
+    var scrollAnchor: UnitPoint {
+        switch endPreviewAnchor {
+        case .center:
+            return .center
+        case .bottom:
+            return .bottom
+        }
     }
 }
 
