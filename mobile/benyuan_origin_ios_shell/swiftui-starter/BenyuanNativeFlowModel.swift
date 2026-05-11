@@ -102,6 +102,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     private var choiceLogs: [Part2ChoiceRecord] = []
     private var mirrorLogs: [Part2MirrorRecord] = []
     private var flowStartedAt = Date()
+    private var stageBeforeAccount: BenyuanNativeStage?
 
     init(client: BenyuanAPIClient = BenyuanAPIClient(), store: BenyuanFlowStore = BenyuanFlowStore()) {
         self.client = client
@@ -366,6 +367,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
     }
 
     func showAccount() {
+        if stage != .account {
+            stageBeforeAccount = stage
+        }
         stage = .account
         Task {
             await refreshAccount()
@@ -374,7 +378,25 @@ final class BenyuanNativeFlowModel: ObservableObject {
     }
 
     func returnToFlow() {
-        stage = session.authSession == nil ? .auth : .collect
+        if session.authSession == nil {
+            stageBeforeAccount = nil
+            stage = .auth
+            return
+        }
+
+        let previousStage = stageBeforeAccount
+        stageBeforeAccount = nil
+
+        switch previousStage {
+        case .some(.launching), .some(.auth), .some(.account), .none:
+            stage = .collect
+        case .some(.processing):
+            stage = session.constellationId != nil ? .constellation : session.theaterScriptId != nil ? .theater : .collect
+        case .some(.error):
+            stage = .collect
+        case .some(let route):
+            stage = route
+        }
     }
 
     func refreshAccount() async {

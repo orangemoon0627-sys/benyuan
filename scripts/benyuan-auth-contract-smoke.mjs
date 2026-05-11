@@ -154,6 +154,8 @@ assert.match(nativeClient, /logout/, "native API client must support logout");
 assert.match(nativeFlow, /\.auth/, "native flow must include auth stage");
 assert.match(nativeFlow, /\.account/, "native flow must include account stage");
 assert.match(nativeFlow, /showAccount/, "native flow must navigate to the account page");
+assert.match(nativeFlow, /stageBeforeAccount/, "native flow must remember the previous route before opening account");
+assert.match(nativeFlow, /returnToFlow[\s\S]*stageBeforeAccount/, "native flow must return from account to the previous route, not always Part1");
 assert.match(nativeFlow, /accountHistory/, "native flow must keep account history state");
 assert.match(nativeFlow, /refreshAccountHistory/, "native flow must refresh account history");
 assert.match(nativeFlow, /restoringHistoryPart1Id/, "native flow must expose history restore loading state");
@@ -190,6 +192,9 @@ assert.match(nativeAccountView, /bindingOrbitSection/, "native account view must
 assert.match(nativeAccountView, /historyTimelineSection/, "native account view must present exploration history as a timeline section");
 assert.match(nativeAccountView, /historyMetaStrip/, "native account history cards must expose stage, assets, and updated metadata");
 assert.match(nativeAccountView, /正在接回/, "native account history cards must show restore loading feedback");
+assert.match(nativeAccountView, /继续未完成/, "native account history must make draft continuation explicit");
+assert.match(nativeAccountView, /回看剧场/, "native account history must make theater replay explicit");
+assert.match(nativeAccountView, /查看星图/, "native account history must make constellation restore explicit");
 assert.match(nativeAccountView, /删除这次探索/, "native account view must confirm destructive history deletion");
 assert.match(nativeAccountView, /知道了/, "native account binding detail sheet must have a clear dismiss action");
 assert.match(nativeAccountView, /退出登录/, "native account view must expose logout");

@@ -580,6 +580,28 @@ final class BenyuanCoreNativeTests: XCTestCase {
     }
 
     @MainActor
+    func testAccountReturnRestoresPreviousNativeRoute() throws {
+        let store = BenyuanFlowStore(defaults: UserDefaults(suiteName: "benyuan-account-return-\(UUID().uuidString)")!)
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient(), store: store)
+
+        model.session.authSession = BenyuanAuthSession(
+            sessionId: "auth_test",
+            userId: "usr_test",
+            token: "bya_anonymous_test",
+            provider: .anonymous,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        )
+        model.stage = .constellation
+
+        model.showAccount()
+        XCTAssertEqual(model.stage, .account)
+
+        model.returnToFlow()
+        XCTAssertEqual(model.stage, .constellation)
+    }
+
+    @MainActor
     func testOpenHistoryItemRestoresNativeRouteContext() throws {
         let store = BenyuanFlowStore(defaults: UserDefaults(suiteName: "benyuan-history-open-\(UUID().uuidString)")!)
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient(), store: store)

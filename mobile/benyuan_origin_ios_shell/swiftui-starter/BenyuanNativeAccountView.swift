@@ -426,8 +426,8 @@ struct BenyuanNativeAccountView: View {
 
     private func actionLabel(for item: BenyuanAccountHistoryItem) -> String {
         switch item.stage {
-        case .part1: return "继续收集"
-        case .theater, .part2: return "回到剧场"
+        case .part1: return "继续未完成"
+        case .theater, .part2: return "回看剧场"
         case .constellation: return "查看星图"
         }
     }
