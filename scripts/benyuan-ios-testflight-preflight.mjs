@@ -8,6 +8,7 @@ import {
   collectIosProjectConfig,
   collectTestFlightExportStatus,
   evaluateIosAuthReleaseReadiness,
+  evaluateTestFlightExportFreshness,
 } from "./benyuan-ios-testflight-preflight-lib.mjs";
 
 const root = process.cwd();
@@ -136,9 +137,18 @@ async function main() {
   const archive = await readJsonIfPresent(archivePath);
   const archiveDistribution = await collectArchiveDistributionStatus(archive);
   const exportSummary = await readJsonIfPresent(exportSummaryPath);
-  const exportDistribution = (await fileExists(distributionSummaryPath))
+  const distributionSummaryExists = await fileExists(distributionSummaryPath);
+  const exportDistribution = distributionSummaryExists
     ? collectTestFlightExportStatus(readPlistJson(distributionSummaryPath), exportSummary)
     : null;
+  const ipaExists = exportSummary?.ipaPath ? await fileExists(exportSummary.ipaPath) : false;
+  const exportFreshness = evaluateTestFlightExportFreshness({
+    archive,
+    exportSummary,
+    exportDistribution,
+    distributionSummaryExists,
+    ipaExists,
+  });
   const projectConfig = collectIosProjectConfig(projectYml);
   const { displayName, marketingVersion, buildNumber, bundleId } = projectConfig.shell;
   const { stagingBaseUrl: stagingUrl, productionBaseUrl: releaseUrl } = projectConfig.releaseConfig;
@@ -180,13 +190,16 @@ async function main() {
     blockers.push("native_smoke_artifact_missing");
   }
   blockers.push(...authRelease.blockers);
-  const hasReadyExport = exportDistribution?.readyForAppStoreConnect === true;
+  const hasFreshReadyExport = exportFreshness.readyForAppStoreConnect === true;
   if (!archive) {
     blockers.push("release_archive_missing");
   } else if (archive.signing?.mode !== "automatic" || !archive.signing?.teamId) {
     blockers.push("signed_release_archive_missing");
-  } else if (!archiveDistribution?.readyForAppStoreConnect && !hasReadyExport) {
+  } else if (!archiveDistribution?.readyForAppStoreConnect && !hasFreshReadyExport) {
     blockers.push("app_store_distribution_archive_missing");
+  }
+  if (archive && !archiveDistribution?.readyForAppStoreConnect) {
+    blockers.push(...exportFreshness.blockers);
   }
 
   const summary = {
@@ -244,9 +257,18 @@ async function main() {
             exportDir: exportSummary.exportDir ?? null,
             ipaPath: exportSummary.ipaPath ?? null,
             method: exportSummary.method ?? null,
+            archivePath: exportSummary.archivePath ?? null,
+            ipaExists,
+            distributionSummaryExists,
             distribution: exportDistribution,
+            freshness: exportFreshness,
           }
-        : null,
+        : {
+            ipaExists,
+            distributionSummaryExists,
+            distribution: exportDistribution,
+            freshness: exportFreshness,
+          },
     },
     blockers,
     warnings: authRelease.warnings,

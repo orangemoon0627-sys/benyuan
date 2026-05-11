@@ -5,6 +5,7 @@ import {
   evaluateIosAuthReleaseReadiness,
   collectIosProjectConfig,
   collectTestFlightExportStatus,
+  evaluateTestFlightExportFreshness,
 } from "./benyuan-ios-testflight-preflight-lib.mjs";
 
 test("collectIosProjectConfig reads direct XcodeGen shell base URL settings", () => {
@@ -179,4 +180,73 @@ test("collectTestFlightExportStatus accepts Cloud Managed Apple Distribution exp
     isAppStoreProfile: true,
     readyForAppStoreConnect: true,
   });
+});
+
+test("evaluateTestFlightExportFreshness accepts a fresh App Store Connect export for the current archive", () => {
+  const readiness = evaluateTestFlightExportFreshness({
+    archive: {
+      generatedAt: "2026-05-11T04:28:13.586Z",
+      archivePath: "/tmp/BenyuanOriginShell.xcarchive",
+    },
+    exportSummary: {
+      generatedAt: "2026-05-11T04:30:00.000Z",
+      archivePath: "/tmp/BenyuanOriginShell.xcarchive",
+      method: "app-store-connect",
+      ipaPath: "/tmp/testflight-export/BenyuanOriginShell.ipa",
+    },
+    exportDistribution: {
+      readyForAppStoreConnect: true,
+    },
+    distributionSummaryExists: true,
+    ipaExists: true,
+  });
+
+  assert.equal(readiness.readyForAppStoreConnect, true);
+  assert.deepEqual(readiness.blockers, []);
+});
+
+test("evaluateTestFlightExportFreshness rejects stale exports older than the current archive", () => {
+  const readiness = evaluateTestFlightExportFreshness({
+    archive: {
+      generatedAt: "2026-05-11T04:28:13.586Z",
+      archivePath: "/tmp/BenyuanOriginShell.xcarchive",
+    },
+    exportSummary: {
+      generatedAt: "2026-05-08T10:00:00.000Z",
+      archivePath: "/tmp/BenyuanOriginShell.xcarchive",
+      method: "app-store-connect",
+      ipaPath: "/tmp/testflight-export/BenyuanOriginShell.ipa",
+    },
+    exportDistribution: {
+      readyForAppStoreConnect: true,
+    },
+    distributionSummaryExists: true,
+    ipaExists: true,
+  });
+
+  assert.equal(readiness.readyForAppStoreConnect, false);
+  assert.deepEqual(readiness.blockers, ["app_store_connect_export_stale"]);
+});
+
+test("evaluateTestFlightExportFreshness rejects exports from a different archive path", () => {
+  const readiness = evaluateTestFlightExportFreshness({
+    archive: {
+      generatedAt: "2026-05-11T04:28:13.586Z",
+      archivePath: "/tmp/BenyuanOriginShell.xcarchive",
+    },
+    exportSummary: {
+      generatedAt: "2026-05-11T04:30:00.000Z",
+      archivePath: "/tmp/Other.xcarchive",
+      method: "app-store-connect",
+      ipaPath: "/tmp/testflight-export/BenyuanOriginShell.ipa",
+    },
+    exportDistribution: {
+      readyForAppStoreConnect: true,
+    },
+    distributionSummaryExists: true,
+    ipaExists: true,
+  });
+
+  assert.equal(readiness.readyForAppStoreConnect, false);
+  assert.deepEqual(readiness.blockers, ["app_store_connect_export_archive_mismatch"]);
 });

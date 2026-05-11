@@ -167,3 +167,52 @@ export function collectTestFlightExportStatus(distributionSummary, exportSummary
     readyForAppStoreConnect,
   };
 }
+
+function parseTimestamp(value) {
+  const time = Date.parse(value ?? "");
+  return Number.isFinite(time) ? time : null;
+}
+
+export function evaluateTestFlightExportFreshness(input) {
+  const blockers = [];
+  const archive = input.archive ?? null;
+  const exportSummary = input.exportSummary ?? null;
+  const exportDistribution = input.exportDistribution ?? null;
+
+  if (!exportSummary) {
+    blockers.push("app_store_connect_export_missing");
+  } else {
+    if (exportSummary.method !== "app-store-connect") {
+      blockers.push("app_store_connect_export_method_mismatch");
+    }
+
+    if (!exportSummary.archivePath || !archive?.archivePath || exportSummary.archivePath !== archive.archivePath) {
+      blockers.push("app_store_connect_export_archive_mismatch");
+    }
+
+    const archiveTime = parseTimestamp(archive?.generatedAt);
+    const exportTime = parseTimestamp(exportSummary.generatedAt);
+    if (archiveTime === null || exportTime === null) {
+      blockers.push("app_store_connect_export_timestamp_missing");
+    } else if (exportTime < archiveTime) {
+      blockers.push("app_store_connect_export_stale");
+    }
+
+    if (!exportSummary.ipaPath || input.ipaExists !== true) {
+      blockers.push("app_store_connect_ipa_missing");
+    }
+  }
+
+  if (input.distributionSummaryExists !== true) {
+    blockers.push("app_store_connect_distribution_summary_missing");
+  }
+
+  if (exportDistribution?.readyForAppStoreConnect !== true) {
+    blockers.push("app_store_connect_export_not_app_store_ready");
+  }
+
+  return {
+    readyForAppStoreConnect: blockers.length === 0,
+    blockers,
+  };
+}
