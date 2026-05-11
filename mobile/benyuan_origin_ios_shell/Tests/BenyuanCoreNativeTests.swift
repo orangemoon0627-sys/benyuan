@@ -866,6 +866,72 @@ final class BenyuanCoreNativeTests: XCTestCase {
     }
 
     @MainActor
+    func testLoadConstellationHistoryRestoresPart2ContextBeforeShowingResult() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-history.test")!,
+            session: URLSession(configuration: config)
+        )
+        let suiteName = "benyuan-history-constellation-restore-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            BenyuanMockURLProtocol.handler = nil
+        }
+        let model = BenyuanNativeFlowModel(client: client, store: BenyuanFlowStore(defaults: defaults))
+        let item = BenyuanAccountHistoryItem(
+            part1Id: "part1_constellation",
+            theaterScriptId: "theater_constellation",
+            part2Id: "part2_constellation",
+            constellationId: "constellation_history",
+            stage: .constellation,
+            title: "深月观测者的本源档案",
+            subtitle: "影像线索 1 个 / 星图已生成",
+            archetypeName: "深月观测者",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:30:00.000Z",
+            assetCount: 1
+        )
+
+        BenyuanMockURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            if request.httpMethod == "GET", path == "/api/theater/theater_constellation" {
+                return BenyuanMockURLProtocol.json(200, Self.theaterRecordFixture(
+                    theaterScriptId: "theater_constellation",
+                    part1Id: "part1_constellation"
+                ))
+            }
+            if request.httpMethod == "GET", path == "/api/account/history/part1_constellation/part2" {
+                XCTAssertEqual(request.url?.query, "part2_id=part2_constellation")
+                return BenyuanMockURLProtocol.json(200, Self.part2RecordFixture(
+                    part2Id: "part2_constellation",
+                    part1Id: "part1_constellation",
+                    theaterScriptId: "theater_constellation"
+                ))
+            }
+            if request.httpMethod == "GET", path == "/api/constellation/constellation_history" {
+                return BenyuanMockURLProtocol.json(200, Self.constellationRecordFixture())
+            }
+            return BenyuanMockURLProtocol.json(500, #"{ "error": "unexpected_request" }"#)
+        }
+
+        await model.loadHistoryItem(item)
+
+        XCTAssertEqual(model.stage, .constellation)
+        XCTAssertEqual(model.session.part1Id, "part1_constellation")
+        XCTAssertEqual(model.session.part2Id, "part2_constellation")
+        XCTAssertEqual(model.session.theaterScriptId, "theater_constellation")
+        XCTAssertEqual(model.session.constellationId, "constellation_history")
+        XCTAssertEqual(model.theaterPhase, .epilogue)
+        XCTAssertEqual(model.choiceLogCount, 2)
+        XCTAssertEqual(model.mirrorLogCount, 1)
+        XCTAssertEqual(model.session.phaseDurations["act3"], 5)
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
+        XCTAssertNil(model.restoringHistoryPart1Id)
+    }
+
+    @MainActor
     func testAccountInteractionStateTracksDeleteConfirmationAndBindingSheet() throws {
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
         let item = BenyuanAccountHistoryItem(
@@ -1407,6 +1473,77 @@ final class BenyuanCoreNativeTests: XCTestCase {
               "transition_animation": "lunar_convergence"
             }
           }
+        }
+        """
+    }
+
+    private static func part2RecordFixture(part2Id: String, part1Id: String, theaterScriptId: String) -> String {
+        """
+        {
+          "part2_id": "\(part2Id)",
+          "part1_id": "\(part1Id)",
+          "theater_script_id": "\(theaterScriptId)",
+          "created_at": "2026-05-08T00:20:00.000Z",
+          "act2_choices": [
+            { "choice_id": 1, "selected": "open_now", "hesitation_time": 1.2, "hover_sequence": ["open_now"], "timestamp": "2026-05-08T00:11:00.000Z" },
+            { "choice_id": 2, "selected": "silent_light", "hesitation_time": 2.4, "hover_sequence": [], "timestamp": "2026-05-08T00:12:00.000Z" }
+          ],
+          "act3_responses": [
+            { "question_id": 1, "selected": "name_boundary", "hesitation_time": 3.1, "timestamp": "2026-05-08T00:13:00.000Z" }
+          ],
+          "metadata": {
+            "phase_durations": { "act1": 4.0, "act2": 8.0, "act3": 5.0 }
+          }
+        }
+        """
+    }
+
+    private static func constellationRecordFixture() -> String {
+        """
+        {
+          "constellation": {
+            "user_id": "usr_test",
+            "generated_at": "2026-05-08T00:30:00.000Z",
+            "archetype": {
+              "name": "深月观测者",
+              "english_name": "Deep Moon Witness",
+              "core_essence": "在暗场中保存自己的真实边界。",
+              "visual_prompt": "deep moon field"
+            },
+            "seven_dimensions": {
+              "openness": { "score": 82, "interpretation": "以隐喻进入世界。" }
+            },
+            "narrative_overview": "你把孤独改写成一种观察力。",
+            "core_tensions": [
+              {
+                "tension_id": 1,
+                "name": "亲密与撤退",
+                "description": "想被看见，也想保留暗面。",
+                "growth_direction": "练习在关系中表达边界。"
+              }
+            ],
+            "growth_suggestions": [
+              {
+                "title": "写一封不寄出的信",
+                "description": "把无法说出的部分放到纸面上。",
+                "actionable_steps": ["今晚写下三个真实句子"]
+              }
+            ],
+            "recommendations": {
+              "books": [{ "title": "月亮与六便士", "author": "毛姆", "reason": "关于执念与自我神话。" }],
+              "films": [{ "title": "花样年华", "director": "王家卫", "reason": "关于克制和错身。" }],
+              "music": [{ "artist": "坂本龙一", "album": "async", "reason": "像一场缓慢的内在回声。" }]
+            }
+          },
+          "runtime": {
+            "provider_name": "fixture",
+            "model": "fixture",
+            "mode": "fallback",
+            "source": "test",
+            "fallback_active": true
+          },
+          "archetype_image_url": "/generated/test.png",
+          "created_at": "2026-05-08T00:30:00.000Z"
         }
         """
     }

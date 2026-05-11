@@ -295,6 +295,61 @@ const ownerTheaterDetail = await request(`/api/theater/${ownerTheater.data.theat
 assert.equal(ownerTheaterDetail.response.status, 200, "owner should read theater detail");
 assert.equal(ownerTheaterDetail.data.theater_script_id, ownerTheater.data.theater_script_id);
 
+const ownerPart2 = await post(
+  "/api/part2/submit",
+  {
+    part1_id: submit.data.part1_id,
+    theater_script_id: ownerTheater.data.theater_script_id,
+    act2_choices: [
+      {
+        choice_id: 1,
+        selected: "runtime_act2_choice",
+        hesitation_time: 1.4,
+        hover_sequence: ["runtime_act2_choice"],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+    act3_responses: [
+      {
+        question_id: 1,
+        selected: "runtime_mirror_choice",
+        hesitation_time: 2.2,
+        timestamp: new Date().toISOString(),
+      },
+    ],
+    metadata: {
+      device: "runtime-smoke",
+      phase_durations: { act1: 3.5, act2: 4.5, act3: 5.5 },
+    },
+  },
+  { authorization: `Bearer ${ownerAnonymous.data.session.token}` },
+);
+assert.equal(ownerPart2.response.status, 200, "owner should submit Part2 theater choices");
+assert.ok(ownerPart2.data.part2_id, "Part2 submit should return a record id");
+assert.equal(ownerPart2.data.act2_choice_count, 1);
+assert.equal(ownerPart2.data.act3_response_count, 1);
+
+const unauthenticatedPart2Detail = await request(`/api/account/history/${submit.data.part1_id}/part2?part2_id=${ownerPart2.data.part2_id}`);
+assert.equal(unauthenticatedPart2Detail.response.status, 401, "part2 history detail should require auth");
+assert.equal(unauthenticatedPart2Detail.data.error, "auth_required");
+
+const crossUserPart2Detail = await request(`/api/account/history/${submit.data.part1_id}/part2?part2_id=${ownerPart2.data.part2_id}`, {
+  headers: { authorization: `Bearer ${secondAnonymous.data.session.token}` },
+});
+assert.equal(crossUserPart2Detail.response.status, 403, "another user must not read saved Part2 choices");
+assert.equal(crossUserPart2Detail.data.error, "part1_forbidden");
+
+const ownerPart2Detail = await request(`/api/account/history/${submit.data.part1_id}/part2?part2_id=${ownerPart2.data.part2_id}`, {
+  headers: { authorization: `Bearer ${ownerAnonymous.data.session.token}` },
+});
+assert.equal(ownerPart2Detail.response.status, 200, "owner should read saved Part2 choices for native history replay");
+assert.equal(ownerPart2Detail.data.part2_id, ownerPart2.data.part2_id);
+assert.equal(ownerPart2Detail.data.part1_id, submit.data.part1_id);
+assert.equal(ownerPart2Detail.data.theater_script_id, ownerTheater.data.theater_script_id);
+assert.deepEqual(ownerPart2Detail.data.act2_choices.map((item) => item.selected), ["runtime_act2_choice"]);
+assert.deepEqual(ownerPart2Detail.data.act3_responses.map((item) => item.selected), ["runtime_mirror_choice"]);
+assert.equal(ownerPart2Detail.data.metadata.phase_durations.act3, 5.5);
+
 const deleteCrossUserHistory = await request(`/api/account/history/${submit.data.part1_id}`, {
   method: "DELETE",
   headers: { authorization: `Bearer ${secondAnonymous.data.session.token}` },

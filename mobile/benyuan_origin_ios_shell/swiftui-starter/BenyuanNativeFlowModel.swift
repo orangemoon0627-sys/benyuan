@@ -502,6 +502,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
                 processingProgress = 0.78
                 let record = try await client.fetchConstellationRecord(constellationId: constellationId)
                 constellation = record.generateResponse(constellationId: constellationId)
+                session.constellationId = constellationId
+                persist()
                 stage = .constellation
             }
             restoringHistoryPart1Id = nil
