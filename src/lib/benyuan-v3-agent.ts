@@ -296,7 +296,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
     constellation: {
       maxOutputTokens: 3000,
       reasoningEffort: "xhigh",
-      timeoutMs: 180000,
+      timeoutMs: 360000,
       transport: "json_first",
       allowSecondaryAttempts: false,
     },

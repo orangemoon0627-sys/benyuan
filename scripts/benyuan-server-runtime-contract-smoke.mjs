@@ -19,7 +19,7 @@ const packageJson = readRequired("package.json");
 
 assert.match(serverRuntime, /readBenyuanAgentRuntime/, "server runtime module must expose the secret-bearing agent runtime resolver");
 assert.match(serverRuntime, /readBenyuanServerRuntimeStatus/, "server runtime module must expose a safe public status resolver");
-assert.match(serverRuntime, /Math\.min\(runtime\.providerTimeoutMs,\s*180000\)/, "server runtime should allow one xhigh provider attempt up to 180s");
+assert.match(serverRuntime, /Math\.min\(runtime\.providerTimeoutMs,\s*360000\)/, "server runtime should allow one xhigh constellation provider attempt up to 360s");
 assert.match(serverRuntime, /apiKeySource/, "server runtime status must identify where the configured key comes from without exposing it");
 assert.match(serverRuntime, /secretStorage/, "server runtime status must describe the secret storage class");
 assert.match(serverRuntime, /serverIndependent/, "server runtime status must state whether cloud runtime can work without the local Mac");

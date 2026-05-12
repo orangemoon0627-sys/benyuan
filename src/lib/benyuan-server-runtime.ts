@@ -57,7 +57,7 @@ export function readBenyuanAgentRuntime(override?: AgentRuntimeOverride): Benyua
   const disableStorage = override?.disable_response_storage ?? codexDefaults.disableResponseStorage ?? true;
   const live = (allowProviderOverride ? override?.live : undefined) ?? runtime.liveProviderEnabled;
   const available = Boolean(live && apiKey && baseUrl);
-  const timeoutMs = Math.max(runtime.providerSoftTimeoutMs, Math.min(runtime.providerTimeoutMs, 180000));
+  const timeoutMs = Math.max(runtime.providerSoftTimeoutMs, Math.min(runtime.providerTimeoutMs, 360000));
 
   return {
     apiKey,
