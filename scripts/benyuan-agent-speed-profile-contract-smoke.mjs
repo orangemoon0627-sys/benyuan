@@ -21,8 +21,8 @@ assert.match(agent, /fast[\s\S]*constellation[\s\S]*maxOutputTokens:\s*3000/, "f
 assert.match(agent, /fast[\s\S]*multimodal[\s\S]*reasoningEffort:\s*"xhigh"/, "fast multimodal profile should preserve xhigh reasoning");
 assert.match(agent, /transport:\s*"json_first"/, "fast text agents should avoid wasting a stream attempt before JSON");
 assert.match(agent, /allowSecondaryAttempts:\s*false/, "fast text agents should not stack multiple long provider attempts");
-assert.match(agent, /timeoutMs:\s*75000/, "fast theater profile should keep the native E2E inside its waiting window");
-assert.match(agent, /timeoutMs:\s*75000/, "fast constellation profile should keep the native E2E inside its waiting window");
+assert.match(agent, /timeoutMs:\s*180000/, "fast theater profile should give xhigh live generation a realistic single-attempt budget");
+assert.match(agent, /timeoutMs:\s*180000/, "fast constellation profile should give xhigh live generation a realistic single-attempt budget");
 assert.match(agent, /constellation:\s*\{[\s\S]*allowSecondaryAttempts:\s*false/, "fast constellation profile should avoid stacked retries during the native E2E window");
 
 assert.match(runtimeRoute, /agentSpeedProfile/, "runtime endpoint should expose the active speed profile");
