@@ -25,11 +25,14 @@ assert.match(agent, /transport:\s*"json_first"/, "fast text agents should avoid 
 assert.match(agent, /allowSecondaryAttempts:\s*false/, "fast text agents should not stack multiple long provider attempts");
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*timeoutMs:\s*120000/, "fast multimodal profile should have enough time for live visual analysis");
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast multimodal profile should run a single provider attempt inside the native E2E window");
-assert.match(agent, /timeoutMs:\s*180000/, "fast theater profile should give xhigh live generation a realistic single-attempt budget");
+assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*timeoutMs:\s*240000/, "fast theater profile should give xhigh live generation enough room for one bounded live attempt");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast theater profile should avoid retrying a full long-running provider call");
+assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*compactPrompt:\s*true/, "fast theater profile should use a compact director prompt");
 assert.match(agent, /constellation:\s*\{[\s\S]*timeoutMs:\s*360000/, "fast constellation profile should allow the observed xhigh live generation window");
 assert.match(agent, /constellation:\s*\{[\s\S]*compactPrompt:\s*true/, "fast constellation profile should use a compact live prompt");
 assert.match(agent, /fast[\s\S]*constellation:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast constellation profile should use one bounded provider attempt");
+assert.match(agent, /FAST_DIRECTOR_SYSTEM_PROMPT/, "fast theater generation should use the compact director system prompt");
+assert.match(agent, /buildFastDirectorUserPrompt/, "fast theater generation should use the compact director user prompt");
 assert.match(agent, /FAST_ANALYST_SYSTEM_PROMPT/, "fast constellation generation should use the compact analyst system prompt");
 assert.match(agent, /buildFastAnalystUserPrompt/, "fast constellation generation should use the compact analyst user prompt");
 assert.match(agent, /constellation:\s*\{[\s\S]*allowSecondaryAttempts:\s*false/, "fast constellation profile should avoid stacked retries during the native E2E window");
@@ -37,6 +40,9 @@ assert.match(agent, /attemptResponsesJson\(\{[\s\S]*maxProviderAttempts:/, "text
 assert.match(agent, /attemptResponsesStreamJson\(\{[\s\S]*maxProviderAttempts:/, "text stream attempts should receive stage retry budget");
 assert.match(agent, /requestMultimodalJson\(\{[\s\S]*maxProviderAttempts:\s*profile\.maxProviderAttempts/, "multimodal generation should pass stage retry budget");
 assert.match(agent, /requestAgentJson\(\{[\s\S]*maxProviderAttempts:\s*profile\.maxProviderAttempts/, "text generation should pass stage retry budget");
+assert.match(prompts, /FAST_DIRECTOR_SYSTEM_PROMPT/, "prompts module should expose a compact director system prompt");
+assert.match(prompts, /buildFastDirectorUserPrompt/, "prompts module should expose compact director prompt builder");
+assert.match(prompts, /Act1.*180-260 字/, "compact director prompt should reduce theater scene length for native live generation");
 assert.match(prompts, /FAST_ANALYST_SYSTEM_PROMPT/, "prompts module should expose a compact analyst system prompt");
 assert.match(prompts, /buildFastAnalystUserPrompt/, "prompts module should expose compact analyst prompt builder");
 assert.match(prompts, /420-620 字/, "compact analyst prompt should reduce narrative length for native live generation");

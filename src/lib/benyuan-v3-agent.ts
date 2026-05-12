@@ -10,8 +10,10 @@ import {
   ANALYST_SYSTEM_PROMPT,
   buildAnalystUserPrompt,
   buildDirectorUserPrompt,
+  buildFastDirectorUserPrompt,
   buildMultimodalUserPrompt,
   DIRECTOR_SYSTEM_PROMPT,
+  FAST_DIRECTOR_SYSTEM_PROMPT,
   MULTIMODAL_SYSTEM_PROMPT,
   buildFastAnalystUserPrompt,
   FAST_ANALYST_SYSTEM_PROMPT,
@@ -294,10 +296,11 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
     theater: {
       maxOutputTokens: 2200,
       reasoningEffort: "xhigh",
-      timeoutMs: 180000,
+      timeoutMs: 240000,
       transport: "json_first",
       allowSecondaryAttempts: false,
       maxProviderAttempts: 1,
+      compactPrompt: true,
     },
     constellation: {
       maxOutputTokens: 3000,
@@ -1685,8 +1688,8 @@ export async function generateTheaterScriptWithAgent(record: Part1Record, runtim
   const fallback = generateDeterministicTheaterScript(record);
   const profile = getAgentStageProfile("theater");
   const request = await requestAgentJson({
-    system: DIRECTOR_SYSTEM_PROMPT,
-    user: buildDirectorUserPrompt(record),
+    system: profile.compactPrompt ? FAST_DIRECTOR_SYSTEM_PROMPT : DIRECTOR_SYSTEM_PROMPT,
+    user: profile.compactPrompt ? buildFastDirectorUserPrompt(record, fallback) : buildDirectorUserPrompt(record),
     runtimeOverride,
     maxOutputTokens: profile.maxOutputTokens ?? 4200,
     reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",

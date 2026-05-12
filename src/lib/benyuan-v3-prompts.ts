@@ -1,7 +1,7 @@
 import { BENYUAN_V3_CONSTELLATION_ENGINE, deriveConstellationSupportTone, getBenyuanArchetypeProfile } from "@/lib/benyuan-v3-report-profile";
 import { benyuanQuestionsById, getQuestionOption } from "@/lib/benyuan-v3-schema";
 import { describeTheaterAct2Selection, describeTheaterMirrorSelection } from "@/lib/benyuan-v3-theater-labels";
-import type { Part1Record, Part2Record, PsycheConstellation } from "@/lib/benyuan-v3-types";
+import type { Part1Record, Part2Record, PsycheConstellation, TheaterScript } from "@/lib/benyuan-v3-types";
 
 const dimensionLabels: Record<string, string> = {
   openness: "开放性",
@@ -716,6 +716,32 @@ export const MULTIMODAL_SYSTEM_PROMPT = `你是「本源」系统的多模态预
   }
 }`;
 
+export const FAST_DIRECTOR_SYSTEM_PROMPT = `你是「本源」系统的剧场导演。请生成可快速解析的三幕式剧场 JSON，保持深月场、黑洞入口、精神剧场、星图显形的气质，但输出要紧凑。
+
+硬性要求：
+- 只输出 JSON 对象，不要 markdown，不要解释。
+- 顶层必须是 {"theater_script": {...}}。
+- 必须包含 personalization_summary, act1, act2, act3, epilogue，字段名不要改。
+- Act1 scene_description 约 180-260 字；Act2 必须 3 个 choice，每个 3 个 options；Act3 必须 2 个 mirror_questions，每题 5 个 options。
+- choice.scene 约 70-120 字；option.response 约 24-50 字；epilogue 各文本保持短句。
+- 所有用户可见文本用第二人称“你”，像连续镜头，不像问卷。
+- 每一幕都要复用 2-3 个来自用户回答、音乐、社交文本或照片的母题，让它们在 Act1/Act2/Act3 改变形态后再次出现。
+- 选项没有对错，不解释 trait_signal，不输出内部词。
+- 氛围：深黑、暗紫、银白、暗金、玻璃、星尘、黑洞边界；玄妙但具体。
+- 禁止诊断、鸡汤、预言、恐吓、技术词；JSON 必须合法。`;
+
+function compactEvidenceLines(record: Part1Record) {
+  return [
+    evidenceLine("A1_core_image", record.part1_data.aesthetics.core_desire_image ?? record.answers.A1_core_image),
+    evidenceLine("A3_literature", record.part1_data.aesthetics.literature ?? record.answers.A3_literature),
+    evidenceLine("A4_cinema", record.part1_data.aesthetics.cinema ?? record.answers.A4_cinema),
+    evidenceLine("B1_night_thoughts", record.part1_data.philosophy.night_thoughts ?? record.answers.B1_night_thoughts),
+    evidenceLine("B3_emotion_pattern", record.part1_data.philosophy.emotion_pattern ?? record.answers.B3_emotion_pattern),
+    evidenceLine("B5_relationship_philosophy", record.part1_data.philosophy.relationship_philosophy ?? record.answers.B5_relationship_philosophy),
+    evidenceLine("C3_resonance_moments", record.part1_data.narrative.resonance_moments ?? record.answers.C3_resonance_moments),
+  ].filter(Boolean).join("\n");
+}
+
 export const FAST_ANALYST_SYSTEM_PROMPT = `你是「本源」系统的精神星图分析师。请在保持精神分析、哲学与星体隐喻气质的前提下，生成可快速解析的 JSON。
 
 硬性要求：
@@ -732,6 +758,48 @@ export function buildDirectorUserPrompt(record: Part1Record) {
   const evidenceDossier = formatPart1EvidenceDossier(record);
 
   return `请根据以下用户 Part 1 数据，生成个性化三幕式剧场脚本。\n\n风格补充：\n- 这是“黑洞入口 / 精神剧场 / 星图显形”产品体验里的个人剧场。\n- 氛围应是深黑、暗紫、银白、暗金点亮、星尘、玻璃层与深场柔光。\n- 文案要落在具体空间、具体物件、具体动作上，不要像产品说明。\n- 第二幕更像“靠近某个方向”，第三幕更像“被镜像反问”。\n- 必须优先使用证据档案里的具体回答、音乐、社交文本与照片构图，生成连续剧情。\n- 上传素材不是素材库，而是反复母题：同一段声音、同一句话、同一张照片里的构图，必须在 Act1/Act2/Act3 中改变形态后再次出现。\n- Act2 要形成连续行动链：第一步进入，第二步改变距离，第三步触碰或放下某个物件。\n- Act3 的镜面问题必须从 Act2 变形而来，不要突然跳成问卷。\n- 宿命感来自证据回环：同一句话、同一个声音、同一张照片里的构图，在不同幕里改变形态后再次出现。\n- 内部先写一份 motif ledger（不要输出这个词给用户）：列出 3-5 个来自证据档案的母题，如声音、句子、照片构图、光线、关系距离；每个母题都要安排 Act1/Act2/Act3 至少两次变形出现。\n- 每个 choice 的 scene 都必须延续上一幕至少一个母题，并让空间的光线、距离、物件或角色关系发生变化。\n- 禁止让 Act2 三组 choice 互相独立；它们必须像同一条镜头连续推进，而不是三道互不相关的问题。\n- Act3 的每个 mirror question 必须问不同的心理动作，例如交还、移动、承认、放下、靠近、保存；禁止重复使用同一句可见问题。\n- 内部证据可以使用，但不要在用户可见文本中解释证据来源。\n\n用户 ID: ${record.user_id}\n\n${evidenceDossier}\n\nPart 1 JSON:\n${JSON.stringify({ part1_data: record.part1_data, aggregated_traits: record.aggregated_traits })}\n\n请严格输出 {"theater_script": {...}}。`;
+}
+
+export function buildFastDirectorUserPrompt(record: Part1Record, fallback: TheaterScript) {
+  const music = record.part1_data.aesthetics.music_analysis;
+  const social = record.part1_data.narrative.social_posts_analysis?.slice(0, 2) ?? [];
+  const photo = record.part1_data.narrative.precious_photo_analysis;
+
+  return `请生成个性化精神剧场 JSON。保持 xhigh 推理深度，但输出紧凑、合法、可解析。
+
+用户基座：
+- user_id: ${record.user_id}
+- 核心主题: ${record.aggregated_traits.core_themes.join(" / ")}
+- 原型候选: ${record.aggregated_traits.archetype_hints.join(" / ")}
+- Big Five: ${Object.entries(record.aggregated_traits.big_five).map(([key, value]) => `${key}:${value}`).join(" / ")}
+
+回答线索：
+${compactEvidenceLines(record)}
+
+多模态线索：
+- 音乐: ${music ? `${music.primary_genres.join(" / ")}；${music.emotional_tone}；${Object.entries(music.personality_signals ?? {}).map(([key, value]) => `${key}:${value}`).join(" / ")}` : "未上传或未解析"}
+- 社交: ${social.map((item) => `${item.text_content}；${item.emotional_tone}；${item.themes.join("/")}`).join(" | ") || "未上传或未解析"}
+- 照片: ${photo ? `${photo.visual_content}；${photo.composition}；${photo.color_mood}；${photo.psychological_interpretation.core_themes.join("/")}` : "未上传或未解析"}
+
+连续母题要求：
+1. 选 2-3 个最强母题，例如一束光、一段声音、一句未说完的话、一张照片里的距离或构图。
+2. Act1 让母题作为空间入口出现；Act2 每个 choice 让母题变形并推进同一条行动链；Act3 让母题变成镜面发问。
+3. Act2 不是三道独立问题，而是进入、改变距离、触碰或放下的连续镜头。
+4. Act3 的问题要像场景里的镜面/声音/物件在问，不要写成问卷。
+
+fallback 结构校准，不要照抄，用来保证字段完整：
+${JSON.stringify({
+  personalization_summary: fallback.personalization_summary,
+  act2_choice_count: fallback.act2.choices.length,
+  act3_question_count: fallback.act3.mirror_questions.length,
+})}
+
+输出要求：
+- core_archetype 写成中文精神姿态名，不要输出内部 slug。
+- act2 每个 choice 正好 3 个 options；act3 正好 2 个 mirror_questions，每题 5 个 options。
+- trait_signal 保留英文 snake_case；用户可见文本不要解释它。
+- visual_prompt 使用英文，短而可执行。
+- 严格输出 {"theater_script": {...}}。`;
 }
 
 export function buildAnalystUserPrompt(part1: Part1Record, part2: Part2Record, fallback: PsycheConstellation) {
