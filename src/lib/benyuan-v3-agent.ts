@@ -38,6 +38,7 @@ import type {
   Part2Record,
   PreciousPhotoAnalysis,
   PsycheConstellation,
+  SevenDimensionKey,
   SocialPostAnalysis,
   SocialPostOverallPattern,
   TheaterScript,
@@ -346,7 +347,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       compactPrompt: true,
     },
     constellation: {
-      maxOutputTokens: 3000,
+      maxOutputTokens: 900,
       reasoningEffort: "xhigh",
       timeoutMs: 360000,
       transport: "json_first",
@@ -1425,6 +1426,156 @@ function normalizeMusicRecommendations(source: unknown, fallback: PsycheConstell
   return normalized.length > 0 ? normalized : fallback;
 }
 
+type FastConstellationSeed = {
+  archetype_name?: string;
+  archetype_essence?: string;
+  visual_prompt?: string;
+  mirror_paragraphs: string[];
+  dimension_interpretations: Partial<Record<SevenDimensionKey, string>>;
+  tension_lenses: string[];
+  growth_lenses: string[];
+  recommendation_lenses: {
+    books: string[];
+    films: string[];
+    music: string[];
+  };
+};
+
+function cleanSeedText(value: unknown, maxLength = 180) {
+  if (typeof value !== "string") return undefined;
+  const cleaned = snippet(value, maxLength);
+  return cleaned.length > 0 ? cleaned : undefined;
+}
+
+function cleanSeedStringArray(value: unknown, limit: number, maxLength = 140) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => cleanSeedText(item, maxLength) ?? [])
+    .slice(0, limit);
+}
+
+function normalizeSeedDimensionInterpretations(value: unknown): Partial<Record<SevenDimensionKey, string>> {
+  if (!isRecord(value)) return {};
+  const knownKeys = new Set<SevenDimensionKey>([
+    "openness",
+    "independence",
+    "emotional_depth",
+    "meaning_seeking",
+    "aesthetic_sensitivity",
+    "action_tendency",
+    "relationship_need",
+  ]);
+
+  return Object.entries(value).reduce<Partial<Record<SevenDimensionKey, string>>>((acc, [key, entry]) => {
+    if (!knownKeys.has(key as SevenDimensionKey)) return acc;
+    const cleaned = cleanSeedText(entry, 90);
+    if (cleaned) acc[key as SevenDimensionKey] = cleaned;
+    return acc;
+  }, {});
+}
+
+function normalizeRecommendationLenses(value: unknown): FastConstellationSeed["recommendation_lenses"] {
+  const source = isRecord(value) ? value : {};
+  return {
+    books: cleanSeedStringArray(source.books, 3, 100),
+    films: cleanSeedStringArray(source.films, 3, 100),
+    music: cleanSeedStringArray(source.music, 3, 100),
+  };
+}
+
+function normalizeFastConstellationSeed(candidate: unknown): FastConstellationSeed | null {
+  const source = isRecord(candidate) && isRecord(candidate.constellation_seed) ? candidate.constellation_seed : candidate;
+  if (!isRecord(source)) return null;
+
+  const seed: FastConstellationSeed = {
+    archetype_name: cleanSeedText(source.archetype_name, 24),
+    archetype_essence: cleanSeedText(source.archetype_essence, 100),
+    visual_prompt: cleanSeedText(source.visual_prompt, 180),
+    mirror_paragraphs: cleanSeedStringArray(source.mirror_paragraphs, 4, 180),
+    dimension_interpretations: normalizeSeedDimensionInterpretations(source.dimension_interpretations),
+    tension_lenses: cleanSeedStringArray(source.tension_lenses, 2, 120),
+    growth_lenses: cleanSeedStringArray(source.growth_lenses, 3, 120),
+    recommendation_lenses: normalizeRecommendationLenses(source.recommendation_lenses),
+  };
+
+  const hasRecommendationLens =
+    seed.recommendation_lenses.books.length > 0 ||
+    seed.recommendation_lenses.films.length > 0 ||
+    seed.recommendation_lenses.music.length > 0;
+  const hasSeedSignal =
+    Boolean(seed.archetype_name || seed.archetype_essence || seed.visual_prompt) ||
+    seed.mirror_paragraphs.length > 0 ||
+    Object.keys(seed.dimension_interpretations).length > 0 ||
+    seed.tension_lenses.length > 0 ||
+    seed.growth_lenses.length > 0 ||
+    hasRecommendationLens;
+
+  return hasSeedSignal ? seed : null;
+}
+
+function mergeNarrativeWithSeed(fallback: PsycheConstellation["narrative_overview"], seedParagraphs: string[]) {
+  if (seedParagraphs.length === 0) return fallback;
+  const fallbackParagraphs = fallback.split(/\n\n+/).map((item) => item.trim()).filter(Boolean);
+  const merged = [...seedParagraphs, ...fallbackParagraphs.slice(seedParagraphs.length)];
+  return merged.join("\n\n");
+}
+
+function mergeFastConstellationSeed(fallback: PsycheConstellation, seed: FastConstellationSeed): PsycheConstellation {
+  const sevenDimensions = Object.fromEntries(
+    Object.entries(fallback.seven_dimensions).map(([key, dimension]) => {
+      const seedInterpretation = seed.dimension_interpretations[key as SevenDimensionKey];
+      return [
+        key,
+        {
+          ...dimension,
+          interpretation: seedInterpretation ?? dimension.interpretation,
+        },
+      ];
+    }),
+  ) as PsycheConstellation["seven_dimensions"];
+
+  const recommendations: PsycheConstellation["recommendations"] = {
+    books: fallback.recommendations.books.map((item, index) => ({
+      ...item,
+      reason: seed.recommendation_lenses.books[index] ?? item.reason,
+    })),
+    films: fallback.recommendations.films.map((item, index) => ({
+      ...item,
+      reason: seed.recommendation_lenses.films[index] ?? item.reason,
+    })),
+    music: fallback.recommendations.music.map((item, index) => ({
+      ...item,
+      reason: seed.recommendation_lenses.music[index] ?? item.reason,
+    })),
+  };
+
+  const merged = normalizePsycheConstellation({
+    ...fallback,
+    archetype: {
+      ...fallback.archetype,
+      name: seed.archetype_name && !isSuspiciousArchetypeName(seed.archetype_name) ? seed.archetype_name : fallback.archetype.name,
+      core_essence:
+        seed.archetype_essence && seed.archetype_essence.length >= 12
+          ? seed.archetype_essence
+          : fallback.archetype.core_essence,
+      visual_prompt: seed.visual_prompt ?? fallback.archetype.visual_prompt,
+    },
+    narrative_overview: mergeNarrativeWithSeed(fallback.narrative_overview, seed.mirror_paragraphs),
+    seven_dimensions: sevenDimensions,
+    core_tensions: fallback.core_tensions.map((item, index) => ({
+      ...item,
+      description: [seed.tension_lenses[index], item.description].filter(Boolean).join(" "),
+    })),
+    growth_suggestions: fallback.growth_suggestions.map((item, index) => ({
+      ...item,
+      description: [item.description, seed.growth_lenses[index]].filter(Boolean).join(" "),
+    })),
+    recommendations,
+  });
+
+  return refineConstellationWithFallback(merged, fallback);
+}
+
 function normalizeConstellation(candidate: unknown, fallback: PsycheConstellation): PsycheConstellation | null {
   const source = isRecord(candidate) && isRecord(candidate.psyche_constellation) ? candidate.psyche_constellation : candidate;
   if (!isRecord(source)) return null;
@@ -2073,6 +2224,13 @@ export async function generateConstellationWithAgent(part1: Part1Record, part2: 
     allowSecondaryAttempts: profile.allowSecondaryAttempts,
     maxProviderAttempts: profile.maxProviderAttempts,
   });
+
+  if (profile.compactPrompt) {
+    const seed = normalizeFastConstellationSeed(request.data);
+    if (seed) {
+      return { constellation: mergeFastConstellationSeed(fallback, seed), runtime: request.runtime };
+    }
+  }
 
   const normalized = normalizeConstellation(request.data, fallback);
   if (!normalized) {

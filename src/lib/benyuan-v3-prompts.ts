@@ -742,15 +742,18 @@ function compactEvidenceLines(record: Part1Record) {
   ].filter(Boolean).join("\n");
 }
 
-export const FAST_ANALYST_SYSTEM_PROMPT = `你是「本源」系统的精神星图分析师。请在保持精神分析、哲学与星体隐喻气质的前提下，生成可快速解析的 JSON。
+export const FAST_ANALYST_SYSTEM_PROMPT = `你是「本源」系统的精神星图分析师。请生成一个很小的 constellation_seed JSON。它不是完整报告，而是给后端完整星图骨架使用的个性化精神种子。
 
 硬性要求：
 - 只输出 JSON 对象，不要 markdown，不要解释。
-- 顶层必须是 {"psyche_constellation": {...}}。
-- 必须包含 archetype, seven_dimensions, narrative_overview, core_tensions, growth_suggestions, recommendations。
-- seven_dimensions 必须包含 openness, independence, emotional_depth, meaning_seeking, aesthetic_sensitivity, action_tendency, relationship_need。
-- narrative_overview 约 420-620 字，3-4 段，第二人称“你”，必须绑定回答、多模态线索、剧场选择。
-- core_tensions 输出 2 条，growth_suggestions 输出 3 条，books/films/music 各输出 2 条。
+- 顶层必须是 {"constellation_seed": {...}}。
+- constellation_seed 必须包含 archetype_name, archetype_essence, visual_prompt, mirror_paragraphs, dimension_interpretations, tension_lenses, growth_lenses, recommendation_lenses。
+- archetype_name 不超过 10 个中文字；archetype_essence 不超过 60 字；visual_prompt 不超过 70 字。
+- mirror_paragraphs 输出 2-3 条，每条不超过 80 字，第二人称“你”，必须绑定回答、多模态线索、剧场选择。
+- dimension_interpretations 最多输出 3 个键，每条不超过 36 字，只能使用 openness, independence, emotional_depth, meaning_seeking, aesthetic_sensitivity, action_tendency, relationship_need。
+- tension_lenses 输出 1-2 条，growth_lenses 输出 2-3 条，每条不超过 50 字。
+- recommendation_lenses.books / films / music 各输出 1-3 条短理由，每条不超过 45 字，只写理由，不要发明作品名。
+- 后端会把 seed 融入完整星图骨架；不要输出 psyche_constellation、seven_dimensions、core_tensions、growth_suggestions、recommendations 等完整报告结构。
 - 风格：深月场、黑洞/月相/轨道作为心理结构隐喻；玄妙但具体，克制但有确认感。
 - 禁止诊断、命令、鸡汤、技术词；不要输出“孤独求索者”“敏感而复杂的人”等模板词。`;
 
@@ -866,7 +869,7 @@ export function buildFastAnalystUserPrompt(part1: Part1Record, part2: Part2Recor
   const social = part1.part1_data.narrative.social_posts_analysis?.slice(0, 2) ?? [];
   const photo = part1.part1_data.narrative.precious_photo_analysis;
 
-  return `请生成精神星图 JSON。保持 xhigh 推理深度，但输出要紧凑、合法、可解析。
+  return `请生成个性化精神星图 constellation_seed JSON。保持 xhigh 推理深度，但输出非常短、合法、可解析。注意：这是 seed，不是完整报告。
 
 用户基座：
 - user_id: ${part1.user_id}
@@ -895,18 +898,37 @@ ${formatPart2EvidenceDossier(part2)}
 fallback 校准，不要照抄，用来保证字段完整：
 ${JSON.stringify({
   archetype: fallback.archetype,
-  seven_dimensions: fallback.seven_dimensions,
+  top_dimensions: topDimensionLabels(fallback),
   tension_names: fallback.core_tensions.map((item) => item.name),
   growth_titles: fallback.growth_suggestions.map((item) => item.title),
   recommendations: formatRecommendationSeeds(fallback),
 })}
 
-输出要求：
-1. archetype.name 写成一个具体、可分享的中文精神姿态名。
-2. narrative_overview 必须交叉回答线索、多模态线索和剧场轨迹；不要写技术埋点。
-3. 每个 seven_dimensions.*.interpretation 都写成一句结构描述，不围绕分数解释。
-4. recommendations 理由必须说明与用户结构的关系，作品作者/导演/艺术家要准确。
-5. 严格输出 {"psyche_constellation": {...}}。`;
+种子要求：
+1. 只给后端用来“点亮完整星图”的短文本，不要输出完整报告。
+2. mirror_paragraphs 要交叉回答线索、多模态线索和剧场轨迹；不要写技术埋点。
+3. dimension_interpretations 只挑最有把握的 2-3 个维度，不要围绕分数解释。
+4. recommendation_lenses 只写理由，不写作品名；作品名会由后端骨架提供。
+5. 严格输出：
+{
+  "constellation_seed": {
+    "archetype_name": "中文精神姿态名",
+    "archetype_essence": "不超过60字的核心气质",
+    "visual_prompt": "黑洞/月相/星云/轨道相关视觉短句",
+    "mirror_paragraphs": ["短段落1", "短段落2"],
+    "dimension_interpretations": {
+      "meaning_seeking": "短解释",
+      "emotional_depth": "短解释"
+    },
+    "tension_lenses": ["张力镜头"],
+    "growth_lenses": ["成长镜头1", "成长镜头2"],
+    "recommendation_lenses": {
+      "books": ["书籍理由"],
+      "films": ["电影理由"],
+      "music": ["音乐理由"]
+    }
+  }
+}`;
 }
 
 export function buildMultimodalUserPrompt(input: {
