@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertPart1Owner } from "@/lib/benyuan-auth";
-import { getPart1Record, getPart2Record, runNativeGenerationJob, startNativeGenerationJob } from "@/lib/benyuan-v3-store";
+import { getPart1Record, getPart2Record, runNativeGenerationJob, shouldResumeNativeGenerationJob, startNativeGenerationJob } from "@/lib/benyuan-v3-store";
 import type { BenyuanNativeGenerationJobKind } from "@/lib/benyuan-v3-types";
 
 type NativeGenerationJobStartBody = {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "native_generation_job_not_created" }, { status: 500 });
   }
 
-  if (job.status === "queued") {
+  if (job.status === "queued" || shouldResumeNativeGenerationJob(job)) {
     void runNativeGenerationJob(job.job_id).catch((error) => {
       console.error("[benyuan-native-generation-job]", job.job_id, error);
     });

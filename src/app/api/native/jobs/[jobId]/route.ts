@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertPart1Owner } from "@/lib/benyuan-auth";
-import { getNativeGenerationJob, getPart1Record, runNativeGenerationJob } from "@/lib/benyuan-v3-store";
+import { getNativeGenerationJob, getPart1Record, runNativeGenerationJob, shouldResumeNativeGenerationJob } from "@/lib/benyuan-v3-store";
 
 export async function GET(request: Request, context: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await context.params;
@@ -18,7 +18,7 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
     return NextResponse.json({ error: ownership.error }, { status: ownership.status });
   }
 
-  if (job.status === "queued") {
+  if (job.status === "queued" || shouldResumeNativeGenerationJob(job)) {
     void runNativeGenerationJob(job.job_id).catch((error) => {
       console.error("[benyuan-native-generation-job:poll]", job.job_id, error);
     });

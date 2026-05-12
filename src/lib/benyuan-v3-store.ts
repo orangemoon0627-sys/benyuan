@@ -38,7 +38,7 @@ import { ensureBenyuanDataDirs, getBenyuanPersistenceHealth, getBenyuanV3StorePa
 
 const STORE_PATH = getBenyuanV3StorePath();
 const TEMP_STORE_PATH = `${STORE_PATH}.${process.pid}.tmp`;
-const NATIVE_GENERATION_JOB_STALE_MS = 10 * 60 * 1000;
+const NATIVE_GENERATION_JOB_STALE_MS = 3 * 60 * 1000;
 
 const EMPTY_STORE: BenyuanV3Store = {
   users: {},
@@ -336,8 +336,11 @@ async function updateNativeGenerationJob(
   });
 }
 
-function isNativeGenerationJobFresh(job: BenyuanNativeGenerationJob) {
-  return Date.now() - new Date(job.updated_at).getTime() < NATIVE_GENERATION_JOB_STALE_MS;
+export function shouldResumeNativeGenerationJob(job: BenyuanNativeGenerationJob, nowMs = Date.now()) {
+  if (job.status !== "running") return false;
+  const updatedAtMs = new Date(job.updated_at).getTime();
+  if (!Number.isFinite(updatedAtMs)) return true;
+  return nowMs - updatedAtMs >= NATIVE_GENERATION_JOB_STALE_MS;
 }
 
 function makeHistoryItem(store: BenyuanV3Store, part1: Part1Record): BenyuanAccountHistoryItem {
@@ -699,7 +702,7 @@ export async function getNativeGenerationJob(jobId: string) {
 export async function runNativeGenerationJob(jobId: string) {
   const existing = await getNativeGenerationJob(jobId);
   if (!existing || existing.status === "done" || existing.status === "failed") return existing;
-  if (existing.status === "running" && isNativeGenerationJobFresh(existing)) return existing;
+  if (existing.status === "running" && !shouldResumeNativeGenerationJob(existing)) return existing;
 
   if (existing.kind === "theater") {
     await updateNativeGenerationJob(jobId, {

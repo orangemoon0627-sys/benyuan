@@ -25,6 +25,8 @@ assert.match(types, /native_generation_jobs/, "v3 store must persist native gene
 assert.match(store, /startNativeGenerationJob/, "store must expose job creation");
 assert.match(store, /getNativeGenerationJob/, "store must expose job status lookup");
 assert.match(store, /runNativeGenerationJob/, "store must run cloud-side generation jobs");
+assert.match(store, /shouldResumeNativeGenerationJob/, "store must expose a stale-running recovery predicate for native jobs");
+assert.match(store, /NATIVE_GENERATION_JOB_STALE_MS\s*=\s*3\s*\*\s*60\s*\*\s*1000/, "native jobs must become recoverable within the iOS waiting window");
 assert.match(store, /progress:\s*0\.18/, "job progress must begin with a concrete percentage-compatible value");
 assert.match(store, /progress:\s*1/, "job progress must reach 100 percent when complete");
 assert.match(store, /current_stage:\s*"theater"/, "job must expose theater generation as a resumable stage");
@@ -39,6 +41,8 @@ assert.match(startRoute, /startNativeGenerationJob/, "native job start route mus
 assert.match(startRoute, /runNativeGenerationJob/, "native job start route must trigger server-side generation work");
 assert.match(jobRoute, /getNativeGenerationJob/, "native job status route must read persisted job state");
 assert.match(jobRoute, /assertPart1Owner/, "native job status route must enforce ownership through the parent part1");
+assert.match(jobRoute, /shouldResumeNativeGenerationJob/, "native job status route must recover stale running jobs from polling");
+assert.match(jobRoute, /job\.status\s*===\s*"queued"[\s\S]*shouldResumeNativeGenerationJob\(job\)/, "native job status route must trigger jobs that are queued or stale-running");
 assert.match(jobRoute, /progress/, "native job status response must expose progress for iOS");
 assert.match(jobRoute, /constellation_id/, "native job status response must expose completed constellation id");
 
