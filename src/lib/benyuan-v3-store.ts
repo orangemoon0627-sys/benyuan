@@ -57,6 +57,7 @@ const EMPTY_STORE: BenyuanV3Store = {
 };
 
 let storeWriteQueue: Promise<void> = Promise.resolve();
+const activeNativeGenerationJobRuns = new Set<string>();
 
 function recommendationKey(item: { title?: string; author?: string; director?: string; artist?: string; album?: string }) {
   return [item.title, item.author, item.director, item.artist, item.album].filter(Boolean).join("::").toLocaleLowerCase("zh-CN");
@@ -700,9 +701,20 @@ export async function getNativeGenerationJob(jobId: string) {
 }
 
 export async function runNativeGenerationJob(jobId: string) {
+  if (activeNativeGenerationJobRuns.has(jobId)) {
+    return getNativeGenerationJob(jobId);
+  }
+  activeNativeGenerationJobRuns.add(jobId);
+
   const existing = await getNativeGenerationJob(jobId);
-  if (!existing || existing.status === "done" || existing.status === "failed") return existing;
-  if (existing.status === "running" && !shouldResumeNativeGenerationJob(existing)) return existing;
+  if (!existing || existing.status === "done" || existing.status === "failed") {
+    activeNativeGenerationJobRuns.delete(jobId);
+    return existing;
+  }
+  if (existing.status === "running" && !shouldResumeNativeGenerationJob(existing)) {
+    activeNativeGenerationJobRuns.delete(jobId);
+    return existing;
+  }
 
   if (existing.kind === "theater") {
     await updateNativeGenerationJob(jobId, {
@@ -877,6 +889,8 @@ export async function runNativeGenerationJob(jobId: string) {
       error: error instanceof Error ? error.message : "native_generation_failed",
       finished_at: new Date().toISOString(),
     });
+  } finally {
+    activeNativeGenerationJobRuns.delete(jobId);
   }
 }
 

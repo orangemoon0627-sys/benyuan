@@ -26,6 +26,8 @@ assert.match(store, /startNativeGenerationJob/, "store must expose job creation"
 assert.match(store, /getNativeGenerationJob/, "store must expose job status lookup");
 assert.match(store, /runNativeGenerationJob/, "store must run cloud-side generation jobs");
 assert.match(store, /shouldResumeNativeGenerationJob/, "store must expose a stale-running recovery predicate for native jobs");
+assert.match(store, /activeNativeGenerationJobRuns/, "store must keep an in-process lock to avoid duplicate native job provider calls");
+assert.match(store, /activeNativeGenerationJobRuns\.delete\(jobId\)/, "native job run lock must be released after completion or failure");
 assert.match(store, /NATIVE_GENERATION_JOB_STALE_MS\s*=\s*3\s*\*\s*60\s*\*\s*1000/, "native jobs must become recoverable within the iOS waiting window");
 assert.match(store, /progress:\s*0\.18/, "job progress must begin with a concrete percentage-compatible value");
 assert.match(store, /progress:\s*1/, "job progress must reach 100 percent when complete");

@@ -287,18 +287,18 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       allowSecondaryAttempts: false,
     },
     theater: {
-      maxOutputTokens: 2600,
+      maxOutputTokens: 2200,
       reasoningEffort: "xhigh",
-      timeoutMs: 120000,
+      timeoutMs: 75000,
       transport: "json_first",
       allowSecondaryAttempts: false,
     },
     constellation: {
-      maxOutputTokens: 3800,
+      maxOutputTokens: 3000,
       reasoningEffort: "xhigh",
-      timeoutMs: 90000,
+      timeoutMs: 75000,
       transport: "json_first",
-      allowSecondaryAttempts: true,
+      allowSecondaryAttempts: false,
     },
   },
 };
