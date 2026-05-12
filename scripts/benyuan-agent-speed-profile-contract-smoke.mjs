@@ -19,6 +19,7 @@ assert.match(agent, /BENYUAN_AGENT_SPEED_PROFILE/, "agent runtime must read BENY
 assert.match(agent, /fast[\s\S]*theater[\s\S]*maxOutputTokens:\s*900/, "fast theater profile should request a compact live seed");
 assert.match(agent, /fast[\s\S]*theater[\s\S]*reasoningEffort:\s*"xhigh"/, "fast theater profile should preserve xhigh reasoning");
 assert.match(agent, /fast[\s\S]*constellation[\s\S]*maxOutputTokens:\s*900/, "fast constellation profile should request a compact live seed");
+assert.match(agent, /fast[\s\S]*constellation[\s\S]*reasoningEffort:\s*"high"/, "fast constellation seed should use high reasoning after latency A/B validation");
 assert.match(agent, /fast[\s\S]*multimodal[\s\S]*reasoningEffort:\s*"xhigh"/, "fast multimodal profile should preserve xhigh reasoning");
 assert.match(agent, /maxProviderAttempts\?:\s*number/, "stage profiles should control provider retry count");
 assert.match(agent, /transport:\s*"json_first"/, "fast text agents should avoid wasting a stream attempt before JSON");
@@ -31,7 +32,7 @@ assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*compactPrompt:\s*true/, "fast theater profile should use a compact director prompt");
 assert.match(agent, /normalizeFastTheaterSeed/, "fast theater generation should normalize a compact seed instead of requiring a full script");
 assert.match(agent, /mergeFastTheaterSeed/, "fast theater generation should merge live seed detail into the deterministic theater shell");
-assert.match(agent, /constellation:\s*\{[\s\S]*timeoutMs:\s*360000/, "fast constellation profile should allow the observed xhigh live generation window");
+assert.match(agent, /constellation:\s*\{[\s\S]*timeoutMs:\s*120000/, "fast constellation seed should keep the live generation window bounded for native testing");
 assert.match(agent, /constellation:\s*\{[\s\S]*compactPrompt:\s*true/, "fast constellation profile should use a compact live prompt");
 assert.match(agent, /fast[\s\S]*constellation:\s*\{[\s\S]*maxProviderAttempts:\s*2/, "fast constellation profile should retry one transient upstream failure inside the same bounded JSON path");
 assert.match(agent, /type FastConstellationSeed/, "fast constellation should normalize a compact seed instead of requiring a full report");
