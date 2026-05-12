@@ -17,7 +17,7 @@ const packageJson = readRequired("package.json");
 
 assert.match(agent, /BENYUAN_AGENT_SPEED_PROFILE/, "agent runtime must read BENYUAN_AGENT_SPEED_PROFILE");
 assert.match(agent, /fast[\s\S]*theater[\s\S]*maxOutputTokens:\s*900/, "fast theater profile should request a compact live seed");
-assert.match(agent, /fast[\s\S]*theater[\s\S]*reasoningEffort:\s*"xhigh"/, "fast theater profile should preserve xhigh reasoning");
+assert.match(agent, /fast[\s\S]*theater[\s\S]*reasoningEffort:\s*"medium"/, "fast theater seed should use medium reasoning after latency A/B validation");
 assert.match(agent, /fast[\s\S]*constellation[\s\S]*maxOutputTokens:\s*900/, "fast constellation profile should request a compact live seed");
 assert.match(agent, /fast[\s\S]*constellation[\s\S]*reasoningEffort:\s*"high"/, "fast constellation seed should use high reasoning after latency A/B validation");
 assert.match(agent, /fast[\s\S]*multimodal[\s\S]*reasoningEffort:\s*"xhigh"/, "fast multimodal profile should preserve xhigh reasoning");
@@ -27,7 +27,7 @@ assert.match(agent, /allowSecondaryAttempts:\s*false/, "fast text agents should 
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*timeoutMs:\s*120000/, "fast multimodal profile should have enough time for live visual analysis");
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast multimodal profile should run a single provider attempt inside the native E2E window");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxOutputTokens:\s*900/, "fast theater profile should only request a compact live seed");
-assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*timeoutMs:\s*90000/, "fast theater profile should keep the live seed inside the native E2E window");
+assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*timeoutMs:\s*45000/, "fast theater seed should keep the live generation window bounded for native testing");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast theater profile should avoid retrying a full long-running provider call");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*compactPrompt:\s*true/, "fast theater profile should use a compact director prompt");
 assert.match(agent, /normalizeFastTheaterSeed/, "fast theater generation should normalize a compact seed instead of requiring a full script");
