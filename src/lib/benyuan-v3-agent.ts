@@ -261,6 +261,7 @@ type AgentStageProfile = {
   timeoutMs?: number;
   transport?: AgentTransportPreference;
   allowSecondaryAttempts?: boolean;
+  maxProviderAttempts?: number;
   compactPrompt?: boolean;
 };
 
@@ -285,9 +286,10 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
     multimodal: {
       maxOutputTokens: 1100,
       reasoningEffort: "xhigh",
-      timeoutMs: 60000,
+      timeoutMs: 120000,
       transport: "json_first",
       allowSecondaryAttempts: false,
+      maxProviderAttempts: 1,
     },
     theater: {
       maxOutputTokens: 2200,
@@ -295,6 +297,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       timeoutMs: 180000,
       transport: "json_first",
       allowSecondaryAttempts: false,
+      maxProviderAttempts: 1,
     },
     constellation: {
       maxOutputTokens: 3000,
@@ -302,6 +305,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       timeoutMs: 360000,
       transport: "json_first",
       allowSecondaryAttempts: false,
+      maxProviderAttempts: 1,
       compactPrompt: true,
     },
   },
@@ -443,6 +447,7 @@ async function attemptResponsesStreamJson(params: {
   headers: Record<string, string>;
   body: Record<string, unknown>;
   errorPrefix: string;
+  maxProviderAttempts?: number;
 }) {
   return retryProviderAttempt(async () => {
     const response = await fetchWithTimeout(joinBaseUrl(params.runtime.baseUrl, "responses"), {
@@ -480,7 +485,7 @@ async function attemptResponsesStreamJson(params: {
       error: parsed ? undefined : formatParseError(params.errorPrefix, outputText, errorDetail),
       status: response.status,
     };
-  }).catch((error) => {
+  }, { maxAttempts: params.maxProviderAttempts }).catch((error) => {
     return {
       parsed: null,
       requestId: undefined,
@@ -495,6 +500,7 @@ async function attemptResponsesJson(params: {
   headers: Record<string, string>;
   body: Record<string, unknown>;
   errorPrefix: string;
+  maxProviderAttempts?: number;
 }) {
   return retryProviderAttempt(async () => {
     const response = await fetchWithTimeout(joinBaseUrl(params.runtime.baseUrl, "responses"), {
@@ -523,7 +529,7 @@ async function attemptResponsesJson(params: {
       error: parsed ? undefined : formatParseError(params.errorPrefix, payload.outputText, payload.errorDetail),
       status: response.status,
     };
-  }).catch((error) => {
+  }, { maxAttempts: params.maxProviderAttempts }).catch((error) => {
     return {
       parsed: null,
       requestId: undefined,
@@ -542,6 +548,7 @@ async function requestAgentJson(params: {
   timeoutMs?: number;
   transport?: AgentTransportPreference;
   allowSecondaryAttempts?: boolean;
+  maxProviderAttempts?: number;
 }) {
   const runtime = resolveRuntime(params.runtimeOverride);
   if (!runtime.available || !runtime.apiKey || !runtime.baseUrl) {
@@ -596,6 +603,7 @@ async function requestAgentJson(params: {
       headers,
       body: buildResponsesBody(false),
       errorPrefix: "responses_json_failed",
+      maxProviderAttempts: params.maxProviderAttempts,
     });
     if (jsonAttempt.parsed) {
       return {
@@ -613,6 +621,7 @@ async function requestAgentJson(params: {
       headers,
       body: buildResponsesBody(true),
       errorPrefix: "responses_stream_failed",
+      maxProviderAttempts: params.maxProviderAttempts,
     });
     if (streamAttempt.parsed) {
       return {
@@ -643,6 +652,7 @@ async function requestAgentJson(params: {
         reasoningEffort: "low",
       }),
       errorPrefix: "responses_stream_compact_failed",
+      maxProviderAttempts: params.maxProviderAttempts,
     });
     if (compactAttempt.parsed) {
       return {
@@ -661,6 +671,7 @@ async function requestAgentJson(params: {
         reasoningEffort: "low",
       }),
       errorPrefix: "responses_stream_rescue_failed",
+      maxProviderAttempts: params.maxProviderAttempts,
     });
     if (rescueAttempt.parsed) {
       return {
@@ -769,6 +780,7 @@ async function requestMultimodalJson(params: {
   timeoutMs?: number;
   transport?: AgentTransportPreference;
   allowSecondaryAttempts?: boolean;
+  maxProviderAttempts?: number;
 }) {
   const runtime = resolveRuntime(params.runtimeOverride);
   if (!runtime.available || !runtime.apiKey || !runtime.baseUrl) {
@@ -794,6 +806,7 @@ async function requestMultimodalJson(params: {
       timeoutMs: params.timeoutMs,
       transport: params.transport,
       allowSecondaryAttempts: params.allowSecondaryAttempts,
+      maxProviderAttempts: params.maxProviderAttempts,
     });
   }
 
@@ -864,6 +877,7 @@ async function requestMultimodalJson(params: {
       headers,
       body: buildResponsesBody(false),
       errorPrefix: "multimodal_responses_json_failed",
+      maxProviderAttempts: params.maxProviderAttempts,
     });
     if (jsonAttempt.parsed) {
       return {
@@ -881,6 +895,7 @@ async function requestMultimodalJson(params: {
       headers,
       body: buildResponsesBody(true),
       errorPrefix: "multimodal_responses_stream_failed",
+      maxProviderAttempts: params.maxProviderAttempts,
     });
     if (streamAttempt.parsed) {
       return {
@@ -936,6 +951,7 @@ async function requestMultimodalJson(params: {
         headers,
         body: attempt.body,
         errorPrefix: attempt.errorPrefix,
+        maxProviderAttempts: params.maxProviderAttempts,
       });
       if (streamAttempt.parsed) {
         return {
@@ -1651,6 +1667,7 @@ export async function runMultimodalAnalysis(
     timeoutMs: profile.timeoutMs,
     transport: profile.transport,
     allowSecondaryAttempts: profile.allowSecondaryAttempts,
+    maxProviderAttempts: profile.maxProviderAttempts,
   });
 
   const normalized = normalizeMultimodalResult(request.data, fallback);
@@ -1676,6 +1693,7 @@ export async function generateTheaterScriptWithAgent(record: Part1Record, runtim
     timeoutMs: profile.timeoutMs,
     transport: profile.transport,
     allowSecondaryAttempts: profile.allowSecondaryAttempts,
+    maxProviderAttempts: profile.maxProviderAttempts,
   });
 
   const normalized = normalizeTheaterScript(request.data, fallback);
@@ -1698,6 +1716,7 @@ export async function generateConstellationWithAgent(part1: Part1Record, part2: 
     timeoutMs: profile.timeoutMs,
     transport: profile.transport,
     allowSecondaryAttempts: profile.allowSecondaryAttempts,
+    maxProviderAttempts: profile.maxProviderAttempts,
   });
 
   const normalized = normalizeConstellation(request.data, fallback);
