@@ -23,6 +23,7 @@ final class BenyuanFlowStore {
     }
 
     func save(_ session: BenyuanNativeSession) {
+        // BenyuanNativeSession carries activeGenerationJobId so cloud generation can resume after app relaunch.
         guard let data = try? JSONEncoder.benyuan.encode(session) else { return }
         defaults.set(data, forKey: key)
     }

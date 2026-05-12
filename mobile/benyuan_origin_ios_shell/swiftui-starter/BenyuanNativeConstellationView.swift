@@ -16,7 +16,7 @@ struct BenyuanConstellationLayoutBudget {
     static let defaults = BenyuanConstellationLayoutBudget(
         bottomDockHeight: 116,
         topMaskHeight: 52,
-        firstViewportReserve: 320,
+        firstViewportReserve: 96,
         bottomContentReserve: 292,
         endPreviewAnchor: .center
     )
@@ -127,7 +127,7 @@ struct BenyuanNativeConstellationView: View {
                     .shadow(color: BenyuanColor.bgVoid.opacity(0.58), radius: 34, y: 24)
 
                 VStack(spacing: BenyuanSpacing.x3) {
-                    BenyuanDeepCelestialBody(size: 150, progress: leadingConstellationProgress(data), mode: .constellation)
+                    BenyuanDeepCelestialBody(size: 150, progress: leadingConstellationProgress(data), mode: .constellationMoon)
                     Text("精神星图")
                         .font(.system(size: 12, weight: .black, design: .monospaced))
                         .foregroundStyle(BenyuanColor.accentGold)
@@ -165,7 +165,7 @@ struct BenyuanNativeConstellationView: View {
         }.sorted { $0.score > $1.score }
         let active = dimensions.first { $0.key == activeDimensionKey } ?? dimensions.first
 
-        return VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
+        return VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
             Text("七维轨道")
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(BenyuanColor.accentGold)
@@ -182,32 +182,43 @@ struct BenyuanNativeConstellationView: View {
                 },
                 activeKey: active?.key
             )
-            .frame(height: 244)
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BenyuanSpacing.x3) {
-                ForEach(dimensions, id: \.key) { dimension in
-                    Button {
-                        activeDimensionKey = dimension.key
-                    } label: {
-                        VStack(alignment: .leading, spacing: BenyuanSpacing.x2) {
-                            Text(dimension.label)
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(BenyuanColor.textSecondary)
-                            Text("\(dimension.score)%")
-                                .font(.system(size: 30, weight: .black))
-                                .foregroundStyle(BenyuanColor.textPrimary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(BenyuanSpacing.x4)
-                        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(active?.key == dimension.key ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill).overlay(RoundedRectangle(cornerRadius: 22).stroke(BenyuanColor.glassStroke)))
-                    }
-                    .buttonStyle(.plain)
+            .frame(height: 336)
+            BenyuanDimensionResonanceGraph(
+                dimensions: dimensions.map { dimension in
+                    BenyuanDimensionResonanceGraph.Dimension(
+                        key: dimension.key,
+                        label: dimension.label,
+                        score: dimension.score
+                    )
+                },
+                activeKey: active?.key,
+                onSelect: { key in
+                    activeDimensionKey = key
                 }
-            }
-            Text(active?.interpretation ?? "")
+            )
+            Text(dimensionReadingText(active))
                 .font(.system(size: 15, weight: .regular))
-                .lineSpacing(6)
+                .lineSpacing(7)
                 .foregroundStyle(BenyuanColor.textSecondary)
+                .padding(.top, BenyuanSpacing.x2)
         }
+    }
+
+    private func dimensionReadingText(_ dimension: (key: String, label: String, score: Int, interpretation: String)?) -> String {
+        guard let dimension else {
+            return "这组轨道暂时还在沉默。等更多选择和剧场回应进入星图，它会显出更清楚的自我轮廓。"
+        }
+
+        let tendency: String
+        if dimension.score >= 82 {
+            tendency = "它像一条亮到近乎固执的主轨，说明你并不是偶尔触碰这个主题，而是经常用它决定自己如何靠近世界。"
+        } else if dimension.score >= 64 {
+            tendency = "它是一条稳定发光的中层轨道，常在关键时刻替你筛选人、事、风景和命运的重量。"
+        } else {
+            tendency = "它更像暗处的潮汐，不急着宣告自己，却会在压力、亲密或转身离开时忽然显影。"
+        }
+
+        return "\(dimension.label)不是一个分数，而是你精神星系里正在运行的力场。\(tendency)\(dimension.interpretation)把它看成一枚坐标：不是用来规定你是谁，而是提醒你，哪些微小反应已经反复替你说出了答案。"
     }
 
     private func river(_ data: PsycheConstellation) -> some View {
@@ -567,5 +578,114 @@ struct BenyuanDimensionOrbitMap: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+struct BenyuanDimensionResonanceGraph: View {
+    struct Dimension: Equatable {
+        let key: String
+        let label: String
+        let score: Int
+    }
+
+    let dimensions: [Dimension]
+    let activeKey: String?
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
+            let phase = timeline.date.timeIntervalSinceReferenceDate
+
+            VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
+                ForEach(Array(dimensions.prefix(7).enumerated()), id: \.element.key) { index, dimension in
+                    Button {
+                        onSelect(dimension.key)
+                    } label: {
+                        resonanceRow(index: index, dimension: dimension, phase: phase)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(BenyuanSpacing.x4)
+            .background(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(BenyuanColor.bgVoid.opacity(0.42))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(BenyuanColor.glassStroke.opacity(0.78), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    private func resonanceRow(index: Int, dimension: Dimension, phase: TimeInterval) -> some View {
+        let score = min(max(CGFloat(dimension.score) / 100.0, 0.08), 1)
+        let active = activeKey == dimension.key
+        let pulse = 0.5 + 0.5 * sin(phase * (0.62 + Double(index) * 0.03))
+
+        return HStack(spacing: BenyuanSpacing.x3) {
+            Text(dimension.label)
+                .font(.system(size: 13, weight: active ? .black : .semibold, design: .monospaced))
+                .foregroundStyle(active ? BenyuanColor.textPrimary : BenyuanColor.textSecondary)
+                .lineLimit(1)
+                .frame(width: 82, alignment: .leading)
+
+            GeometryReader { proxy in
+                let width = max(proxy.size.width, 1)
+                let lineWidth = max(28, width * score)
+                let starX = min(width - 5, max(5, lineWidth - 2))
+
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(BenyuanColor.textPrimary.opacity(0.055))
+                        .frame(height: 1)
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    BenyuanColor.accentGold.opacity(active ? 0.54 : 0.22),
+                                    BenyuanColor.textPrimary.opacity(active ? 0.52 : 0.22),
+                                    .clear
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: lineWidth, height: active ? 3 : 2)
+                        .blur(radius: active ? 0.15 : 0.35)
+
+                    Circle()
+                        .fill(active ? BenyuanColor.accentGold : BenyuanColor.textPrimary.opacity(0.50))
+                        .frame(width: active ? 8 + pulse * 2 : 5, height: active ? 8 + pulse * 2 : 5)
+                        .position(x: starX, y: 14)
+                        .shadow(color: BenyuanColor.accentGold.opacity(active ? 0.52 : 0.14), radius: active ? 12 : 5)
+
+                    ForEach(0..<3, id: \.self) { particle in
+                        let particleX = min(width - 3, max(3, lineWidth * (0.28 + CGFloat(particle) * 0.22)))
+                        Circle()
+                            .fill(BenyuanColor.textPrimary.opacity(active ? 0.16 : 0.08))
+                            .frame(width: 2, height: 2)
+                            .position(
+                                x: particleX + CGFloat(sin(phase + Double(index + particle))) * 4,
+                                y: 14 + CGFloat(particle - 1) * 4
+                            )
+                    }
+                }
+            }
+            .frame(height: 28)
+
+            Circle()
+                .stroke(active ? BenyuanColor.accentGold.opacity(0.72) : BenyuanColor.glassStroke.opacity(0.78), lineWidth: 1)
+                .frame(width: 18, height: 18)
+                .overlay(
+                    Circle()
+                        .fill(active ? BenyuanColor.accentGold : BenyuanColor.textPrimary.opacity(0.12))
+                        .frame(width: active ? 8 : 4, height: active ? 8 : 4)
+                )
+        }
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+        .animation(.easeOut(duration: 0.18), value: activeKey)
     }
 }

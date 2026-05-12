@@ -58,14 +58,13 @@ struct BenyuanNativeAccountView: View {
                 ZStack {
                     BenyuanDeepCelestialBody(size: 116, progress: identityProgress, mode: .constellation)
                     Circle()
-                        .trim(from: 0.08, to: min(max(identityProgress, 0.18), 0.92))
-                        .stroke(BenyuanColor.accentGold.opacity(0.26), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [2, 10]))
+                        .stroke(BenyuanColor.accentGold.opacity(0.18), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [2, 10]))
                         .frame(width: 138, height: 138)
-                        .rotationEffect(.degrees(-24))
+                        .rotationEffect(.degrees(identityProgress * 42 - 24))
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: BenyuanSpacing.x2) {
-                    Text(sessionProviderLabel)
+                    Text(sessionProviderDisplayLabel)
                         .font(.system(size: 12, weight: .black, design: .monospaced))
                         .foregroundStyle(BenyuanColor.accentGold)
                         .padding(.horizontal, 12)
@@ -88,7 +87,7 @@ struct BenyuanNativeAccountView: View {
                 .foregroundStyle(BenyuanColor.textSecondary)
 
             HStack(spacing: BenyuanSpacing.x2) {
-                identityStat("身份", value: sessionProviderLabel)
+                identityStat("身份", value: sessionProviderDisplayLabel)
                 identityStat("绑定", value: "\(boundProviderCount)/4")
                 identityStat("线索", value: "\(totalHistoryAssets)")
             }
@@ -124,69 +123,47 @@ struct BenyuanNativeAccountView: View {
     }
 
     private var bindingOrbitSection: some View {
-        VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
-            HStack(alignment: .top, spacing: BenyuanSpacing.x3) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("账户绑定")
-                        .font(.system(size: 21, weight: .semibold))
-                        .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("Apple、微信和手机号会合并到同一份私人档案，后续换设备也能找回。")
-                        .font(.system(size: 12, weight: .regular))
-                        .lineSpacing(4)
-                        .foregroundStyle(BenyuanColor.textSecondary)
-                }
-                Spacer()
-                Text("\(boundProviderCount)")
-                    .font(.system(size: 24, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(BenyuanColor.textPrimary)
-                    .frame(width: 58, height: 58)
-                    .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.accentGold.opacity(0.26))))
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BenyuanSpacing.x3) {
-                providerCard(provider: .apple, title: "Apple", systemImage: "apple.logo", bound: hasProvider(.apple), detail: hasProvider(.apple) ? "已连接系统身份" : "可在登录页接入")
-                providerCard(provider: .wechat, title: "微信", systemImage: "message.fill", bound: model.session.user?.wechatBound == true || hasProvider(.wechat), detail: model.session.user?.wechatBound == true ? "已绑定微信" : "待开放平台资料")
-                providerCard(provider: .phone, title: "手机号", systemImage: "iphone.gen3", bound: model.session.user?.phoneBound == true || hasProvider(.phone), detail: model.session.user?.phoneBound == true ? "已绑定手机号" : "待短信网关资料")
-                providerCard(provider: .anonymous, title: "访客", systemImage: "moonphase.waxing.crescent", bound: hasProvider(.anonymous), detail: hasProvider(.anonymous) ? "当前可继续探索" : "未使用访客身份")
-            }
-        }
-    }
-
-    private func providerCard(provider: BenyuanAuthProvider, title: String, systemImage: String, bound: Bool, detail: String) -> some View {
         Button {
-            model.showBindingInfo(provider)
+            model.showBindingInfo(.anonymous)
         } label: {
-            VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
-                HStack {
-                    Image(systemName: systemImage)
+            HStack(spacing: BenyuanSpacing.x3) {
+                ZStack {
+                    Circle()
+                        .fill(BenyuanColor.bgVoid.opacity(0.56))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "link")
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(bound ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
-                        .frame(width: 32, height: 32)
-                        .background(Circle().fill(BenyuanColor.bgVoid.opacity(0.48)).overlay(Circle().stroke(BenyuanColor.glassStroke.opacity(0.76))))
-                    Spacer()
-                    Text(bound ? "bound" : "open")
-                        .font(.system(size: 9, weight: .black, design: .monospaced))
-                        .foregroundStyle(bound ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
+                        .foregroundStyle(BenyuanColor.accentGold)
                 }
 
-                Text(title)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(BenyuanColor.textPrimary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("账户与绑定")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textPrimary)
+                    Text("Apple、微信、手机号统一放在这里，不占用主页面。")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .lineLimit(2)
+                }
 
-                Text(detail)
+                Spacer(minLength: 0)
+
+                Text("\(boundProviderCount)/4")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundStyle(BenyuanColor.accentGold)
+
+                Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .lineSpacing(4)
-                    .foregroundStyle(BenyuanColor.textSecondary)
+                    .foregroundStyle(BenyuanColor.textTertiary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(BenyuanSpacing.x4)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(bound ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill)
-                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(bound ? BenyuanColor.accentGold.opacity(0.22) : BenyuanColor.glassStroke))
+                Capsule()
+                    .fill(BenyuanColor.glassFill.opacity(0.80))
+                    .overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.86)))
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BenyuanPressableMotionStyle(scale: 0.972, glow: 0.08, haptic: .light))
     }
 
     private var historyTimelineSection: some View {
@@ -284,15 +261,15 @@ struct BenyuanNativeAccountView: View {
                         HStack(spacing: 8) {
                             if model.restoringHistoryPart1Id == item.part1Id {
                                 ProgressView()
-                                    .tint(BenyuanColor.primaryCTAText)
+                                    .tint(BenyuanColor.bgVoid)
                                     .scaleEffect(0.72)
                             }
                             Text(model.restoringHistoryPart1Id == item.part1Id ? "正在接回" : actionLabel(for: item))
                         }
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(BenyuanColor.primaryCTAText)
-                            .frame(maxWidth: .infinity, minHeight: 42)
-                            .background(Capsule().fill(BenyuanColor.textPrimary))
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(BenyuanColor.bgVoid)
+                        .frame(maxWidth: .infinity, minHeight: 42)
+                        .background(Capsule().fill(BenyuanColor.textPrimary))
                     }
                     .buttonStyle(.plain)
                     .disabled(model.restoringHistoryPart1Id != nil)
@@ -405,6 +382,16 @@ struct BenyuanNativeAccountView: View {
         }
     }
 
+    private var sessionProviderDisplayLabel: String {
+        switch model.session.authSession?.provider {
+        case .anonymous: return "访客"
+        case .apple: return "Apple"
+        case .wechat: return "微信"
+        case .phone: return "手机"
+        case nil: return "未登录"
+        }
+    }
+
     private func hasProvider(_ provider: BenyuanAuthProvider) -> Bool {
         model.session.user?.providers[provider.rawValue] != nil || model.session.authSession?.provider == provider
     }
@@ -493,13 +480,40 @@ struct BenyuanNativeAccountView: View {
 
     private func bindingInfo(_ provider: BenyuanAuthProvider) -> some View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
-            Text(bindingTitle(provider))
-                .font(.system(size: 24, weight: .black))
-                .foregroundStyle(BenyuanColor.textPrimary)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("账户绑定")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textPrimary)
+                    Text("这些入口会合并到同一份私人档案。")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                }
+                Spacer()
+                Button {
+                    model.dismissBindingInfo()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.glassStroke)))
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(spacing: BenyuanSpacing.x2) {
+                bindingRow(provider: .apple, title: "Apple", systemImage: "apple.logo", bound: hasProvider(.apple), detail: hasProvider(.apple) ? "已连接系统身份" : "可在登录页接入")
+                bindingRow(provider: .wechat, title: "微信", systemImage: "message.fill", bound: model.session.user?.wechatBound == true || hasProvider(.wechat), detail: model.session.user?.wechatBound == true ? "已绑定微信" : "待开放平台资料")
+                bindingRow(provider: .phone, title: "手机号", systemImage: "iphone.gen3", bound: model.session.user?.phoneBound == true || hasProvider(.phone), detail: model.session.user?.phoneBound == true ? "已绑定手机号" : "待短信网关资料")
+                bindingRow(provider: .anonymous, title: "访客", systemImage: "moonphase.waxing.crescent", bound: hasProvider(.anonymous), detail: hasProvider(.anonymous) ? "当前身份" : "未使用访客身份")
+            }
+
             Text(bindingDetail(provider))
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 13, weight: .regular))
                 .lineSpacing(5)
                 .foregroundStyle(BenyuanColor.textSecondary)
+
             Button {
                 model.dismissBindingInfo()
             } label: {
@@ -517,6 +531,50 @@ struct BenyuanNativeAccountView: View {
                 .fill(BenyuanColor.glassFillStrong)
                 .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(BenyuanColor.glassStroke))
         )
+    }
+
+    private func bindingRow(provider: BenyuanAuthProvider, title: String, systemImage: String, bound: Bool, detail: String) -> some View {
+        Button {
+            model.showBindingInfo(provider)
+        } label: {
+            HStack(spacing: BenyuanSpacing.x3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(bound ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(BenyuanColor.bgVoid.opacity(0.48)).overlay(Circle().stroke(BenyuanColor.glassStroke.opacity(0.76))))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textPrimary)
+                    Text(detail)
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundStyle(BenyuanColor.textTertiary)
+                }
+
+                Spacer(minLength: 0)
+
+                Text(bound ? "已连" : "待开")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(bound ? BenyuanColor.bgVoid : BenyuanColor.textTertiary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(bound ? BenyuanColor.accentGold : BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72))))
+            }
+            .padding(.horizontal, BenyuanSpacing.x3)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(isActiveBindingRow(provider) ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill.opacity(0.68))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(isActiveBindingRow(provider) ? BenyuanColor.accentGold.opacity(0.22) : BenyuanColor.glassStroke.opacity(0.72)))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func isActiveBindingRow(_ provider: BenyuanAuthProvider) -> Bool {
+        model.activeBindingProvider?.rawValue == provider.rawValue
     }
 
     private var feedbackComposer: some View {

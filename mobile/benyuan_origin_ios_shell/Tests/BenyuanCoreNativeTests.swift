@@ -44,6 +44,17 @@ final class BenyuanMockURLProtocol: URLProtocol {
         )!
         return (response, body.data(using: .utf8)!)
     }
+
+    static func html(_ status: Int, _ body: String) -> (HTTPURLResponse, Data) {
+        let url = URL(string: "http://native-e2e.test")!
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: status,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "text/html; charset=utf-8"]
+        )!
+        return (response, body.data(using: .utf8)!)
+    }
 }
 
 private extension URLRequest {
@@ -206,6 +217,28 @@ final class BenyuanCoreNativeTests: XCTestCase {
             XCTFail("Expected server error")
         } catch let error as BenyuanAPIError {
             XCTAssertEqual(error.errorDescription, "请求失败（HTTP 500）：agent_generation_failed: Cannot read properties of undefined (reading 'choices')")
+        }
+    }
+
+    func testAPIClientSuppressesHTMLNotFoundBodies() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-html-error.test")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { _ in
+            BenyuanMockURLProtocol.html(404, "<!DOCTYPE html><html><head><title>not found</title></head><body>很长的网页错误</body></html>")
+        }
+
+        do {
+            _ = try await client.fetchSchema()
+            XCTFail("Expected server error")
+        } catch let error as BenyuanAPIError {
+            XCTAssertEqual(error, .server(status: 404, message: "html_not_found"))
+            XCTAssertEqual(error.errorDescription, "这份历史档案还没有同步到当前服务器，请先刷新或重新生成。")
         }
     }
 
@@ -975,6 +1008,62 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.choiceLogCount, 2)
         XCTAssertEqual(model.mirrorLogCount, 1)
         XCTAssertEqual(model.session.phaseDurations["act3"], 5)
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
+        XCTAssertNil(model.restoringHistoryPart1Id)
+    }
+
+    @MainActor
+    func testLoadConstellationHistoryToleratesMissingPart2HistoryRoute() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-history.test")!,
+            session: URLSession(configuration: config)
+        )
+        let suiteName = "benyuan-history-constellation-part2-missing-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            BenyuanMockURLProtocol.handler = nil
+        }
+        let model = BenyuanNativeFlowModel(client: client, store: BenyuanFlowStore(defaults: defaults))
+        let item = BenyuanAccountHistoryItem(
+            part1Id: "part1_constellation",
+            theaterScriptId: "theater_constellation",
+            part2Id: "part2_constellation",
+            constellationId: "constellation_history",
+            stage: .constellation,
+            title: "暮海守光者的本源档案",
+            subtitle: "影像线索 3 个 / 星图已生成",
+            archetypeName: "暮海守光者",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:25:00.000Z",
+            assetCount: 3
+        )
+
+        BenyuanMockURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            if request.httpMethod == "GET", path == "/api/theater/theater_constellation" {
+                return BenyuanMockURLProtocol.json(200, Self.theaterRecordFixture(
+                    theaterScriptId: "theater_constellation",
+                    part1Id: "part1_constellation"
+                ))
+            }
+            if request.httpMethod == "GET", path == "/api/account/history/part1_constellation/part2" {
+                return BenyuanMockURLProtocol.html(404, "<!DOCTYPE html><html><head></head><body>not found</body></html>")
+            }
+            if request.httpMethod == "GET", path == "/api/constellation/constellation_history" {
+                return BenyuanMockURLProtocol.json(200, Self.constellationRecordFixture())
+            }
+            return BenyuanMockURLProtocol.json(500, #"{ "error": "unexpected_request" }"#)
+        }
+
+        await model.loadHistoryItem(item)
+
+        XCTAssertEqual(model.stage, .constellation)
+        XCTAssertEqual(model.session.part1Id, "part1_constellation")
+        XCTAssertEqual(model.session.part2Id, "part2_constellation")
+        XCTAssertEqual(model.session.constellationId, "constellation_history")
         XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
         XCTAssertNil(model.restoringHistoryPart1Id)
     }

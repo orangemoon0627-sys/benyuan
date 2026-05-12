@@ -34,7 +34,7 @@ struct BenyuanNativeProcessingView: View {
                     ZStack {
                         BenyuanProcessingPhaseCurrent(progress: model.processingProgress)
                             .frame(width: 248, height: 152)
-                        BenyuanDeepCelestialBody(size: 196, progress: model.processingProgress, mode: .processing)
+                        BenyuanDeepCelestialBody(size: 196, progress: model.processingProgress, mode: .accretionBlackHole)
                     }
                     .padding(.top, BenyuanSpacing.x2)
 
@@ -42,6 +42,10 @@ struct BenyuanNativeProcessingView: View {
                         Text(processingPhaseLabel)
                             .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(BenyuanColor.accentGold.opacity(0.9))
+                        Text(processingPercentText)
+                            .font(.system(size: 46, weight: .semibold, design: .rounded))
+                            .foregroundStyle(BenyuanColor.textPrimary)
+                            .contentTransition(.numericText())
                         Text(model.processingTitle)
                             .font(.system(size: 34, weight: .semibold))
                             .minimumScaleFactor(0.72)
@@ -53,6 +57,12 @@ struct BenyuanNativeProcessingView: View {
                             .multilineTextAlignment(.center)
                             .foregroundStyle(BenyuanColor.textSecondary)
                             .padding(.horizontal, BenyuanSpacing.x4)
+                        Text("可以切出 App，云端会继续分析；回来后会自动取回进度。")
+                            .font(.system(size: 12, weight: .medium))
+                            .lineSpacing(4)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(BenyuanColor.textTertiary)
+                            .padding(.horizontal, BenyuanSpacing.x6)
                     }
 
                     VStack(spacing: BenyuanSpacing.x4) {
@@ -79,13 +89,17 @@ struct BenyuanNativeProcessingView: View {
         }
     }
 
+    private var processingPercentText: String {
+        "\(Int(round(model.processingProgress * 100)))%"
+    }
+
     private var progressTrack: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule().fill(BenyuanColor.textPrimary.opacity(0.08))
                 Capsule()
                     .fill(LinearGradient(colors: [BenyuanColor.accentGold.opacity(0.75), BenyuanColor.textPrimary.opacity(0.88)], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: max(22, proxy.size.width * model.processingProgress))
+                    .frame(width: max(22, proxy.size.width * min(max(model.processingProgress, 0), 1)))
             }
         }
     }

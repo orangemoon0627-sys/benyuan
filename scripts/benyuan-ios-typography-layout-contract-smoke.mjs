@@ -32,8 +32,8 @@ assert.match(
 );
 assert.match(
   account,
-  /Text\("账户绑定"\)[\s\S]*?\.font\(\.system\(size:\s*21,\s*weight:\s*\.semibold\)\)/,
-  "native account binding title should match the calmer app-section scale"
+  /Text\("账户与绑定"\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.semibold\)\)/,
+  "native account binding entry should stay compact on the main account page"
 );
 assert.match(
   account,
@@ -42,8 +42,8 @@ assert.match(
 );
 assert.match(
   account,
-  /Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*18,\s*weight:\s*\.semibold\)\)/,
-  "native account provider cards should not use oversized black product-card titles"
+  /private func bindingRow[\s\S]*?Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*14,\s*weight:\s*\.semibold\)\)/,
+  "native account binding rows should live in a compact secondary sheet, not oversized main-page cards"
 );
 assert.match(
   account,

@@ -9,6 +9,8 @@ struct BenyuanNativeTheaterView: View {
 
             GeometryReader { proxy in
                 ZStack(alignment: .top) {
+                    BenyuanNebulaTheaterField(progress: theaterProgress)
+                        .allowsHitTesting(false)
                     BenyuanStageLens(progress: theaterProgress, intensity: 1.08)
                         .allowsHitTesting(false)
                     BenyuanFlowOrbitTrail(progress: theaterProgress, intensity: 0.76, tilt: -14)
@@ -63,7 +65,7 @@ struct BenyuanNativeTheaterView: View {
     private var act1: some View {
         BenyuanRevealedStack(spacing: BenyuanSpacing.x8) {
             Spacer(minLength: 24)
-            BenyuanDeepCelestialBody(size: 136, progress: theaterProgress, mode: .constellation)
+            BenyuanDeepCelestialBody(size: 136, progress: theaterProgress, mode: .theaterNebula)
             Text(model.theater?.theaterScript.act1.sceneDescription ?? "剧场正在靠近。")
                 .font(.system(size: theaterTitleSize(model.theater?.theaterScript.act1.sceneDescription ?? ""), weight: .semibold))
                 .lineSpacing(4)
@@ -142,7 +144,7 @@ struct BenyuanNativeTheaterView: View {
     private var epilogue: some View {
         BenyuanRevealedStack(spacing: BenyuanSpacing.x6) {
             Spacer()
-            BenyuanDeepCelestialBody(size: 156, progress: theaterProgress, mode: .processing)
+            BenyuanDeepCelestialBody(size: 156, progress: theaterProgress, mode: .theaterNebula)
             Text("星图正在靠近。")
                 .font(.system(size: 36, weight: .semibold))
                 .multilineTextAlignment(.center)

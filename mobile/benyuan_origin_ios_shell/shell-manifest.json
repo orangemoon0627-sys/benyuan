@@ -2,7 +2,7 @@
   "app": {
     "name": "Benyuan Origin",
     "displayName": "本源",
-    "shellStrategy": "hybrid-webview-first",
+    "shellStrategy": "native-swiftui-first",
     "statusBarStyle": "light-content",
     "safeAreaBackground": "#000000"
   },
@@ -82,17 +82,17 @@
   },
   "capabilities": {
     "phase1": [
-      "webview-shell",
+      "swiftui-native-main-flow",
       "route-recovery",
       "offline-banner",
-      "native-share-sheet-bridge",
+      "native-share-sheet",
       "external-link-handoff"
     ],
     "phase15": [
-      "photo-picker-bridge",
+      "photo-picker",
       "network-retry",
       "result-share-entry",
-      "camera-capture-bridge"
+      "camera-capture"
     ]
   }
 }

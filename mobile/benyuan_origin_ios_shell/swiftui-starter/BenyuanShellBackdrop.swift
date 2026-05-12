@@ -118,20 +118,26 @@ struct BenyuanDeepCelestialBody: View {
     var mode: Mode = .processing
 
     enum Mode {
-        case processing
-        case constellation
+        case accretionBlackHole
+        case theaterNebula
+        case constellationMoon
+
+        static let processing: Mode = .accretionBlackHole
+        static let constellation: Mode = .constellationMoon
 
         var tilt: Double {
             switch self {
-            case .processing: return -16
-            case .constellation: return -10
+            case .accretionBlackHole: return -16
+            case .theaterNebula: return 18
+            case .constellationMoon: return -10
             }
         }
 
         var ringOpacity: Double {
             switch self {
-            case .processing: return 0.52
-            case .constellation: return 0.64
+            case .accretionBlackHole: return 0.58
+            case .theaterNebula: return 0.24
+            case .constellationMoon: return 0.64
             }
         }
     }
@@ -146,14 +152,32 @@ struct BenyuanDeepCelestialBody: View {
             ZStack {
                 BenyuanSpectralParticleField(size: size, phase: phase, progress: clampedProgress)
 
-                BenyuanGravitationalLens(size: size, phase: phase, progress: clampedProgress, pulse: pulse)
+                if mode == .theaterNebula {
+                    BenyuanNebulaVeil(size: size, phase: phase, progress: clampedProgress)
+                    BenyuanNebulaCore(size: size, phase: phase, progress: clampedProgress, pulse: pulse)
+                }
 
-                BenyuanOrbitalDustBand(size: size, phase: phase, progress: clampedProgress)
-                BenyuanAccretionRing(size: size, phase: phase, progress: clampedProgress, mode: mode)
-                    .rotationEffect(.degrees(mode.tilt + spin * 360))
-                    .scaleEffect(x: 1.05 + pulse * 0.018, y: 0.94 + pulse * 0.012)
+                if mode == .accretionBlackHole {
+                    BenyuanGravitationalLens(size: size, phase: phase, progress: clampedProgress, pulse: pulse)
+                    BenyuanOrbitalDustBand(size: size, phase: phase, progress: clampedProgress)
+                    BenyuanAccretionRing(size: size, phase: phase, progress: clampedProgress, mode: mode)
+                        .rotationEffect(.degrees(mode.tilt + spin * 360))
+                        .scaleEffect(x: 1.05 + pulse * 0.018, y: 0.94 + pulse * 0.012)
+                    BenyuanEventHorizon(size: size, phase: phase, progress: clampedProgress)
+                }
 
-                BenyuanEventHorizon(size: size, phase: phase, progress: clampedProgress)
+                if mode == .constellationMoon {
+                    BenyuanGravitationalLens(size: size, phase: phase, progress: clampedProgress, pulse: pulse)
+                    BenyuanLunarCore(size: size, phase: phase, progress: clampedProgress)
+                }
+
+                if mode == .theaterNebula {
+                    BenyuanOrbitalDustBand(size: size, phase: phase, progress: clampedProgress)
+                    BenyuanAccretionRing(size: size, phase: phase, progress: clampedProgress, mode: mode)
+                        .rotationEffect(.degrees(mode.tilt + spin * 120))
+                        .scaleEffect(x: 0.96 + pulse * 0.014, y: 0.90 + pulse * 0.016)
+                        .opacity(0.54)
+                }
 
                 Circle()
                     .stroke(BenyuanColor.accentGold.opacity(0.18 + clampedProgress * 0.18), lineWidth: 1)
@@ -240,17 +264,17 @@ struct BenyuanAccretionRing: View {
                 .blur(radius: 0.2)
 
             Ellipse()
-                .trim(from: 0.02, to: 0.48 + progress * 0.22)
                 .stroke(
-                    LinearGradient(
+                    AngularGradient(
                         colors: [
-                            BenyuanColor.accentGold.opacity(0.06),
+                            BenyuanColor.accentGold.opacity(0.18),
                             BenyuanColor.textPrimary.opacity(0.58),
                             BenyuanColor.accentGold.opacity(0.82),
-                            BenyuanColor.textPrimary.opacity(0.10)
+                            BenyuanColor.textPrimary.opacity(0.18),
+                            BenyuanColor.accentGold.opacity(0.18)
                         ],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                        center: .center,
+                        angle: .degrees(phase * 7)
                     ),
                     style: StrokeStyle(lineWidth: 2.2, lineCap: .round)
                 )
@@ -258,10 +282,20 @@ struct BenyuanAccretionRing: View {
                 .rotationEffect(.degrees(phase * 7))
 
             Ellipse()
-                .trim(from: 0.56, to: 0.96)
-                .stroke(BenyuanColor.planetEdge.opacity(0.22), style: StrokeStyle(lineWidth: 1.4, lineCap: .round, dash: [4, 18]))
+                .stroke(BenyuanColor.planetEdge.opacity(0.20), style: StrokeStyle(lineWidth: 1.1, lineCap: .round, dash: [2, 14]))
                 .frame(width: size * 1.58, height: size * 0.54)
                 .rotationEffect(.degrees(-phase * 5))
+
+            ForEach(0..<9, id: \.self) { index in
+                let angle = phase * (0.34 + Double(index) * 0.025) + Double(index) * .pi * 2 / 9
+                let orbitX = cos(angle) * size * 0.88
+                let orbitY = sin(angle) * size * 0.30
+                Circle()
+                    .fill(index.isMultiple(of: 3) ? BenyuanColor.accentGold.opacity(0.70) : BenyuanColor.textPrimary.opacity(0.24))
+                    .frame(width: index.isMultiple(of: 3) ? 3.6 : 2.2, height: index.isMultiple(of: 3) ? 3.6 : 2.2)
+                    .offset(x: orbitX, y: orbitY)
+                    .blur(radius: index.isMultiple(of: 3) ? 0.2 : 0.6)
+            }
         }
     }
 }
@@ -388,7 +422,211 @@ struct BenyuanGravitationalLens: View {
                 .rotationEffect(.degrees(-18 + sin(phase * 0.24) * 4))
                 .blur(radius: 0.6)
                 .blendMode(BlendMode.screen)
+
+            Ellipse()
+                .stroke(BenyuanColor.accentGold.opacity(0.055), style: StrokeStyle(lineWidth: 0.8, lineCap: .round, dash: [2, 13]))
+                .frame(width: size * 1.74, height: size * 0.48)
+                .rotationEffect(.degrees(8 - sin(phase * 0.20) * 3))
+                .blendMode(BlendMode.screen)
         }
+    }
+}
+
+struct BenyuanNebulaVeil: View {
+    var size: CGFloat
+    var phase: TimeInterval
+    var progress: Double
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<4, id: \.self) { index in
+                let drift = sin(phase * (0.16 + Double(index) * 0.035) + Double(index))
+                Ellipse()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                BenyuanColor.nebulaViolet.opacity(0.18 + progress * 0.08),
+                                BenyuanColor.planetEdge.opacity(0.08),
+                                .clear
+                            ],
+                            center: UnitPoint(x: 0.42 + drift * 0.05, y: 0.48),
+                            startRadius: 2,
+                            endRadius: size * (0.44 + CGFloat(index) * 0.08)
+                        )
+                    )
+                    .frame(width: size * (1.28 + CGFloat(index) * 0.26), height: size * (0.46 + CGFloat(index) * 0.12))
+                    .rotationEffect(.degrees(phase * (1.4 + Double(index) * 0.6) + Double(index) * 32))
+                    .blur(radius: 8 + CGFloat(index) * 2)
+                    .blendMode(.screen)
+            }
+
+            ForEach(0..<14, id: \.self) { index in
+                let angle = phase * (0.12 + Double(index) * 0.011) + Double(index) * .pi * 2 / 14
+                let radius = size * (0.20 + CGFloat(index % 5) * 0.055)
+                Circle()
+                    .fill(index.isMultiple(of: 4) ? BenyuanColor.accentGold.opacity(0.34) : BenyuanColor.textPrimary.opacity(0.13))
+                    .frame(width: index.isMultiple(of: 4) ? 3.2 : 2, height: index.isMultiple(of: 4) ? 3.2 : 2)
+                    .offset(x: cos(angle) * radius, y: sin(angle) * radius * 0.52)
+                    .blur(radius: index.isMultiple(of: 4) ? 0.2 : 0.8)
+            }
+        }
+        .frame(width: size * 1.84, height: size * 1.18)
+    }
+}
+
+struct BenyuanNebulaCore: View {
+    var size: CGFloat
+    var phase: TimeInterval
+    var progress: Double
+    var pulse: Double
+
+    var body: some View {
+        let spin = phase.truncatingRemainder(dividingBy: 40) / 40
+        let clamped = min(max(progress, 0.04), 1)
+
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            BenyuanColor.textPrimary.opacity(0.16 + pulse * 0.04),
+                            BenyuanColor.nebulaViolet.opacity(0.34 + clamped * 0.08),
+                            BenyuanColor.planetEdge.opacity(0.18),
+                            BenyuanColor.bgVoid.opacity(0.10),
+                            .clear
+                        ],
+                        center: UnitPoint(x: 0.44 + pulse * 0.04, y: 0.42),
+                        startRadius: 2,
+                        endRadius: size * 0.54
+                    )
+                )
+                .frame(width: size * 0.86, height: size * 0.86)
+                .blur(radius: 4)
+                .blendMode(.screen)
+
+            Circle()
+                .fill(
+                    AngularGradient(
+                        colors: [
+                            BenyuanColor.bgVoid.opacity(0.10),
+                            BenyuanColor.nebulaViolet.opacity(0.38),
+                            BenyuanColor.textPrimary.opacity(0.17),
+                            BenyuanColor.accentGold.opacity(0.11),
+                            BenyuanColor.bgVoid.opacity(0.10)
+                        ],
+                        center: .center,
+                        angle: .degrees(spin * 360)
+                    )
+                )
+                .mask(
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    .black,
+                                    .black.opacity(0.72),
+                                    .black.opacity(0.22),
+                                    .clear
+                                ],
+                                center: UnitPoint(x: 0.48, y: 0.48),
+                                startRadius: size * 0.02,
+                                endRadius: size * 0.48
+                            )
+                        )
+                )
+                .frame(width: size * 0.74, height: size * 0.74)
+                .rotationEffect(.degrees(phase * 2.4))
+                .blur(radius: 1.2)
+                .blendMode(.screen)
+
+            ForEach(0..<3, id: \.self) { index in
+                Ellipse()
+                    .stroke(
+                        AngularGradient(
+                            colors: [
+                                BenyuanColor.nebulaViolet.opacity(0.02),
+                                BenyuanColor.textPrimary.opacity(0.12 + Double(index) * 0.025),
+                                BenyuanColor.accentGold.opacity(0.06 + clamped * 0.05),
+                                BenyuanColor.nebulaViolet.opacity(0.02)
+                            ],
+                            center: .center,
+                            angle: .degrees(phase * (2.0 + Double(index) * 0.5))
+                        ),
+                        style: StrokeStyle(lineWidth: index == 0 ? 1.2 : 0.8, lineCap: .round)
+                    )
+                    .frame(width: size * (1.18 + CGFloat(index) * 0.18), height: size * (0.54 + CGFloat(index) * 0.08))
+                    .rotationEffect(.degrees(20 + phase * (1.2 + Double(index) * 0.3) + Double(index) * 20))
+                    .blur(radius: CGFloat(index) * 0.5)
+                    .blendMode(.screen)
+            }
+
+            ForEach(0..<10, id: \.self) { index in
+                let angle = phase * (0.18 + Double(index) * 0.012) + Double(index) * .pi * 2 / 10
+                let radiusX = size * (0.18 + CGFloat(index % 4) * 0.045)
+                let radiusY = size * (0.12 + CGFloat(index % 3) * 0.034)
+                Circle()
+                    .fill(index.isMultiple(of: 4) ? BenyuanColor.accentGold.opacity(0.44) : BenyuanColor.textPrimary.opacity(0.17))
+                    .frame(width: index.isMultiple(of: 4) ? 3.4 : 2.1, height: index.isMultiple(of: 4) ? 3.4 : 2.1)
+                    .offset(x: cos(angle) * radiusX, y: sin(angle) * radiusY)
+                    .blur(radius: index.isMultiple(of: 4) ? 0.2 : 0.7)
+            }
+        }
+        .shadow(color: BenyuanColor.nebulaViolet.opacity(0.20 + pulse * 0.06), radius: size * 0.20)
+    }
+}
+
+struct BenyuanLunarCore: View {
+    var size: CGFloat
+    var phase: TimeInterval
+    var progress: Double
+
+    var body: some View {
+        let pulse = 0.5 + 0.5 * sin(phase * 0.44)
+
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            BenyuanColor.textPrimary.opacity(0.28),
+                            BenyuanColor.planetEdge.opacity(0.32),
+                            BenyuanColor.aubergineBlack.opacity(0.70),
+                            BenyuanColor.bgVoid
+                        ],
+                        center: UnitPoint(x: 0.36 + pulse * 0.03, y: 0.24),
+                        startRadius: 2,
+                        endRadius: size * 0.62
+                    )
+                )
+                .frame(width: size * 0.92, height: size * 0.92)
+                .overlay(Circle().stroke(BenyuanColor.textPrimary.opacity(0.08 + progress * 0.04), lineWidth: 1))
+
+            Circle()
+                .fill(BenyuanColor.bgVoid.opacity(0.60))
+                .frame(width: size * 0.58, height: size * 0.58)
+                .blur(radius: size * 0.026)
+                .offset(x: -size * 0.10, y: size * 0.05)
+
+            Ellipse()
+                .stroke(
+                    AngularGradient(
+                        colors: [
+                            BenyuanColor.textPrimary.opacity(0.10),
+                            BenyuanColor.accentGold.opacity(0.34 + progress * 0.10),
+                            BenyuanColor.textPrimary.opacity(0.20),
+                            BenyuanColor.accentGold.opacity(0.08),
+                            BenyuanColor.textPrimary.opacity(0.10)
+                        ],
+                        center: .center,
+                        angle: .degrees(phase * 3.2)
+                    ),
+                    lineWidth: 1.4
+                )
+                .frame(width: size * 1.34, height: size * 0.46)
+                .rotationEffect(.degrees(-10 + phase * 2.2))
+                .blendMode(.screen)
+        }
+        .shadow(color: BenyuanColor.accentGold.opacity(0.10 + pulse * 0.05), radius: size * 0.16)
     }
 }
 
@@ -402,7 +640,6 @@ struct BenyuanOrbitalDustBand: View {
             ForEach(0..<5, id: \.self) { index in
                 let drift = phase * (3.2 + Double(index) * 0.7)
                 Ellipse()
-                    .trim(from: 0.10 + CGFloat(index) * 0.015, to: 0.44 + CGFloat(progress) * 0.18)
                     .stroke(
                         BenyuanColor.textPrimary.opacity(0.030 + Double(index) * 0.012),
                         style: StrokeStyle(lineWidth: index == 0 ? 1.3 : 0.9, lineCap: .round, dash: index.isMultiple(of: 2) ? [3, 18] : [10, 24])

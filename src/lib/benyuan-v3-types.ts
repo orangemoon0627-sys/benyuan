@@ -301,6 +301,29 @@ export type ConstellationRecord = {
   archetype_image_url?: string;
 };
 
+export type BenyuanNativeGenerationJobKind = "theater" | "constellation";
+export type BenyuanNativeGenerationJobStatus = "queued" | "running" | "done" | "failed";
+export type BenyuanNativeGenerationJobStage = "queued" | "multimodal" | "theater" | "constellation" | "done" | "failed";
+
+export type BenyuanNativeGenerationJob = {
+  job_id: string;
+  user_id: string;
+  part1_id: string;
+  part2_id?: string;
+  theater_script_id?: string;
+  constellation_id?: string;
+  kind: BenyuanNativeGenerationJobKind;
+  status: BenyuanNativeGenerationJobStatus;
+  current_stage: BenyuanNativeGenerationJobStage;
+  progress: number;
+  message: string;
+  can_resume_in_background: true;
+  error?: string;
+  created_at: string;
+  updated_at: string;
+  finished_at?: string;
+};
+
 export type AgentReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export type AgentRuntimeOverride = {
@@ -450,6 +473,7 @@ export type BenyuanV3Store = {
   theater_scripts: Record<string, TheaterScriptRecord>;
   part2_records: Record<string, Part2Record>;
   constellations: Record<string, ConstellationRecord>;
+  native_generation_jobs: Record<string, BenyuanNativeGenerationJob>;
   feedback_records: Record<string, BenyuanFeedbackRecord>;
   test_plan_items: Record<string, BenyuanTestPlanItem>;
 };

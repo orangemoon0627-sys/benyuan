@@ -5,7 +5,9 @@ struct BenyuanShellRootView: View {
     @StateObject private var networkMonitor = BenyuanNetworkMonitor()
     @StateObject private var nativeModel = BenyuanNativeFlowModel()
     @State private var reloadToken = UUID()
-    @State private var showsWebFallback = false
+#if DEBUG
+    @State private var showsDebugWebInspector = false
+#endif
 
     var body: some View {
         let routeContext = BenyuanShellRouteContext.resolve(currentURL: state.currentURL ?? BenyuanRouteRecovery.restoreURL())
@@ -13,12 +15,7 @@ struct BenyuanShellRootView: View {
         ZStack(alignment: .top) {
             BenyuanShellBackdrop(showsGhostTitle: false)
 
-            if showsWebFallback {
-                BenyuanWebContainerView(isLoading: $state.isLoading, currentURL: $state.currentURL, errorMessage: $state.errorMessage, reloadToken: reloadToken, shellState: state)
-                    .ignoresSafeArea()
-            } else {
-                nativeFlow
-            }
+            nativeFlow
 
             topStatusStack
 
@@ -67,9 +64,11 @@ struct BenyuanShellRootView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
             }
 
-            if showsWebFallback && state.isLoading {
-                BenyuanLaunchOverlay(context: routeContext, baseURL: BenyuanShellConfig.baseURL, showsDebug: BenyuanShellConfig.showsDebugUI)
+#if DEBUG
+            if showsDebugWebInspector {
+                debugWebInspector(context: routeContext)
             }
+#endif
         }
         .task {
             guard !Self.isRunningUnitTests else { return }
@@ -126,23 +125,18 @@ struct BenyuanShellRootView: View {
                             Task { await nativeModel.start() }
                         }
                         .buttonStyle(BenyuanPrimaryPillButtonStyle())
-
-                        Button("打开 Web 备用入口") {
-                            showsWebFallback = true
-                        }
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(BenyuanColor.textSecondary)
                     }
                 }
                 .padding(.horizontal, BenyuanSpacing.x8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
 
+#if DEBUG
             if BenyuanShellConfig.showsDebugUI {
                 HStack {
                     Spacer()
-                    Button(showsWebFallback ? "Native" : "Web") {
-                        showsWebFallback.toggle()
+                    Button(showsDebugWebInspector ? "关闭调试页" : "调试页") {
+                        showsDebugWebInspector.toggle()
                     }
                     .font(.system(size: 11, weight: .black, design: .monospaced))
                     .foregroundStyle(BenyuanColor.accentGold)
@@ -153,6 +147,7 @@ struct BenyuanShellRootView: View {
                     .padding(.trailing, BenyuanSpacing.x4)
                 }
             }
+#endif
 
             if let toast = nativeModel.toast {
                 BenyuanToastView(text: toast)
@@ -161,6 +156,30 @@ struct BenyuanShellRootView: View {
             }
         }
     }
+
+#if DEBUG
+    private func debugWebInspector(context: BenyuanShellRouteContext) -> some View {
+        ZStack(alignment: .topTrailing) {
+            BenyuanWebContainerView(isLoading: $state.isLoading, currentURL: $state.currentURL, errorMessage: $state.errorMessage, reloadToken: reloadToken, shellState: state)
+                .ignoresSafeArea()
+
+            if state.isLoading {
+                BenyuanLaunchOverlay(context: context, baseURL: BenyuanShellConfig.baseURL, showsDebug: true)
+            }
+
+            Button("回到原生") {
+                showsDebugWebInspector = false
+            }
+            .font(.system(size: 11, weight: .black, design: .monospaced))
+            .foregroundStyle(BenyuanColor.accentGold)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(BenyuanColor.bgVoid.opacity(0.84)).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
+            .padding(.top, BenyuanSpacing.x12)
+            .padding(.trailing, BenyuanSpacing.x4)
+        }
+    }
+#endif
 
     private var topStatusStack: some View {
         VStack(spacing: BenyuanSpacing.x2) {

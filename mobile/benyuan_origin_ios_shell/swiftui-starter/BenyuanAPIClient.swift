@@ -12,6 +12,9 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
         case .invalidResponse:
             return "服务器返回了无法识别的结果。"
         case .server(let status, let message):
+            if status == 404 && message == "html_not_found" {
+                return "这份历史档案还没有同步到当前服务器，请先刷新或重新生成。"
+            }
             if message == "sms_provider_not_configured" {
                 return "手机号登录还在接入短信网关，请先用 Apple 或访客进入。"
             }
@@ -222,6 +225,21 @@ final class BenyuanAPIClient {
         return try await post("/api/theater/generate", body: body, timeout: longAgentTimeout)
     }
 
+    func startNativeGenerationJob(kind: String, part1Id: String, part2Id: String? = nil) async throws -> BenyuanNativeGenerationJobResponse {
+        var body: [String: BenyuanJSONValue] = [
+            "kind": .string(kind),
+            "part1_id": .string(part1Id)
+        ]
+        if let part2Id {
+            body["part2_id"] = .string(part2Id)
+        }
+        return try await post("/api/native/jobs/start", body: body)
+    }
+
+    func fetchNativeGenerationJob(jobId: String) async throws -> BenyuanNativeGenerationJobResponse {
+        try await get("/api/native/jobs/\(jobId)")
+    }
+
     func submitPart2(
         part1Id: String,
         theaterScriptId: String,
@@ -303,6 +321,10 @@ final class BenyuanAPIClient {
             return message
         }
 
+        if looksLikeHTML(body) {
+            return "html_not_found"
+        }
+
         return body
     }
 
@@ -339,6 +361,11 @@ final class BenyuanAPIClient {
         }
         let endIndex = trimmed.index(trimmed.startIndex, offsetBy: limit)
         return "\(trimmed[..<endIndex])..."
+    }
+
+    private static func looksLikeHTML(_ value: String) -> Bool {
+        let lowercased = value.lowercased()
+        return lowercased.hasPrefix("<!doctype html") || lowercased.hasPrefix("<html") || lowercased.contains("<head")
     }
 
     private func makeMultipartBody(questionId: String, images: [BenyuanImagePayload], origin: String, boundary: String) -> Data {

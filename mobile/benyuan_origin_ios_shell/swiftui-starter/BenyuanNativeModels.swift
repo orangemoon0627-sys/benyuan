@@ -402,6 +402,25 @@ struct ConstellationGenerateResponse: Codable, Equatable {
     let psycheConstellation: PsycheConstellation
 }
 
+struct BenyuanNativeGenerationJobResponse: Codable, Equatable {
+    let jobId: String
+    let userId: String
+    let part1Id: String
+    let part2Id: String?
+    let theaterScriptId: String?
+    let constellationId: String?
+    let kind: String
+    let status: String
+    let currentStage: String
+    let progress: Double
+    let message: String
+    let canResumeInBackground: Bool
+    let error: String?
+    let createdAt: String
+    let updatedAt: String
+    let finishedAt: String?
+}
+
 struct BenyuanConstellationRecordResponse: Codable, Equatable {
     let constellation: PsycheConstellation
     let runtime: AgentRuntimeResult
@@ -551,6 +570,7 @@ struct BenyuanNativeSession: Codable, Equatable {
     var theaterScriptId: String?
     var part2Id: String?
     var constellationId: String?
+    var activeGenerationJobId: String?
     var answers: [String: BenyuanJSONValue]
     var uploadedAssets: [String: [BenyuanUploadedAssetRef]]
     var phaseDurations: [String: Double]
@@ -562,6 +582,7 @@ struct BenyuanNativeSession: Codable, Equatable {
         theaterScriptId: nil,
         part2Id: nil,
         constellationId: nil,
+        activeGenerationJobId: nil,
         answers: [
             "B4_time_philosophy": .object(["past": .number(34), "present": .number(33), "future": .number(33)]),
             "A3_literature": .array([]),

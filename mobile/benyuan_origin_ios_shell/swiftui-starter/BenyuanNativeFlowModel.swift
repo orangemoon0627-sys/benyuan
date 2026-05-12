@@ -70,6 +70,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var processingTitle = "正在唤醒本源"
     @Published var processingDetail = "先让问题、影像和剧场彼此对齐。"
     @Published var processingProgress = 0.12
+    @Published var activeGenerationJobId: String?
     @Published var theater: TheaterGenerateResponse?
     @Published var theaterPhase: BenyuanNativeTheaterPhase = .act1
     @Published var theaterChoiceIndex = 0
@@ -108,6 +109,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         self.client = client
         self.store = store
         self.session = store.load()
+        self.activeGenerationJobId = self.session.activeGenerationJobId
         self.client.setAuthSession(self.session.authSession)
     }
 
@@ -208,6 +210,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
         }
         client.setAuthSession(session.authSession)
         do {
+            if await restoreActiveGenerationJobIfNeeded() {
+                return
+            }
             processingTitle = "正在打开原生本源"
             processingDetail = "读取当前问题结构。"
             let schema = try await client.fetchSchema()
@@ -332,6 +337,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
             authProviders = Self.previewAuthProviders
             session.authSession = Self.previewAuthSession
             session.user = Self.previewUser
+            session.activeGenerationJobId = "job_native_preview"
+            activeGenerationJobId = session.activeGenerationJobId
             client.setAuthSession(session.authSession)
             questions = Self.previewQuestions
             session.answers["A1_core_image"] = .string("A1_2")
@@ -464,6 +471,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
         session.theaterScriptId = item.theaterScriptId
         session.part2Id = item.part2Id
         session.constellationId = item.constellationId
+        session.activeGenerationJobId = nil
+        activeGenerationJobId = nil
         persist()
 
         processingTitle = "正在打开这次探索"
@@ -479,6 +488,13 @@ final class BenyuanNativeFlowModel: ObservableObject {
     func loadHistoryItem(_ item: BenyuanAccountHistoryItem) async {
         do {
             dismissAccountTransientSurfaces()
+            session.part1Id = item.part1Id
+            session.theaterScriptId = item.theaterScriptId
+            session.part2Id = item.part2Id
+            session.constellationId = item.constellationId
+            session.activeGenerationJobId = nil
+            activeGenerationJobId = nil
+            persist()
             switch item.stage {
             case .part1:
                 if questions.isEmpty {
@@ -505,12 +521,21 @@ final class BenyuanNativeFlowModel: ObservableObject {
                 stage = .theater
             case .constellation:
                 if let theaterScriptId = item.theaterScriptId, theater?.theaterScriptId != theaterScriptId {
-                    let record = try await client.fetchTheaterScript(theaterScriptId: theaterScriptId)
-                    theater = record.generateResponse()
+                    do {
+                        let record = try await client.fetchTheaterScript(theaterScriptId: theaterScriptId)
+                        theater = record.generateResponse()
+                    } catch {
+                        theater = nil
+                    }
                 }
                 if let part2Id = item.part2Id {
-                    let part2 = try await client.fetchPart2HistoryRecord(part1Id: item.part1Id, part2Id: part2Id)
-                    restorePart2Replay(part2)
+                    do {
+                        let part2 = try await client.fetchPart2HistoryRecord(part1Id: item.part1Id, part2Id: part2Id)
+                        restorePart2Replay(part2)
+                    } catch {
+                        session.part2Id = part2Id
+                        persist()
+                    }
                 }
                 guard let constellationId = item.constellationId else {
                     throw BenyuanHistoryRestoreError.missingConstellation
@@ -735,6 +760,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
     func clearLocalAuthAfterLogout() {
         session.authSession = nil
         session.user = nil
+        session.activeGenerationJobId = nil
+        activeGenerationJobId = nil
         accountHistory = []
         client.setAuthSession(nil)
         persist()
@@ -903,21 +930,14 @@ final class BenyuanNativeFlowModel: ObservableObject {
         logNativeE2E("part1_submitted part1_id=\(part1.part1Id)")
 
         processingTitle = "正在读取影像背面的情绪"
-        processingDetail = "音乐、社交动态与珍贵照片进入多模态分析。"
+        processingDetail = "云端已接收线索，可以切出 App，稍后回来查看结果。"
         processingProgress = 0.48
-        _ = try await client.runMultimodal(part1Id: part1.part1Id)
-        logNativeE2E("multimodal_finished part1_id=\(part1.part1Id)")
-
-        processingTitle = "剧场开始生成"
-        processingDetail = "把你的答案改写成一段连续的角色代入。"
-        processingProgress = 0.74
-        let nextTheater = try await client.generateTheater(part1Id: part1.part1Id)
-        theater = nextTheater
-        session.theaterScriptId = nextTheater.theaterScriptId
+        let job = try await client.startNativeGenerationJob(kind: "theater", part1Id: part1.part1Id)
+        session.activeGenerationJobId = job.jobId
+        activeGenerationJobId = job.jobId
         persist()
-        logNativeE2E("theater_saved theater_script_id=\(nextTheater.theaterScriptId)")
-        resetTheaterState()
-        stage = .theater
+        logNativeE2E("native_job_started kind=theater job_id=\(job.jobId)")
+        try await pollNativeGenerationJob(jobId: job.jobId)
     }
 
     func enterAct2() {
@@ -1009,14 +1029,107 @@ final class BenyuanNativeFlowModel: ObservableObject {
         logNativeE2E("part2_submitted part2_id=\(part2.part2Id) choices=\(choiceLogs.count) mirrors=\(mirrorLogs.count)")
 
         processingTitle = "精神星图正在显影"
-        processingDetail = "让哲学、精神分析和文艺共鸣汇成一张图。"
+        processingDetail = "云端正在把选择、停顿和回望压成星图，可以切出 App。"
         processingProgress = 0.88
-        let nextConstellation = try await client.generateConstellation(part1Id: part1Id, part2Id: part2.part2Id)
-        constellation = nextConstellation
-        session.constellationId = nextConstellation.constellationId
+        let job = try await client.startNativeGenerationJob(kind: "constellation", part1Id: part1Id, part2Id: part2.part2Id)
+        session.activeGenerationJobId = job.jobId
+        activeGenerationJobId = job.jobId
         persist()
-        logNativeE2E("constellation_generated constellation_id=\(nextConstellation.constellationId)")
-        stage = .constellation
+        logNativeE2E("native_job_started kind=constellation job_id=\(job.jobId)")
+        try await pollNativeGenerationJob(jobId: job.jobId)
+    }
+
+    private func restoreActiveGenerationJobIfNeeded() async -> Bool {
+        guard let jobId = session.activeGenerationJobId else { return false }
+        activeGenerationJobId = jobId
+        stage = .processing
+        processingTitle = "正在取回云端生成"
+        processingDetail = "可以切出 App，云端任务会继续推进。"
+        processingProgress = max(processingProgress, 0.18)
+        do {
+            try await pollNativeGenerationJob(jobId: jobId)
+        } catch {
+            stage = .error(error.localizedDescription)
+        }
+        return true
+    }
+
+    private func pollNativeGenerationJob(jobId: String) async throws {
+        activeGenerationJobId = jobId
+        session.activeGenerationJobId = jobId
+        persist()
+        while true {
+            try Task.checkCancellation()
+            let job = try await client.fetchNativeGenerationJob(jobId: jobId)
+            applyNativeGenerationJob(job)
+
+            if job.status == "done" {
+                try await completeNativeGenerationJob(job)
+                return
+            }
+            if job.status == "failed" {
+                session.activeGenerationJobId = nil
+                activeGenerationJobId = nil
+                persist()
+                throw BenyuanAPIError.server(status: 500, message: job.error ?? "native_generation_failed")
+            }
+
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+    }
+
+    private func applyNativeGenerationJob(_ job: BenyuanNativeGenerationJobResponse) {
+        processingProgress = min(max(job.progress, 0.02), 1)
+        processingDetail = job.message.isEmpty ? "可以切出 App，云端任务会继续推进。" : "\(job.message) 可以切出 App，稍后回来查看结果。"
+        switch job.currentStage {
+        case "queued":
+            processingTitle = "云端任务正在排队"
+        case "multimodal":
+            processingTitle = "正在读取影像背面的情绪"
+        case "theater":
+            processingTitle = "剧场开始生成"
+        case "constellation":
+            processingTitle = "精神星图正在显影"
+        case "done":
+            processingTitle = "云端生成完成"
+        case "failed":
+            processingTitle = "云端生成中断"
+        default:
+            processingTitle = "本源正在云端生成"
+        }
+    }
+
+    private func completeNativeGenerationJob(_ job: BenyuanNativeGenerationJobResponse) async throws {
+        session.activeGenerationJobId = nil
+        activeGenerationJobId = nil
+        processingProgress = 1
+        persist()
+
+        switch job.kind {
+        case "theater":
+            guard let theaterScriptId = job.theaterScriptId else {
+                throw BenyuanAPIError.invalidResponse
+            }
+            let record = try await client.fetchTheaterScript(theaterScriptId: theaterScriptId)
+            theater = record.generateResponse()
+            session.theaterScriptId = theaterScriptId
+            persist()
+            logNativeE2E("theater_saved theater_script_id=\(theaterScriptId)")
+            resetTheaterState()
+            stage = .theater
+        case "constellation":
+            guard let constellationId = job.constellationId else {
+                throw BenyuanAPIError.invalidResponse
+            }
+            let record = try await client.fetchConstellationRecord(constellationId: constellationId)
+            constellation = record.generateResponse(constellationId: constellationId)
+            session.constellationId = constellationId
+            persist()
+            logNativeE2E("constellation_generated constellation_id=\(constellationId)")
+            stage = .constellation
+        default:
+            throw BenyuanAPIError.invalidResponse
+        }
     }
 
     private func uploadNativeE2EFixtures(for questions: [BenyuanQuestion]) async throws -> [BenyuanUploadedAssetRef] {
@@ -1086,6 +1199,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         session = .empty
         session.authSession = authSession
         session.user = user
+        activeGenerationJobId = nil
         client.setAuthSession(authSession)
         thumbnails = [:]
         theater = nil
@@ -1104,6 +1218,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     private func restorePart1Draft(_ record: BenyuanPart1HistoryRecordResponse) {
         session.part1Id = record.part1Id
+        session.activeGenerationJobId = nil
+        activeGenerationJobId = nil
         session.answers.merge(record.answers) { _, restored in restored }
         session.uploadedAssets = record.uploadedAssets
         let restoredAssetIds = Set(record.uploadedAssets.values.flatMap { $0.map(\.assetId) })
@@ -1115,6 +1231,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
         session.part1Id = record.part1Id
         session.part2Id = record.part2Id
         session.theaterScriptId = record.theaterScriptId
+        session.activeGenerationJobId = nil
+        activeGenerationJobId = nil
         if let phaseDurations = record.metadata["phase_durations"]?.objectValue {
             session.phaseDurations = phaseDurations.reduce(into: [:]) { result, entry in
                 if case .number(let value) = entry.value {

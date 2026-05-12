@@ -30,6 +30,10 @@ assert.match(serverRuntime, /allowProviderOverride\s*\?\s*override\?\.live/, "se
 
 assert.match(agent, /readBenyuanAgentRuntime/, "agent calls must resolve runtime through the dedicated server module");
 assert.doesNotMatch(agent, /readCodexProviderDefaults/, "agent must not read local Codex auth directly");
+assert.match(agent, /constellation:\s*\{[\s\S]*?reasoningEffort:\s*"xhigh"/, "constellation analyst must use xhigh reasoning even when the fast profile is enabled");
+assert.match(agent, /theater:\s*\{[\s\S]*?reasoningEffort:\s*"xhigh"/, "theater director must use xhigh reasoning to preserve continuous story logic");
+assert.match(agent, /multimodal:\s*\{[\s\S]*?reasoningEffort:\s*"xhigh"/, "multimodal analysis must use xhigh reasoning by default");
+assert.doesNotMatch(agent, /constellation:\s*\{[\s\S]*?reasoningEffort:\s*"medium"/, "constellation analyst must not run at medium reasoning");
 assert.match(runtimeRoute, /readBenyuanServerRuntimeStatus/, "agent runtime route must use safe server runtime status");
 assert.doesNotMatch(runtimeRoute, /OPENAI_API_KEY/, "runtime route must not reference raw secret env keys directly");
 assert.match(runtimeRoute, /secretStorage/, "runtime route must return secret storage status");

@@ -4,6 +4,8 @@ struct BenyuanNativeCollectView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
     @State private var pickingQuestion: BenyuanQuestion?
     @State private var replacesExistingUpload = false
+    @State private var novaBurstOptionId: String?
+    @State private var novaBurstToken = 0
     private let collectBottomSafeSpace: CGFloat = 178
 
     var body: some View {
@@ -63,9 +65,6 @@ struct BenyuanNativeCollectView: View {
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(BenyuanColor.accentGold)
                 Spacer()
-                Text("MODULE \(question.module.rawValue)")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(BenyuanColor.textTertiary)
             }
 
             Text(question.prompt)
@@ -93,9 +92,6 @@ struct BenyuanNativeCollectView: View {
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(BenyuanColor.accentGold)
                 Spacer()
-                Text("MODULE \(question.module.rawValue)")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundStyle(BenyuanColor.textTertiary)
             }
 
             Text(question.prompt)
@@ -104,17 +100,11 @@ struct BenyuanNativeCollectView: View {
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .minimumScaleFactor(0.82)
 
-            HStack(spacing: BenyuanSpacing.x3) {
-                BenyuanQuestionSignalField(progress: model.progress, module: question.module)
-                    .frame(width: 132, height: 70)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-
-                Text(question.helperText ?? "选择图片线索，上传后会进入多模态分析。")
-                    .font(.system(size: 13, weight: .regular))
-                    .lineSpacing(4)
-                    .foregroundStyle(BenyuanColor.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Text(question.helperText ?? "选择图片线索，上传后会进入多模态分析。")
+                .font(.system(size: 13, weight: .regular))
+                .lineSpacing(5)
+                .foregroundStyle(BenyuanColor.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -126,9 +116,12 @@ struct BenyuanNativeCollectView: View {
                 ForEach(Array((question.options ?? []).enumerated()), id: \.element.id) { index, option in
                     let selected = model.session.answers[question.id]?.stringValue == option.id
                     BenyuanNativeOptionButton(index: index, title: option.text, active: selected) {
+                        novaBurstOptionId = option.id
+                        novaBurstToken += 1
                         model.setSingleAnswer(option.id)
                     }
                     .overlay(BenyuanSelectionPulseLayer(isActive: selected, cornerRadius: 24))
+                    .overlay(BenyuanNovaSelectionBurst(trigger: novaBurstOptionId == option.id ? novaBurstToken : 0))
                 }
             }
         case .multi:
@@ -136,9 +129,12 @@ struct BenyuanNativeCollectView: View {
                 ForEach(Array((question.options ?? []).enumerated()), id: \.element.id) { index, option in
                     let selected = model.session.answers[question.id]?.arrayValue?.contains(.string(option.id)) == true
                     BenyuanNativeOptionButton(index: index, title: option.text, active: selected) {
+                        novaBurstOptionId = option.id
+                        novaBurstToken += 1
                         model.toggleMultiAnswer(option.id)
                     }
                     .overlay(BenyuanSelectionPulseLayer(isActive: selected, cornerRadius: 24))
+                    .overlay(BenyuanNovaSelectionBurst(trigger: novaBurstOptionId == option.id ? novaBurstToken : 0))
                 }
             }
         case .distribution:
@@ -183,47 +179,22 @@ struct BenyuanNativeCollectView: View {
             Button {
                 pickingQuestion = question
             } label: {
-                HStack(alignment: .center, spacing: BenyuanSpacing.x3) {
-                    ZStack {
-                        BenyuanBlackMoonMark(size: 58, breathes: true)
-                        Image(systemName: hasAssets ? "photo.stack.fill" : "plus")
-                            .font(.system(size: hasAssets ? 15 : 17, weight: .semibold))
-                            .foregroundStyle(hasAssets ? BenyuanColor.accentGold : BenyuanColor.textPrimary)
-                            .offset(y: hasAssets ? 0 : 1)
-                    }
+                VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
+                    BenyuanUploadArtPanel(
+                        progress: min(max(Double(max(assets.count, 1)) / Double(max(maxCount, 1)), 0.24), 1),
+                        module: question.module,
+                        hasAssets: hasAssets,
+                        canAddMore: canAddMore
+                    )
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(uploadHeroTitle(hasAssets: hasAssets, isUploading: model.uploadingQuestionId == question.id))
-                            .font(.system(size: 19, weight: .semibold))
-                            .foregroundStyle(BenyuanColor.textPrimary)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.82)
-
-                        Text(uploadHeroDetail(count: assets.count, maxCount: maxCount, canAddMore: canAddMore))
-                            .font(.system(size: 13, weight: .regular))
-                            .lineSpacing(4)
-                            .foregroundStyle(BenyuanColor.textSecondary)
-                    }
-
-                    Spacer(minLength: BenyuanSpacing.x2)
-
-                    Image(systemName: canAddMore ? "chevron.right" : "checkmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(canAddMore ? BenyuanColor.textTertiary : BenyuanColor.accentGold)
+                    BenyuanUploadStatusPanel(
+                        count: assets.count,
+                        maxCount: maxCount,
+                        hasAssets: hasAssets,
+                        canAddMore: canAddMore,
+                        isUploading: model.uploadingQuestionId == question.id
+                    )
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, BenyuanSpacing.x4)
-                .padding(.vertical, BenyuanSpacing.x3)
-                .background(
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .fill(hasAssets ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill)
-                        BenyuanFlowOrbitTrail(progress: min(max(Double(assets.count) / Double(max(maxCount, 1)), 0.12), 1), intensity: hasAssets ? 0.82 : 0.48, tilt: -9)
-                            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                        RoundedRectangle(cornerRadius: 30, style: .continuous)
-                            .stroke(hasAssets ? BenyuanColor.accentGold.opacity(0.24) : BenyuanColor.glassStroke, lineWidth: 1)
-                    }
-                )
             }
             .buttonStyle(.plain)
             .buttonStyle(BenyuanPressableMotionStyle(scale: 0.986, glow: hasAssets ? 0.14 : 0.08))
@@ -238,6 +209,88 @@ struct BenyuanNativeCollectView: View {
             }
         }
         .animation(.easeOut(duration: 0.24), value: assets.map(\.assetId))
+    }
+
+    private struct BenyuanUploadArtPanel: View {
+        var progress: Double
+        var module: BenyuanModuleKey
+        var hasAssets: Bool
+        var canAddMore: Bool
+
+        var body: some View {
+            ZStack(alignment: .topTrailing) {
+                BenyuanUploadCelestialPortal(
+                    progress: progress,
+                    module: module,
+                    hasAssets: hasAssets
+                )
+
+                Image(systemName: canAddMore ? "chevron.right" : "checkmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(canAddMore ? BenyuanColor.textTertiary : BenyuanColor.accentGold)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(BenyuanColor.bgVoid.opacity(0.50)).overlay(Circle().stroke(BenyuanColor.glassStroke.opacity(0.72))))
+                    .padding(BenyuanSpacing.x4)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 156)
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(hasAssets ? BenyuanColor.accentGold.opacity(0.24) : BenyuanColor.glassStroke, lineWidth: 1)
+            )
+        }
+    }
+
+    private struct BenyuanUploadStatusPanel: View {
+        var count: Int
+        var maxCount: Int
+        var hasAssets: Bool
+        var canAddMore: Bool
+        var isUploading: Bool
+
+        var body: some View {
+            HStack(alignment: .center, spacing: BenyuanSpacing.x3) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: hasAssets ? "photo.stack.fill" : "plus")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(hasAssets ? BenyuanColor.accentGold : BenyuanColor.textPrimary)
+                        Text(hasAssets ? "\(count)/\(maxCount) 张线索" : "选择图片线索")
+                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                            .foregroundStyle(hasAssets ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
+                    }
+
+                    Text(hasAssets ? "图片线索已进入剧场" : isUploading ? "图片正在进入剧场" : "选择图片线索")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.82)
+
+                    Text(hasAssets ? "已加入 \(count) / \(maxCount) 张，还可以继续添加或逐张删除。" : "把一张场景、物品或记忆照片交给本源。")
+                        .font(.system(size: 13, weight: .regular))
+                        .lineSpacing(4)
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .lineLimit(3)
+                }
+
+                Spacer(minLength: BenyuanSpacing.x2)
+
+                Image(systemName: canAddMore ? "chevron.right" : "checkmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(canAddMore ? BenyuanColor.textTertiary : BenyuanColor.accentGold)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(BenyuanColor.bgVoid.opacity(0.50)).overlay(Circle().stroke(BenyuanColor.glassStroke.opacity(0.72))))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, BenyuanSpacing.x4)
+            .padding(.vertical, BenyuanSpacing.x3)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(BenyuanColor.bgVoid.opacity(0.64))
+                    .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(hasAssets ? BenyuanColor.accentGold.opacity(0.24) : BenyuanColor.glassStroke, lineWidth: 1))
+            )
+        }
     }
 
     private func uploadThumbnailStrip(question: BenyuanQuestion, assets: [BenyuanUploadedAssetRef]) -> some View {

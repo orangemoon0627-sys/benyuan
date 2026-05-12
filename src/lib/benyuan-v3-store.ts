@@ -1,30 +1,44 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
+  AgentRuntimeOverride,
   BenyuanAuthProvider,
   BenyuanAuthSession,
   BenyuanAuthProviderIndex,
   BenyuanAuthRateLimit,
   BenyuanFeedbackRecord,
+  BenyuanNativeGenerationJob,
+  BenyuanNativeGenerationJobKind,
+  BenyuanNativeGenerationJobStage,
+  BenyuanNativeGenerationJobStatus,
   BenyuanTestPlanItem,
   BenyuanAccountHistoryItem,
   BenyuanPhoneOtp,
   BenyuanStoredAsset,
+  BenyuanUploadedAssetRef,
   BenyuanUser,
   BenyuanV3Store,
   ConstellationRecord,
+  MultimodalInputItem,
+  MusicAnalysis,
   Part1Record,
   Part2Record,
+  PreciousPhotoAnalysis,
+  SocialPostAnalysis,
+  SocialPostOverallPattern,
   TheaterScriptRecord,
 } from "@/lib/benyuan-v3-types";
+import { recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
+import { aggregateTraitsFromPart1, generateDeterministicConstellation } from "@/lib/benyuan-v3-engine";
+import { generateConstellationWithAgent, generateTheaterScriptWithAgent, runMultimodalAnalysis } from "@/lib/benyuan-v3-agent";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
-import { generateDeterministicConstellation } from "@/lib/benyuan-v3-engine";
 import { uploadedAssetsFromAnswer } from "@/lib/benyuan-upload-assets";
 import { ensureBenyuanDataDirs, getBenyuanPersistenceHealth, getBenyuanV3StorePath } from "@/lib/benyuan-persistence";
 
 const STORE_PATH = getBenyuanV3StorePath();
 const TEMP_STORE_PATH = `${STORE_PATH}.${process.pid}.tmp`;
+const NATIVE_GENERATION_JOB_STALE_MS = 10 * 60 * 1000;
 
 const EMPTY_STORE: BenyuanV3Store = {
   users: {},
@@ -37,6 +51,7 @@ const EMPTY_STORE: BenyuanV3Store = {
   theater_scripts: {},
   part2_records: {},
   constellations: {},
+  native_generation_jobs: {},
   feedback_records: {},
   test_plan_items: {},
 };
@@ -112,6 +127,7 @@ function mergeStore(raw: Partial<BenyuanV3Store> | null | undefined): BenyuanV3S
     theater_scripts: raw?.theater_scripts ?? {},
     part2_records: raw?.part2_records ?? {},
     constellations: raw?.constellations ?? {},
+    native_generation_jobs: raw?.native_generation_jobs ?? {},
     feedback_records: raw?.feedback_records ?? {},
     test_plan_items: raw?.test_plan_items ?? {},
   };
@@ -153,7 +169,7 @@ export async function getBenyuanV3StoreHealth() {
   return getBenyuanPersistenceHealth(store);
 }
 
-export function createBenyuanV3Id(prefix: "upload" | "part1" | "theater" | "part2" | "const") {
+export function createBenyuanV3Id(prefix: "upload" | "part1" | "theater" | "part2" | "const" | "job") {
   return uid(prefix);
 }
 
@@ -253,6 +269,75 @@ function findPart2ForPart1(store: BenyuanV3Store, part1Id: string) {
 
 function findConstellationForPart1(store: BenyuanV3Store, part1Id: string) {
   return Object.values(store.constellations).find((item) => item.part1_id === part1Id);
+}
+
+function findConstellationForPart2(store: BenyuanV3Store, part1Id: string, part2Id: string) {
+  return Object.values(store.constellations).find((item) => item.part1_id === part1Id && item.part2_id === part2Id);
+}
+
+function findNativeGenerationJob(store: BenyuanV3Store, input: { kind: BenyuanNativeGenerationJobKind; part1Id: string; part2Id?: string }) {
+  return Object.values(store.native_generation_jobs).find((job) => {
+    if (job.kind !== input.kind || job.part1_id !== input.part1Id) return false;
+    if (input.kind === "constellation" && job.part2_id !== input.part2Id) return false;
+    return job.status === "queued" || job.status === "running" || job.status === "done";
+  });
+}
+
+function refsFromAnswer(value: unknown) {
+  return uploadedAssetsFromAnswer(value).filter(
+    (item): item is BenyuanUploadedAssetRef =>
+      typeof item.asset_id === "string" &&
+      typeof item.question_id === "string",
+  );
+}
+
+function itemsFromRefs(refs: BenyuanUploadedAssetRef[], fallbackItems: MultimodalInputItem[] = []) {
+  if (refs.length === 0) return fallbackItems;
+  return refs.map((ref) => ({
+    asset_id: ref.asset_id,
+    source: ref.name,
+    file_name: ref.name,
+    mime_type: ref.mime_type,
+    description: `${ref.question_id}:${ref.name}`,
+  }));
+}
+
+function jobMessage(stage: BenyuanNativeGenerationJobStage) {
+  switch (stage) {
+    case "queued":
+      return "云端任务已接收，正在排队进入分析。";
+    case "multimodal":
+      return "云端正在读取图片、音乐与叙事线索。";
+    case "theater":
+      return "云端正在生成连续剧场。";
+    case "constellation":
+      return "云端正在生成精神星图。";
+    case "done":
+      return "云端生成已完成，正在取回结果。";
+    case "failed":
+      return "云端生成失败，请稍后重试。";
+  }
+}
+
+async function updateNativeGenerationJob(
+  jobId: string,
+  update: Partial<Pick<BenyuanNativeGenerationJob, "status" | "current_stage" | "progress" | "message" | "error" | "theater_script_id" | "constellation_id" | "finished_at">>,
+) {
+  return withStoreWrite((store) => {
+    const current = store.native_generation_jobs[jobId];
+    if (!current) return undefined;
+    const next = {
+      ...current,
+      ...update,
+      updated_at: new Date().toISOString(),
+    };
+    store.native_generation_jobs[jobId] = next;
+    return next;
+  });
+}
+
+function isNativeGenerationJobFresh(job: BenyuanNativeGenerationJob) {
+  return Date.now() - new Date(job.updated_at).getTime() < NATIVE_GENERATION_JOB_STALE_MS;
 }
 
 function makeHistoryItem(store: BenyuanV3Store, part1: Part1Record): BenyuanAccountHistoryItem {
@@ -558,6 +643,238 @@ export async function getPart2RecordForPart1(part1Id: string, part2Id?: string) 
     return record?.part1_id === part1Id ? record : undefined;
   }
   return findPart2ForPart1(store, part1Id);
+}
+
+export async function startNativeGenerationJob(input: {
+  kind: BenyuanNativeGenerationJobKind;
+  part1Id: string;
+  part2Id?: string;
+  runtimeOverride?: AgentRuntimeOverride;
+}) {
+  return withStoreWrite((store) => {
+    const part1 = store.part1_records[input.part1Id];
+    if (!part1) return undefined;
+    const existingJob = findNativeGenerationJob(store, input);
+    if (existingJob) return existingJob;
+
+    const existingTheater = input.kind === "theater" ? findTheaterForPart1(store, input.part1Id) : undefined;
+    const existingConstellation =
+      input.kind === "constellation" && input.part2Id
+        ? findConstellationForPart2(store, input.part1Id, input.part2Id)
+        : undefined;
+    const timestamp = new Date().toISOString();
+    const status: BenyuanNativeGenerationJobStatus = existingTheater || existingConstellation ? "done" : "queued";
+    const currentStage: BenyuanNativeGenerationJobStage =
+      existingTheater || existingConstellation ? "done" : "queued";
+    const job: BenyuanNativeGenerationJob = {
+      job_id: createBenyuanV3Id("job"),
+      user_id: part1.user_id,
+      part1_id: input.part1Id,
+      part2_id: input.part2Id,
+      theater_script_id: existingTheater?.theater_script_id,
+      constellation_id: existingConstellation?.constellation_id,
+      kind: input.kind,
+      status,
+      current_stage: currentStage,
+      progress: 0.18,
+      message: jobMessage(currentStage),
+      can_resume_in_background: true,
+      created_at: timestamp,
+      updated_at: timestamp,
+      finished_at: status === "done" ? timestamp : undefined,
+    };
+    if (status === "done") {
+      job.progress = 1;
+    }
+    store.native_generation_jobs[job.job_id] = job;
+    return job;
+  });
+}
+
+export async function getNativeGenerationJob(jobId: string) {
+  const store = await readBenyuanV3Store();
+  return store.native_generation_jobs[jobId];
+}
+
+export async function runNativeGenerationJob(jobId: string) {
+  const existing = await getNativeGenerationJob(jobId);
+  if (!existing || existing.status === "done" || existing.status === "failed") return existing;
+  if (existing.status === "running" && isNativeGenerationJobFresh(existing)) return existing;
+
+  if (existing.kind === "theater") {
+    await updateNativeGenerationJob(jobId, {
+      status: "running",
+      current_stage: "multimodal",
+      progress: 0.32,
+      message: jobMessage("multimodal"),
+      error: undefined,
+    });
+  } else {
+    await updateNativeGenerationJob(jobId, {
+      status: "running",
+      current_stage: "constellation",
+      progress: 0.58,
+      message: jobMessage("constellation"),
+      error: undefined,
+    });
+  }
+
+  try {
+    if (existing.kind === "theater") {
+      const record = await getPart1Record(existing.part1_id);
+      if (!record) throw new Error("part1_not_found");
+      const existingTheater = findTheaterForPart1(await readBenyuanV3Store(), record.part1_id);
+      if (existingTheater) {
+        return updateNativeGenerationJob(jobId, {
+          status: "done",
+          current_stage: "done",
+          progress: 1,
+          message: jobMessage("done"),
+          theater_script_id: existingTheater.theater_script_id,
+          finished_at: new Date().toISOString(),
+        });
+      }
+
+      const musicRefs = refsFromAnswer(record.answers.A2_music_analysis);
+      const socialRefs = refsFromAnswer(record.answers.C1_social_posts_analysis);
+      const photoRefs = refsFromAnswer(record.answers.C2_precious_photo_analysis);
+      const multimodalStartedAt = Date.now();
+      const analysis = await runMultimodalAnalysis({
+        music_inputs: itemsFromRefs(musicRefs),
+        social_post_inputs: itemsFromRefs(socialRefs),
+        precious_photo_input: photoRefs[0]
+          ? {
+              asset_id: photoRefs[0].asset_id,
+              source: photoRefs[0].name,
+              file_name: photoRefs[0].name,
+              mime_type: photoRefs[0].mime_type,
+              description: `${photoRefs[0].question_id}:${photoRefs[0].name}`,
+            }
+          : undefined,
+      });
+      await recordBenyuanAgentTiming({
+        stage: "multimodal",
+        duration_ms: Date.now() - multimodalStartedAt,
+        runtime_mode: analysis.runtime.mode,
+        provider: analysis.runtime.provider,
+        model: analysis.runtime.model,
+        error: analysis.runtime.error,
+        request_id: analysis.runtime.request_id,
+        part1_id: record.part1_id,
+      });
+      const updatedPart1: Part1Record = {
+        ...record,
+        updated_at: new Date().toISOString(),
+        part1_data: {
+          ...record.part1_data,
+          aesthetics: {
+            ...record.part1_data.aesthetics,
+            music_analysis: analysis.result.music_analysis as MusicAnalysis,
+          },
+          narrative: {
+            ...record.part1_data.narrative,
+            social_posts_analysis: analysis.result.social_posts_analysis as SocialPostAnalysis[],
+            social_posts_overall_pattern: analysis.result.social_posts_overall_pattern as SocialPostOverallPattern,
+            precious_photo_analysis: analysis.result.precious_photo_analysis as PreciousPhotoAnalysis,
+          },
+        },
+      };
+      updatedPart1.aggregated_traits = aggregateTraitsFromPart1(updatedPart1.answers, updatedPart1.part1_data);
+      await savePart1Record(updatedPart1);
+
+      await updateNativeGenerationJob(jobId, {
+        current_stage: "theater",
+        progress: 0.72,
+        message: jobMessage("theater"),
+      });
+
+      const theaterStartedAt = Date.now();
+      const result = await generateTheaterScriptWithAgent(updatedPart1);
+      await recordBenyuanAgentTiming({
+        stage: "theater",
+        duration_ms: Date.now() - theaterStartedAt,
+        runtime_mode: result.runtime.mode,
+        provider: result.runtime.provider,
+        model: result.runtime.model,
+        error: result.runtime.error,
+        request_id: result.runtime.request_id,
+        part1_id: updatedPart1.part1_id,
+      });
+      const theaterRecord: TheaterScriptRecord = {
+        theater_script_id: createBenyuanV3Id("theater"),
+        part1_id: updatedPart1.part1_id,
+        created_at: new Date().toISOString(),
+        runtime: result.runtime,
+        theater_script: result.theaterScript,
+      };
+      await saveTheaterScriptRecord(theaterRecord);
+      return updateNativeGenerationJob(jobId, {
+        status: "done",
+        current_stage: "done",
+        progress: 1,
+        message: jobMessage("done"),
+        theater_script_id: theaterRecord.theater_script_id,
+        finished_at: new Date().toISOString(),
+      });
+    }
+
+    const [part1, part2] = await Promise.all([getPart1Record(existing.part1_id), existing.part2_id ? getPart2Record(existing.part2_id) : undefined]);
+    if (!part1) throw new Error("part1_not_found");
+    if (!part2) throw new Error("part2_not_found");
+    if (part2.part1_id !== part1.part1_id) throw new Error("part2_part1_mismatch");
+
+    const existingConstellation = findConstellationForPart2(await readBenyuanV3Store(), part1.part1_id, part2.part2_id);
+    if (existingConstellation) {
+      return updateNativeGenerationJob(jobId, {
+        status: "done",
+        current_stage: "done",
+        progress: 1,
+        message: jobMessage("done"),
+        constellation_id: existingConstellation.constellation_id,
+        finished_at: new Date().toISOString(),
+      });
+    }
+
+    const constellationStartedAt = Date.now();
+    const result = await generateConstellationWithAgent(part1, part2);
+    await recordBenyuanAgentTiming({
+      stage: "constellation",
+      duration_ms: Date.now() - constellationStartedAt,
+      runtime_mode: result.runtime.mode,
+      provider: result.runtime.provider,
+      model: result.runtime.model,
+      error: result.runtime.error,
+      request_id: result.runtime.request_id,
+      part1_id: part1.part1_id,
+      part2_id: part2.part2_id,
+    });
+    const constellationRecord: ConstellationRecord = {
+      constellation_id: createBenyuanV3Id("const"),
+      part1_id: part1.part1_id,
+      part2_id: part2.part2_id,
+      created_at: new Date().toISOString(),
+      runtime: result.runtime,
+      psyche_constellation: result.constellation,
+    };
+    await saveConstellationRecord(constellationRecord);
+    return updateNativeGenerationJob(jobId, {
+      status: "done",
+      current_stage: "done",
+      progress: 1,
+      message: jobMessage("done"),
+      constellation_id: constellationRecord.constellation_id,
+      finished_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    return updateNativeGenerationJob(jobId, {
+      status: "failed",
+      current_stage: "failed",
+      progress: 1,
+      message: jobMessage("failed"),
+      error: error instanceof Error ? error.message : "native_generation_failed",
+      finished_at: new Date().toISOString(),
+    });
+  }
 }
 
 export async function saveConstellationRecord(record: ConstellationRecord) {

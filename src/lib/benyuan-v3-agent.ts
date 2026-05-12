@@ -281,21 +281,21 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
   fast: {
     multimodal: {
       maxOutputTokens: 1100,
-      reasoningEffort: "low",
+      reasoningEffort: "xhigh",
       timeoutMs: 60000,
       transport: "json_first",
       allowSecondaryAttempts: false,
     },
     theater: {
       maxOutputTokens: 2600,
-      reasoningEffort: "medium",
+      reasoningEffort: "xhigh",
       timeoutMs: 120000,
       transport: "json_first",
       allowSecondaryAttempts: false,
     },
     constellation: {
       maxOutputTokens: 3800,
-      reasoningEffort: "medium",
+      reasoningEffort: "xhigh",
       timeoutMs: 90000,
       transport: "json_first",
       allowSecondaryAttempts: true,
