@@ -294,9 +294,9 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       maxProviderAttempts: 1,
     },
     theater: {
-      maxOutputTokens: 2200,
+      maxOutputTokens: 900,
       reasoningEffort: "xhigh",
-      timeoutMs: 240000,
+      timeoutMs: 90000,
       transport: "json_first",
       allowSecondaryAttempts: false,
       maxProviderAttempts: 1,
@@ -1194,6 +1194,95 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
   };
 }
 
+type FastTheaterSeed = {
+  core_archetype?: string;
+  motifs: string[];
+  act1_lens?: string;
+  act2_lenses: string[];
+  mirror_questions: Array<{ dialogue?: string; question?: string }>;
+  closing_line?: string;
+};
+
+function normalizeFastTheaterSeed(candidate: unknown): FastTheaterSeed | null {
+  const source = isRecord(candidate) && isRecord(candidate.theater_seed) ? candidate.theater_seed : candidate;
+  if (!isRecord(source)) return null;
+
+  const motifs = Array.isArray(source.motifs)
+    ? source.motifs.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 3)
+    : [];
+  const act2Lenses = Array.isArray(source.act2_lenses)
+    ? source.act2_lenses.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 3)
+    : [];
+  const mirrorQuestions = Array.isArray(source.mirror_questions)
+    ? source.mirror_questions
+        .flatMap((item) => {
+          if (!isRecord(item)) return null;
+          return {
+            dialogue: typeof item.dialogue === "string" && item.dialogue.trim().length > 0 ? item.dialogue.trim() : undefined,
+            question: typeof item.question === "string" && item.question.trim().length > 0 ? item.question.trim() : undefined,
+          };
+        })
+        .filter((item): item is { dialogue: string | undefined; question: string | undefined } => Boolean(item))
+        .slice(0, 2)
+    : [];
+
+  if (motifs.length === 0 && !source.act1_lens && act2Lenses.length === 0 && mirrorQuestions.length === 0 && !source.closing_line) {
+    return null;
+  }
+
+  return {
+    core_archetype: typeof source.core_archetype === "string" && source.core_archetype.trim().length > 0 ? source.core_archetype.trim() : undefined,
+    motifs,
+    act1_lens: typeof source.act1_lens === "string" && source.act1_lens.trim().length > 0 ? source.act1_lens.trim() : undefined,
+    act2_lenses: act2Lenses,
+    mirror_questions: mirrorQuestions,
+    closing_line: typeof source.closing_line === "string" && source.closing_line.trim().length > 0 ? source.closing_line.trim() : undefined,
+  };
+}
+
+function mergeFastTheaterSeed(fallback: TheaterScript, seed: FastTheaterSeed): TheaterScript {
+  const motifLine = seed.motifs.length > 0 ? `这一次，剧场先把 ${seed.motifs.join("、")} 放在你面前。` : "";
+  const coreArchetype = seed.core_archetype && !isSuspiciousArchetypeName(seed.core_archetype)
+    ? seed.core_archetype
+    : fallback.personalization_summary.core_archetype;
+
+  return {
+    ...fallback,
+    personalization_summary: {
+      ...fallback.personalization_summary,
+      core_archetype: coreArchetype,
+      key_themes: [...new Set([...seed.motifs, ...fallback.personalization_summary.key_themes])].slice(0, 6),
+    },
+    act1: {
+      ...fallback.act1,
+      scene_description: [seed.act1_lens, motifLine, fallback.act1.scene_description].filter(Boolean).join("\n\n"),
+    },
+    act2: {
+      choices: fallback.act2.choices.map((choice, index) => ({
+        ...choice,
+        scene: [seed.act2_lenses[index], choice.scene].filter(Boolean).join("\n\n"),
+      })),
+    },
+    act3: {
+      ...fallback.act3,
+      mirror_questions: fallback.act3.mirror_questions.map((question, index) => {
+        const liveQuestion = seed.mirror_questions[index];
+        if (!liveQuestion) return question;
+        return {
+          ...question,
+          dialogue: liveQuestion.dialogue ?? question.dialogue,
+          question: liveQuestion.question ?? question.question,
+        };
+      }),
+      mirror_final_words: seed.closing_line ?? fallback.act3.mirror_final_words,
+    },
+    epilogue: {
+      ...fallback.epilogue,
+      closing_text: seed.closing_line ?? fallback.epilogue.closing_text,
+    },
+  };
+}
+
 function normalizeBookRecommendations(source: unknown, fallback: PsycheConstellation["recommendations"]["books"]) {
   if (!Array.isArray(source)) return fallback;
   const normalized = source
@@ -1698,6 +1787,13 @@ export async function generateTheaterScriptWithAgent(record: Part1Record, runtim
     allowSecondaryAttempts: profile.allowSecondaryAttempts,
     maxProviderAttempts: profile.maxProviderAttempts,
   });
+
+  if (profile.compactPrompt) {
+    const seed = normalizeFastTheaterSeed(request.data);
+    if (seed) {
+      return { theaterScript: mergeFastTheaterSeed(fallback, seed), runtime: request.runtime };
+    }
+  }
 
   const normalized = normalizeTheaterScript(request.data, fallback);
   if (!normalized) {

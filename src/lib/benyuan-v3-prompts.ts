@@ -716,17 +716,17 @@ export const MULTIMODAL_SYSTEM_PROMPT = `你是「本源」系统的多模态预
   }
 }`;
 
-export const FAST_DIRECTOR_SYSTEM_PROMPT = `你是「本源」系统的剧场导演。请生成可快速解析的三幕式剧场 JSON，保持深月场、黑洞入口、精神剧场、星图显形的气质，但输出要紧凑。
+export const FAST_DIRECTOR_SYSTEM_PROMPT = `你是「本源」系统的剧场导演。请生成一个很小的 theater_seed JSON。它不是完整剧本，而是给后端剧场骨架使用的个性化母题种子。
 
 硬性要求：
 - 只输出 JSON 对象，不要 markdown，不要解释。
-- 顶层必须是 {"theater_script": {...}}。
-- 必须包含 personalization_summary, act1, act2, act3, epilogue，字段名不要改。
-- Act1 scene_description 约 180-260 字；Act2 必须 3 个 choice，每个 3 个 options；Act3 必须 2 个 mirror_questions，每题 5 个 options。
-- choice.scene 约 70-120 字；option.response 约 24-50 字；epilogue 各文本保持短句。
-- 所有用户可见文本用第二人称“你”，像连续镜头，不像问卷。
-- 每一幕都要复用 2-3 个来自用户回答、音乐、社交文本或照片的母题，让它们在 Act1/Act2/Act3 改变形态后再次出现。
-- 选项没有对错，不解释 trait_signal，不输出内部词。
+- 顶层必须是 {"theater_seed": {...}}。
+- theater_seed 必须包含 core_archetype, motifs, act1_lens, act2_lenses, mirror_questions, closing_line。
+- motifs 输出 2-3 条，每条不超过 18 个中文字。
+- act1_lens 不超过 60 字；act2_lenses 正好 3 条，每条不超过 45 字。
+- mirror_questions 正好 2 条，每条包含 dialogue 和 question，各不超过 55 字。
+- closing_line 不超过 55 字。
+- 这些文字会被后端融入完整剧场，所以不要输出完整剧本、不要输出 options、不要输出 act1/act2/act3/epilogue。
 - 氛围：深黑、暗紫、银白、暗金、玻璃、星尘、黑洞边界；玄妙但具体。
 - 禁止诊断、鸡汤、预言、恐吓、技术词；JSON 必须合法。`;
 
@@ -765,7 +765,7 @@ export function buildFastDirectorUserPrompt(record: Part1Record, fallback: Theat
   const social = record.part1_data.narrative.social_posts_analysis?.slice(0, 2) ?? [];
   const photo = record.part1_data.narrative.precious_photo_analysis;
 
-  return `请生成个性化精神剧场 JSON。保持 xhigh 推理深度，但输出紧凑、合法、可解析。
+  return `请生成个性化精神剧场 theater_seed JSON。保持 xhigh 推理深度，但输出非常短、合法、可解析。
 
 用户基座：
 - user_id: ${record.user_id}
@@ -781,11 +781,10 @@ ${compactEvidenceLines(record)}
 - 社交: ${social.map((item) => `${item.text_content}；${item.emotional_tone}；${item.themes.join("/")}`).join(" | ") || "未上传或未解析"}
 - 照片: ${photo ? `${photo.visual_content}；${photo.composition}；${photo.color_mood}；${photo.psychological_interpretation.core_themes.join("/")}` : "未上传或未解析"}
 
-连续母题要求：
+种子要求：
 1. 选 2-3 个最强母题，例如一束光、一段声音、一句未说完的话、一张照片里的距离或构图。
-2. Act1 让母题作为空间入口出现；Act2 每个 choice 让母题变形并推进同一条行动链；Act3 让母题变成镜面发问。
-3. Act2 不是三道独立问题，而是进入、改变距离、触碰或放下的连续镜头。
-4. Act3 的问题要像场景里的镜面/声音/物件在问，不要写成问卷。
+2. act1_lens 写入口镜头；act2_lenses 三条分别写进入、改变距离、触碰或放下；mirror_questions 两条写镜面发问。
+3. theater_seed 只提供短镜头和母题，不是完整剧本。
 
 fallback 结构校准，不要照抄，用来保证字段完整：
 ${JSON.stringify({
@@ -794,12 +793,20 @@ ${JSON.stringify({
   act3_question_count: fallback.act3.mirror_questions.length,
 })}
 
-输出要求：
-- core_archetype 写成中文精神姿态名，不要输出内部 slug。
-- act2 每个 choice 正好 3 个 options；act3 正好 2 个 mirror_questions，每题 5 个 options。
-- trait_signal 保留英文 snake_case；用户可见文本不要解释它。
-- visual_prompt 使用英文，短而可执行。
-- 严格输出 {"theater_script": {...}}。`;
+输出格式：
+{
+  "theater_seed": {
+    "core_archetype": "中文精神姿态名",
+    "motifs": ["母题1", "母题2"],
+    "act1_lens": "入口镜头",
+    "act2_lenses": ["进入镜头", "距离镜头", "触碰或放下镜头"],
+    "mirror_questions": [
+      {"dialogue": "镜面对白", "question": "镜面问题"},
+      {"dialogue": "镜面对白", "question": "镜面问题"}
+    ],
+    "closing_line": "结尾短句"
+  }
+}`;
 }
 
 export function buildAnalystUserPrompt(part1: Part1Record, part2: Part2Record, fallback: PsycheConstellation) {

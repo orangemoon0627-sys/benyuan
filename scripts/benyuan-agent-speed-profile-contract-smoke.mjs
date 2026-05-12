@@ -16,7 +16,7 @@ const configureScript = readRequired("scripts/configure-staging-llm.sh");
 const packageJson = readRequired("package.json");
 
 assert.match(agent, /BENYUAN_AGENT_SPEED_PROFILE/, "agent runtime must read BENYUAN_AGENT_SPEED_PROFILE");
-assert.match(agent, /fast[\s\S]*theater[\s\S]*maxOutputTokens:\s*2200/, "fast theater profile should cap output tokens at 2200");
+assert.match(agent, /fast[\s\S]*theater[\s\S]*maxOutputTokens:\s*900/, "fast theater profile should request a compact live seed");
 assert.match(agent, /fast[\s\S]*theater[\s\S]*reasoningEffort:\s*"xhigh"/, "fast theater profile should preserve xhigh reasoning");
 assert.match(agent, /fast[\s\S]*constellation[\s\S]*maxOutputTokens:\s*3000/, "fast constellation profile should cap output tokens at 3000");
 assert.match(agent, /fast[\s\S]*multimodal[\s\S]*reasoningEffort:\s*"xhigh"/, "fast multimodal profile should preserve xhigh reasoning");
@@ -25,9 +25,12 @@ assert.match(agent, /transport:\s*"json_first"/, "fast text agents should avoid 
 assert.match(agent, /allowSecondaryAttempts:\s*false/, "fast text agents should not stack multiple long provider attempts");
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*timeoutMs:\s*120000/, "fast multimodal profile should have enough time for live visual analysis");
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast multimodal profile should run a single provider attempt inside the native E2E window");
-assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*timeoutMs:\s*240000/, "fast theater profile should give xhigh live generation enough room for one bounded live attempt");
+assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxOutputTokens:\s*900/, "fast theater profile should only request a compact live seed");
+assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*timeoutMs:\s*90000/, "fast theater profile should keep the live seed inside the native E2E window");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast theater profile should avoid retrying a full long-running provider call");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*compactPrompt:\s*true/, "fast theater profile should use a compact director prompt");
+assert.match(agent, /normalizeFastTheaterSeed/, "fast theater generation should normalize a compact seed instead of requiring a full script");
+assert.match(agent, /mergeFastTheaterSeed/, "fast theater generation should merge live seed detail into the deterministic theater shell");
 assert.match(agent, /constellation:\s*\{[\s\S]*timeoutMs:\s*360000/, "fast constellation profile should allow the observed xhigh live generation window");
 assert.match(agent, /constellation:\s*\{[\s\S]*compactPrompt:\s*true/, "fast constellation profile should use a compact live prompt");
 assert.match(agent, /fast[\s\S]*constellation:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast constellation profile should use one bounded provider attempt");
@@ -42,7 +45,8 @@ assert.match(agent, /requestMultimodalJson\(\{[\s\S]*maxProviderAttempts:\s*prof
 assert.match(agent, /requestAgentJson\(\{[\s\S]*maxProviderAttempts:\s*profile\.maxProviderAttempts/, "text generation should pass stage retry budget");
 assert.match(prompts, /FAST_DIRECTOR_SYSTEM_PROMPT/, "prompts module should expose a compact director system prompt");
 assert.match(prompts, /buildFastDirectorUserPrompt/, "prompts module should expose compact director prompt builder");
-assert.match(prompts, /Act1.*180-260 字/, "compact director prompt should reduce theater scene length for native live generation");
+assert.match(prompts, /theater_seed/, "compact director prompt should request a small theater seed object");
+assert.match(prompts, /不是完整剧本/, "compact director prompt should make clear the provider is not generating the full script");
 assert.match(prompts, /FAST_ANALYST_SYSTEM_PROMPT/, "prompts module should expose a compact analyst system prompt");
 assert.match(prompts, /buildFastAnalystUserPrompt/, "prompts module should expose compact analyst prompt builder");
 assert.match(prompts, /420-620 字/, "compact analyst prompt should reduce narrative length for native live generation");
