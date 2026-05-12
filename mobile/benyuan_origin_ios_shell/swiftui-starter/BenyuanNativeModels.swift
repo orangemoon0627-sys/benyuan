@@ -135,7 +135,28 @@ struct BenyuanUploadedAssetRef: Codable, Identifiable, Equatable {
     let size: Int
     let mimeType: String
     let uploadedAt: String
+    let sha256: String?
     let uploadOrigin: String?
+
+    init(
+        assetId: String,
+        questionId: String,
+        name: String,
+        size: Int,
+        mimeType: String,
+        uploadedAt: String,
+        sha256: String? = nil,
+        uploadOrigin: String?
+    ) {
+        self.assetId = assetId
+        self.questionId = questionId
+        self.name = name
+        self.size = size
+        self.mimeType = mimeType
+        self.uploadedAt = uploadedAt
+        self.sha256 = sha256
+        self.uploadOrigin = uploadOrigin
+    }
 
     var id: String { assetId }
 }

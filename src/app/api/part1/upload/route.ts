@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prewarmUploadedAssetMultimodalAnalysis } from "@/lib/benyuan-multimodal-prewarm";
 import { persistUploadedAsset } from "@/lib/benyuan-v3-assets";
 
 export async function POST(request: Request) {
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       });
     }),
   );
+  assets.forEach((asset) => prewarmUploadedAssetMultimodalAnalysis(asset));
 
   return NextResponse.json({ question_id: questionId, assets });
 }

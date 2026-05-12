@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createBenyuanV3Id, getUploadedAsset, saveUploadedAsset } from "@/lib/benyuan-v3-store";
@@ -11,6 +12,18 @@ function sanitizeName(fileName: string) {
 function extensionFromName(fileName: string) {
   const ext = path.extname(fileName).toLowerCase();
   return ext || ".bin";
+}
+
+function hashBuffer(buffer: Buffer) {
+  return createHash("sha256").update(buffer).digest("hex");
+}
+
+export async function ensureStoredAssetHash(stored: BenyuanStoredAsset, buffer?: Buffer) {
+  if (stored.sha256) return stored.sha256;
+  const loadedBuffer = buffer ?? await readFile(stored.stored_path);
+  const sha256 = hashBuffer(loadedBuffer);
+  await saveUploadedAsset({ ...stored, sha256 });
+  return sha256;
 }
 
 export async function persistUploadedAsset(params: {
@@ -38,6 +51,7 @@ export async function persistUploadedAsset(params: {
     size: params.buffer.byteLength,
     mime_type: params.mimeType || "application/octet-stream",
     uploaded_at: new Date().toISOString(),
+    sha256: createHash("sha256").update(params.buffer).digest("hex"),
     stored_path: absolutePath,
     upload_origin: params.uploadOrigin,
   };
@@ -51,6 +65,7 @@ export async function persistUploadedAsset(params: {
     size: stored.size,
     mime_type: stored.mime_type,
     uploaded_at: stored.uploaded_at,
+    sha256: stored.sha256,
     upload_origin: stored.upload_origin,
   };
 
@@ -61,7 +76,8 @@ export async function readUploadedAssetBuffer(assetId: string) {
   const stored = await getUploadedAsset(assetId);
   if (!stored) return null;
   const buffer = await readFile(stored.stored_path);
-  return { stored, buffer };
+  const sha256 = await ensureStoredAssetHash(stored, buffer);
+  return { stored: { ...stored, sha256 }, buffer };
 }
 
 export async function readUploadedAssetDataUrl(assetId: string) {

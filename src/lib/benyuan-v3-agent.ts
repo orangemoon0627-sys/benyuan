@@ -11,14 +11,18 @@ import {
   buildAnalystUserPrompt,
   buildDirectorUserPrompt,
   buildFastDirectorUserPrompt,
-  buildMultimodalUserPrompt,
   DIRECTOR_SYSTEM_PROMPT,
   FAST_DIRECTOR_SYSTEM_PROMPT,
-  MULTIMODAL_SYSTEM_PROMPT,
   buildFastAnalystUserPrompt,
   FAST_ANALYST_SYSTEM_PROMPT,
 } from "@/lib/benyuan-v3-prompts";
 import { readUploadedAssetDataUrl } from "@/lib/benyuan-v3-assets";
+import {
+  makeMultimodalCacheKey,
+  readCachedMultimodalAnalysis,
+  writeCachedMultimodalAnalysis,
+  type BenyuanMultimodalStageKind,
+} from "@/lib/benyuan-multimodal-cache";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
 import { dedupeMirrorQuestions } from "@/lib/benyuan-v3-theater-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
@@ -169,6 +173,45 @@ const STREAM_ONLY_MULTIMODAL_RESCUE_PROMPT = [
   "Return the same JSON shape with shorter strings and shorter arrays if needed.",
   "Prioritize valid JSON and complete keys over stylistic detail.",
 ].join(" ");
+
+const MULTIMODAL_STAGE_SYSTEM_PROMPTS: Record<BenyuanMultimodalStageKind, string> = {
+  music: [
+    "Return JSON only.",
+    "Analyze only the playlist or music screenshot.",
+    "Top-level key must be music_analysis.",
+    "music_analysis => primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}.",
+    "Never use null; infer conservatively from visible evidence.",
+  ].join(" "),
+  social: [
+    "Return JSON only.",
+    "Analyze only the social post screenshot(s).",
+    "Top-level keys must be social_posts_analysis and social_posts_overall_pattern.",
+    "social_posts_analysis => array of {post_id,text_content,emotional_tone,themes[],expression_style,self_presentation,time_clue,psychological_signals[]}.",
+    "social_posts_overall_pattern => {dominant_emotion,core_themes[],expression_authenticity}.",
+    "Never use null; infer conservatively from visible evidence.",
+  ].join(" "),
+  photo: [
+    "Return JSON only.",
+    "Analyze only the precious photo.",
+    "Top-level key must be precious_photo_analysis.",
+    "precious_photo_analysis => {visual_content,composition,lighting,color_mood,symbolic_elements[],psychological_interpretation:{core_themes[],emotional_tone,self_concept,existential_stance,traits[]}}.",
+    "Never use null; infer conservatively from visible evidence.",
+  ].join(" "),
+};
+
+function buildMultimodalStageUserPrompt(kind: BenyuanMultimodalStageKind, input: {
+  music_inputs?: MultimodalInputItem[];
+  social_post_inputs?: MultimodalInputItem[];
+  precious_photo_input?: MultimodalInputItem;
+}) {
+  const payload =
+    kind === "music"
+      ? { music_inputs: input.music_inputs ?? [] }
+      : kind === "social"
+        ? { social_post_inputs: input.social_post_inputs ?? [] }
+        : { precious_photo_input: input.precious_photo_input };
+  return `请严格根据以下 ${kind} 多模态输入输出 JSON。\n\n输入数据：\n${JSON.stringify(payload)}\n\n只输出最终 JSON 对象。`;
+}
 
 async function readSsePayload(response: Response) {
   if (!response.body) {
@@ -754,7 +797,7 @@ async function requestAgentJson(params: {
 
 
 async function resolveMultimodalImages(items: MultimodalInputItem[] = [], limit = 1) {
-  const resolved = await Promise.all(
+  const resolved: Array<{ label: string; dataUrl: string; assetHash?: string } | null> = await Promise.all(
     items
       .filter((item) => typeof item.asset_id === "string" && item.asset_id.length > 0)
       .slice(0, limit)
@@ -764,11 +807,25 @@ async function resolveMultimodalImages(items: MultimodalInputItem[] = [], limit 
         return {
           label: item.file_name ?? item.source ?? loaded.stored.name,
           dataUrl: loaded.dataUrl,
+          assetHash: loaded.stored.sha256,
         };
       }),
   );
 
-  return resolved.filter((item): item is { label: string; dataUrl: string } => Boolean(item));
+  return resolved.filter((item): item is { label: string; dataUrl: string; assetHash?: string } => Boolean(item));
+}
+
+async function resolveMultimodalAssetHashes(items: MultimodalInputItem[] = [], limit = 3) {
+  const resolved = await Promise.all(
+    items
+      .filter((item) => typeof item.asset_id === "string" && item.asset_id.length > 0)
+      .slice(0, limit)
+      .map(async (item) => {
+        const loaded = await readUploadedAssetDataUrl(item.asset_id as string);
+        return loaded?.stored.sha256;
+      }),
+  );
+  return resolved.filter((hash): hash is string => Boolean(hash)).sort();
 }
 
 async function requestMultimodalJson(params: {
@@ -1718,6 +1775,241 @@ function normalizeMultimodalResult(
   };
 }
 
+type MultimodalFallbackBundle = {
+  music_analysis: MusicAnalysis;
+  social_posts_analysis: SocialPostAnalysis[];
+  social_posts_overall_pattern: SocialPostOverallPattern;
+  precious_photo_analysis: PreciousPhotoAnalysis;
+};
+
+type MultimodalStageResult =
+  | {
+      kind: "music";
+      result: Pick<MultimodalFallbackBundle, "music_analysis">;
+      runtime: AgentRuntimeResult;
+      cacheHit: boolean;
+    }
+  | {
+      kind: "social";
+      result: Pick<MultimodalFallbackBundle, "social_posts_analysis" | "social_posts_overall_pattern">;
+      runtime: AgentRuntimeResult;
+      cacheHit: boolean;
+    }
+  | {
+      kind: "photo";
+      result: Pick<MultimodalFallbackBundle, "precious_photo_analysis">;
+      runtime: AgentRuntimeResult;
+      cacheHit: boolean;
+    };
+
+function fallbackForMultimodalInput(input: {
+  music_inputs?: MultimodalInputItem[];
+  social_post_inputs?: MultimodalInputItem[];
+  precious_photo_input?: MultimodalInputItem;
+}): MultimodalFallbackBundle {
+  const social = analyzeSocialPostInputs(input.social_post_inputs);
+  return {
+    music_analysis: analyzeMusicInputs(input.music_inputs),
+    social_posts_analysis: social.posts,
+    social_posts_overall_pattern: social.overallPattern,
+    precious_photo_analysis: analyzePreciousPhotoInput(input.precious_photo_input),
+  };
+}
+
+function inputForMultimodalStage(kind: BenyuanMultimodalStageKind, input: {
+  music_inputs?: MultimodalInputItem[];
+  social_post_inputs?: MultimodalInputItem[];
+  precious_photo_input?: MultimodalInputItem;
+}) {
+  if (kind === "music") {
+    return { music_inputs: input.music_inputs, social_post_inputs: [], precious_photo_input: undefined };
+  }
+  if (kind === "social") {
+    return { music_inputs: [], social_post_inputs: input.social_post_inputs, precious_photo_input: undefined };
+  }
+  return { music_inputs: [], social_post_inputs: [], precious_photo_input: input.precious_photo_input };
+}
+
+function hasStageInput(kind: BenyuanMultimodalStageKind, input: {
+  music_inputs?: MultimodalInputItem[];
+  social_post_inputs?: MultimodalInputItem[];
+  precious_photo_input?: MultimodalInputItem;
+}) {
+  if (kind === "music") return Boolean(input.music_inputs?.length);
+  if (kind === "social") return Boolean(input.social_post_inputs?.length);
+  return Boolean(input.precious_photo_input);
+}
+
+async function firstStageAssetHash(kind: BenyuanMultimodalStageKind, input: {
+  music_inputs?: MultimodalInputItem[];
+  social_post_inputs?: MultimodalInputItem[];
+  precious_photo_input?: MultimodalInputItem;
+}) {
+  const hashes =
+    kind === "music"
+      ? await resolveMultimodalAssetHashes(input.music_inputs, 3)
+      : kind === "social"
+        ? await resolveMultimodalAssetHashes(input.social_post_inputs, 3)
+        : input.precious_photo_input
+          ? await resolveMultimodalAssetHashes([input.precious_photo_input], 1)
+          : [];
+  return hashes.join("+") || undefined;
+}
+
+function normalizeMultimodalStageResult(
+  kind: BenyuanMultimodalStageKind,
+  candidate: unknown,
+  fallback: MultimodalFallbackBundle,
+): MultimodalStageResult["result"] | null {
+  const normalized = normalizeMultimodalResult(candidate, fallback);
+  if (!normalized) return null;
+  if (kind === "music") {
+    return { music_analysis: normalized.music_analysis };
+  }
+  if (kind === "social") {
+    return {
+      social_posts_analysis: normalized.social_posts_analysis,
+      social_posts_overall_pattern: normalized.social_posts_overall_pattern,
+    };
+  }
+  return { precious_photo_analysis: normalized.precious_photo_analysis };
+}
+
+function stageFallbackResult(kind: BenyuanMultimodalStageKind, fallback: MultimodalFallbackBundle): MultimodalStageResult["result"] {
+  if (kind === "music") return { music_analysis: fallback.music_analysis };
+  if (kind === "social") {
+    return {
+      social_posts_analysis: fallback.social_posts_analysis,
+      social_posts_overall_pattern: fallback.social_posts_overall_pattern,
+    };
+  }
+  return { precious_photo_analysis: fallback.precious_photo_analysis };
+}
+
+function mergeMultimodalRuntime(results: MultimodalStageResult[]): AgentRuntimeResult {
+  const live = results.find((item) => item.runtime.mode === "live")?.runtime ?? results[0]?.runtime;
+  const cacheHits = results.filter((item) => item.cacheHit).map((item) => item.kind);
+  const fallbackErrors = results
+    .filter((item) => item.runtime.mode === "fallback" || item.runtime.error)
+    .map((item) => `${item.kind}:${item.runtime.error ?? item.runtime.mode}`);
+  const requestIds = results.map((item) => item.runtime.request_id).filter((item): item is string => Boolean(item));
+  return {
+    provider: live?.provider ?? "local",
+    model: live?.model ?? "fallback",
+    mode: results.some((item) => item.runtime.mode === "live") ? "live" : "fallback",
+    request_id: requestIds.length > 0 ? requestIds.join(",") : undefined,
+    error: [
+      cacheHits.length > 0 ? `multimodal_stage_cache_hit:${cacheHits.join(",")}` : undefined,
+      fallbackErrors.length > 0 ? fallbackErrors.join(" | ") : undefined,
+    ].filter(Boolean).join(" | ") || undefined,
+  };
+}
+
+export async function runMultimodalStageAnalysis(
+  kind: BenyuanMultimodalStageKind,
+  input: {
+    music_inputs?: MultimodalInputItem[];
+    social_post_inputs?: MultimodalInputItem[];
+    precious_photo_input?: MultimodalInputItem;
+  },
+  runtimeOverride?: AgentRuntimeOverride,
+  fallback: MultimodalFallbackBundle = fallbackForMultimodalInput(input),
+): Promise<MultimodalStageResult> {
+  const profile = getAgentStageProfile("multimodal");
+  const runtime = resolveRuntime(runtimeOverride);
+  const assetHash = await firstStageAssetHash(kind, input);
+  const cacheKey = assetHash
+    ? makeMultimodalCacheKey({ kind, assetHash, provider: runtime.providerName, model: runtime.model })
+    : undefined;
+  if (cacheKey) {
+    const cached = await readCachedMultimodalAnalysis<MultimodalStageResult["result"]>(cacheKey);
+    if (cached?.result) {
+      return {
+        kind,
+        result: cached.result,
+        runtime: {
+          ...cached.runtime,
+          mode: cached.runtime.mode === "live" ? "live" : "fallback",
+          error: appendError(cached.runtime.error, "multimodal_stage_cache_hit"),
+        },
+        cacheHit: true,
+      } as MultimodalStageResult;
+    }
+  }
+
+  if (!hasStageInput(kind, input)) {
+    return {
+      kind,
+      result: stageFallbackResult(kind, fallback),
+      runtime: { provider: runtime.providerName, model: runtime.model, mode: "fallback", error: `${kind}_input_missing` },
+      cacheHit: false,
+    } as MultimodalStageResult;
+  }
+
+  const stageInput = inputForMultimodalStage(kind, input);
+  const request = await requestMultimodalJson({
+    system: MULTIMODAL_STAGE_SYSTEM_PROMPTS[kind],
+    user: buildMultimodalStageUserPrompt(kind, stageInput),
+    musicInputs: stageInput.music_inputs,
+    socialInputs: stageInput.social_post_inputs,
+    photoInput: stageInput.precious_photo_input,
+    runtimeOverride,
+    maxOutputTokens: Math.min(profile.maxOutputTokens ?? 1100, kind === "social" ? 950 : 720),
+    reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
+    timeoutMs: profile.timeoutMs,
+    transport: profile.transport,
+    allowSecondaryAttempts: profile.allowSecondaryAttempts,
+    maxProviderAttempts: profile.maxProviderAttempts,
+  });
+
+  const normalized = normalizeMultimodalStageResult(kind, request.data, fallback);
+  const result = normalized ?? stageFallbackResult(kind, fallback);
+  const requestRuntime = request.runtime as AgentRuntimeResult;
+  const stageRuntime = normalized
+    ? requestRuntime
+    : {
+        ...requestRuntime,
+        mode: "fallback" as const,
+        error: appendError(requestRuntime.error, `${kind}_normalization_failed`),
+      };
+
+  if (normalized && cacheKey && assetHash && stageRuntime.mode === "live") {
+    await writeCachedMultimodalAnalysis({
+      cacheKey,
+      kind,
+      assetHash,
+      provider: runtime.providerName,
+      model: runtime.model,
+      result,
+      runtime: stageRuntime,
+    });
+  }
+
+  return { kind, result, runtime: stageRuntime, cacheHit: false } as MultimodalStageResult;
+}
+
+async function runParallelMultimodalAnalysis(
+  input: {
+    music_inputs?: MultimodalInputItem[];
+    social_post_inputs?: MultimodalInputItem[];
+    precious_photo_input?: MultimodalInputItem;
+  },
+  runtimeOverride?: AgentRuntimeOverride,
+  fallback: MultimodalFallbackBundle = fallbackForMultimodalInput(input),
+) {
+  const stageResults = await Promise.all([
+    runMultimodalStageAnalysis("music", input, runtimeOverride, fallback),
+    runMultimodalStageAnalysis("social", input, runtimeOverride, fallback),
+    runMultimodalStageAnalysis("photo", input, runtimeOverride, fallback),
+  ]);
+
+  const result = stageResults.reduce<MultimodalFallbackBundle>((acc, stage) => ({ ...acc, ...stage.result }), fallback);
+  return {
+    result,
+    runtime: mergeMultimodalRuntime(stageResults),
+  };
+}
+
 export async function runMultimodalAnalysis(
   input: {
     music_inputs?: MultimodalInputItem[];
@@ -1734,43 +2026,7 @@ export async function runMultimodalAnalysis(
   };
   runtime: AgentRuntimeResult;
 }> {
-  const fallback = {
-    music_analysis: analyzeMusicInputs(input.music_inputs),
-    ...(() => {
-      const social = analyzeSocialPostInputs(input.social_post_inputs);
-      return {
-        social_posts_analysis: social.posts,
-        social_posts_overall_pattern: social.overallPattern,
-      };
-    })(),
-    precious_photo_analysis: analyzePreciousPhotoInput(input.precious_photo_input),
-  };
-  const profile = getAgentStageProfile("multimodal");
-
-  const request = await requestMultimodalJson({
-    system: MULTIMODAL_SYSTEM_PROMPT,
-    user: buildMultimodalUserPrompt(input),
-    musicInputs: input.music_inputs,
-    socialInputs: input.social_post_inputs,
-    photoInput: input.precious_photo_input,
-    runtimeOverride,
-    maxOutputTokens: profile.maxOutputTokens ?? 1600,
-    reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
-    timeoutMs: profile.timeoutMs,
-    transport: profile.transport,
-    allowSecondaryAttempts: profile.allowSecondaryAttempts,
-    maxProviderAttempts: profile.maxProviderAttempts,
-  });
-
-  const normalized = normalizeMultimodalResult(request.data, fallback);
-  if (!normalized) {
-    return { result: fallback, runtime: request.runtime };
-  }
-
-  return {
-    result: normalized,
-    runtime: request.runtime,
-  };
+  return runParallelMultimodalAnalysis(input, runtimeOverride);
 }
 
 export async function generateTheaterScriptWithAgent(record: Part1Record, runtimeOverride?: AgentRuntimeOverride): Promise<{ theaterScript: TheaterScript; runtime: AgentRuntimeResult }> {

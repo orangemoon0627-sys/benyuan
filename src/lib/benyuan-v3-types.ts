@@ -129,6 +129,7 @@ export type BenyuanUploadedAssetRef = {
   size: number;
   mime_type: string;
   uploaded_at: string;
+  sha256?: string;
   upload_origin?: string;
 };
 

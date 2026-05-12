@@ -27,6 +27,8 @@
     "smoke:runtime:client-config": "node --test scripts/benyuan-runtime-client-config-smoke.mjs",
     "smoke:agent:timing": "node scripts/benyuan-agent-timing-contract-smoke.mjs",
     "smoke:agent:speed-profile": "node scripts/benyuan-agent-speed-profile-contract-smoke.mjs",
+    "smoke:multimodal:optimization": "node scripts/benyuan-multimodal-optimization-contract-smoke.mjs",
+    "smoke:multimodal:cache": "node --experimental-transform-types --loader ./scripts/ts-path-alias-loader.mjs --test scripts/benyuan-multimodal-cache-lib.test.mjs",
     "smoke:agent:transient-retry": "node scripts/benyuan-agent-transient-retry-contract-smoke.mjs",
     "smoke:agent:constellation-transport": "node scripts/benyuan-agent-constellation-transport-contract-smoke.mjs",
     "smoke:agent:route-error": "node scripts/benyuan-agent-route-error-contract-smoke.mjs",
