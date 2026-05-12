@@ -1076,6 +1076,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     private func restoreActiveGenerationJobIfNeeded() async -> Bool {
         guard let jobId = session.activeGenerationJobId else { return false }
         activeGenerationJobId = jobId
+        logNativeE2E("restore_active_job_start job_id=\(jobId)")
         stage = .processing
         processingTitle = "正在取回云端生成"
         processingDetail = "云端任务会在后台继续运行，回来后自动接上。"
@@ -1085,16 +1086,20 @@ final class BenyuanNativeFlowModel: ObservableObject {
             applyNativeGenerationJob(job, source: .restore)
             if job.status == "done" {
                 try await completeNativeGenerationJob(job)
+                logNativeE2E("restore_active_job_finished job_id=\(jobId) status=done")
                 return true
             }
             if job.status == "failed" {
                 session.activeGenerationJobId = nil
                 activeGenerationJobId = nil
                 persist()
+                logNativeE2E("restore_active_job_failed job_id=\(jobId)")
                 throw BenyuanAPIError.server(status: 500, message: job.error ?? "native_generation_failed")
             }
             try await pollNativeGenerationJob(jobId: jobId)
+            logNativeE2E("restore_active_job_finished job_id=\(jobId) status=polled")
         } catch {
+            logNativeE2EError(stage: "restore_active_job", error: error)
             stage = .error(error.localizedDescription)
         }
         return true
@@ -1411,7 +1416,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     private func logNativeE2E(_ message: String) {
 #if DEBUG
-        if BenyuanShellConfig.nativeE2EAutorun {
+        if BenyuanShellConfig.nativeE2EAutorun || BenyuanShellConfig.nativeE2EDiagnostics {
             store.appendE2EEvent(message)
             print("BENYUAN_E2E \(message)")
         }
@@ -1420,7 +1425,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     private func logNativeE2EError(stage: String, error: Error) {
 #if DEBUG
-        if BenyuanShellConfig.nativeE2EAutorun {
+        if BenyuanShellConfig.nativeE2EAutorun || BenyuanShellConfig.nativeE2EDiagnostics {
             let message = "stage=\(stage) message=\(error.localizedDescription)"
             store.appendE2EEvent("ERROR \(message)")
             print("BENYUAN_E2E_ERROR \(message)")

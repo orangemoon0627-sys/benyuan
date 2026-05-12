@@ -1149,6 +1149,11 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertFalse(BenyuanShellConfig.nativeE2EAutorun(arguments: ["Benyuan"]))
     }
 
+    func testNativeE2EDiagnosticsParsesLaunchArgument() throws {
+        XCTAssertTrue(BenyuanShellConfig.nativeE2EDiagnostics(arguments: ["Benyuan", "--benyuan-native-e2e-diagnostics"]))
+        XCTAssertFalse(BenyuanShellConfig.nativeE2EDiagnostics(arguments: ["Benyuan"]))
+    }
+
     @MainActor
     func testNativePreviewAuthSeedsLoginScreenState() throws {
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())

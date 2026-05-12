@@ -139,6 +139,14 @@ struct BenyuanShellConfig {
 #endif
     }
 
+    static var nativeE2EDiagnostics: Bool {
+#if DEBUG
+        nativeE2EDiagnostics(arguments: ProcessInfo.processInfo.arguments)
+#else
+        false
+#endif
+    }
+
     static func nativePreviewStage(arguments: [String]) -> BenyuanNativePreviewStage? {
         guard let raw = launchArgumentValue("--benyuan-native-preview", arguments: arguments)?.lowercased() else {
             return nil
@@ -148,6 +156,10 @@ struct BenyuanShellConfig {
 
     static func nativeE2EAutorun(arguments: [String]) -> Bool {
         arguments.contains("--benyuan-native-e2e-autorun")
+    }
+
+    static func nativeE2EDiagnostics(arguments: [String]) -> Bool {
+        arguments.contains("--benyuan-native-e2e-diagnostics")
     }
 
     static var nativePickFixtureNames: [String] {

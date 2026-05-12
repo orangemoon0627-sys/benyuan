@@ -52,6 +52,7 @@
     "ios:shell:native-smoke": "node scripts/benyuan-ios-native-smoke.mjs",
     "ios:shell:native-preview": "node scripts/benyuan-ios-native-preview-screenshots.mjs",
     "ios:shell:native-staging-e2e": "node scripts/benyuan-ios-native-staging-e2e.mjs",
+    "ios:shell:processing-recovery": "node scripts/benyuan-ios-processing-recovery-smoke.mjs",
     "ios:shell:testflight:preflight": "node scripts/benyuan-ios-testflight-preflight.mjs",
     "smoke:ios:testflight:preflight:contract": "node --test scripts/benyuan-ios-testflight-preflight-lib.test.mjs",
     "smoke:ios:color-language": "node scripts/benyuan-ios-color-language-contract-smoke.mjs",
