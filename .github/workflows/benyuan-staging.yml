@@ -88,7 +88,16 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$BENYUAN_STAGING_SSH_KEY"
           chmod 600 "$BENYUAN_STAGING_SSH_KEY"
-          ssh-keyscan -H "$BENYUAN_STAGING_HOST" >> ~/.ssh/known_hosts
+          for attempt in 1 2 3; do
+            if ssh-keyscan -T 15 -t rsa,ecdsa,ed25519 -H "$BENYUAN_STAGING_HOST" >> ~/.ssh/known_hosts; then
+              break
+            fi
+            if [ "$attempt" = "3" ]; then
+              echo "ssh-keyscan_failed_after_retries" >&2
+              exit 1
+            fi
+            sleep $((attempt * 3))
+          done
 
       - name: Deploy prebuilt artifact to ECS
         run: |

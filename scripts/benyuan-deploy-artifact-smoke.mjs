@@ -99,6 +99,14 @@ assert(
   workflow.includes("BENYUAN_STAGING_SSH_KEY: /tmp/benyuan_staging_ed25519"),
   "GitHub workflow must use a dispatch-parse-safe SSH key path",
 );
+assert(
+  workflow.includes("ssh-keyscan -T 15 -t rsa,ecdsa,ed25519"),
+  "GitHub workflow must use a bounded keyscan with explicit key types for the staging ECS",
+);
+assert(
+  workflow.includes("for attempt in 1 2 3"),
+  "GitHub workflow must retry ssh-keyscan because the low-spec staging ECS can intermittently return only banners",
+);
 
 const deploySurfaces = `${deployScript}\n${workflow}`;
 for (const forbidden of ["darwin-api.service", "/opt/darwin-api", "127.0.0.1:3201", " 3201"]) {
