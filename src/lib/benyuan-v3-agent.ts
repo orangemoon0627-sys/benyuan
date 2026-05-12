@@ -13,6 +13,8 @@ import {
   buildMultimodalUserPrompt,
   DIRECTOR_SYSTEM_PROMPT,
   MULTIMODAL_SYSTEM_PROMPT,
+  buildFastAnalystUserPrompt,
+  FAST_ANALYST_SYSTEM_PROMPT,
 } from "@/lib/benyuan-v3-prompts";
 import { readUploadedAssetDataUrl } from "@/lib/benyuan-v3-assets";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
@@ -259,6 +261,7 @@ type AgentStageProfile = {
   timeoutMs?: number;
   transport?: AgentTransportPreference;
   allowSecondaryAttempts?: boolean;
+  compactPrompt?: boolean;
 };
 
 type ProviderAttemptResult = {
@@ -299,6 +302,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       timeoutMs: 360000,
       transport: "json_first",
       allowSecondaryAttempts: false,
+      compactPrompt: true,
     },
   },
 };
@@ -1686,8 +1690,8 @@ export async function generateConstellationWithAgent(part1: Part1Record, part2: 
   const fallback = generateDeterministicConstellation(part1, part2);
   const profile = getAgentStageProfile("constellation");
   const request = await requestAgentJson({
-    system: ANALYST_SYSTEM_PROMPT,
-    user: buildAnalystUserPrompt(part1, part2, fallback),
+    system: profile.compactPrompt ? FAST_ANALYST_SYSTEM_PROMPT : ANALYST_SYSTEM_PROMPT,
+    user: profile.compactPrompt ? buildFastAnalystUserPrompt(part1, part2, fallback) : buildAnalystUserPrompt(part1, part2, fallback),
     runtimeOverride,
     maxOutputTokens: profile.maxOutputTokens ?? 5600,
     reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
