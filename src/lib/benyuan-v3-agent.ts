@@ -351,7 +351,7 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       timeoutMs: 360000,
       transport: "json_first",
       allowSecondaryAttempts: false,
-      maxProviderAttempts: 1,
+      maxProviderAttempts: 2,
       compactPrompt: true,
     },
   },

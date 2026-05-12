@@ -33,7 +33,7 @@ assert.match(agent, /normalizeFastTheaterSeed/, "fast theater generation should 
 assert.match(agent, /mergeFastTheaterSeed/, "fast theater generation should merge live seed detail into the deterministic theater shell");
 assert.match(agent, /constellation:\s*\{[\s\S]*timeoutMs:\s*360000/, "fast constellation profile should allow the observed xhigh live generation window");
 assert.match(agent, /constellation:\s*\{[\s\S]*compactPrompt:\s*true/, "fast constellation profile should use a compact live prompt");
-assert.match(agent, /fast[\s\S]*constellation:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast constellation profile should use one bounded provider attempt");
+assert.match(agent, /fast[\s\S]*constellation:\s*\{[\s\S]*maxProviderAttempts:\s*2/, "fast constellation profile should retry one transient upstream failure inside the same bounded JSON path");
 assert.match(agent, /FAST_DIRECTOR_SYSTEM_PROMPT/, "fast theater generation should use the compact director system prompt");
 assert.match(agent, /buildFastDirectorUserPrompt/, "fast theater generation should use the compact director user prompt");
 assert.match(agent, /FAST_ANALYST_SYSTEM_PROMPT/, "fast constellation generation should use the compact analyst system prompt");
