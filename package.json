@@ -33,6 +33,7 @@
     "smoke:agent:constellation-transport": "node scripts/benyuan-agent-constellation-transport-contract-smoke.mjs",
     "smoke:agent:route-error": "node scripts/benyuan-agent-route-error-contract-smoke.mjs",
     "smoke:native-generation-job:contract": "node scripts/benyuan-native-generation-job-contract-smoke.mjs",
+    "smoke:ios:processing-recovery": "node scripts/benyuan-ios-processing-recovery-contract-smoke.mjs",
     "smoke:auth:contract": "node scripts/benyuan-auth-contract-smoke.mjs",
     "smoke:auth:runtime": "node scripts/benyuan-auth-runtime-smoke.mjs",
     "smoke:auth:sms-webhook": "node scripts/benyuan-auth-sms-webhook-smoke.mjs",

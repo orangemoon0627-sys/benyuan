@@ -31,6 +31,12 @@ enum BenyuanUploadApplyMode: Equatable {
     case replace
 }
 
+enum BenyuanNativeGenerationJobPresentationSource: Equatable {
+    case live
+    case restore
+    case foreground
+}
+
 enum BenyuanHistoryRestoreError: LocalizedError, Equatable {
     case missingTheaterScript
     case missingConstellation
@@ -104,6 +110,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
     private var mirrorLogs: [Part2MirrorRecord] = []
     private var flowStartedAt = Date()
     private var stageBeforeAccount: BenyuanNativeStage?
+    private let nativeGenerationPollIntervalNanoseconds: UInt64 = 2_000_000_000
+    private var lastNativeGenerationJobSnapshot: BenyuanNativeGenerationJobResponse?
+    private var isPollingNativeGenerationJob = false
 
     init(client: BenyuanAPIClient = BenyuanAPIClient(), store: BenyuanFlowStore = BenyuanFlowStore()) {
         self.client = client
@@ -221,6 +230,31 @@ final class BenyuanNativeFlowModel: ObservableObject {
             stage = .collect
         } catch {
             stage = .error(error.localizedDescription)
+        }
+    }
+
+    func resumeProcessingIfNeeded() async {
+        guard stage == .processing, let jobId = session.activeGenerationJobId else { return }
+        activeGenerationJobId = jobId
+        do {
+            let job = try await client.fetchNativeGenerationJob(jobId: jobId)
+            applyNativeGenerationJob(job, source: .foreground)
+            if job.status == "done" {
+                try await completeNativeGenerationJob(job)
+                return
+            }
+            if job.status == "failed" {
+                session.activeGenerationJobId = nil
+                activeGenerationJobId = nil
+                persist()
+                stage = .error(job.error ?? "native_generation_failed")
+                return
+            }
+            if !isPollingNativeGenerationJob {
+                try await pollNativeGenerationJob(jobId: jobId)
+            }
+        } catch {
+            toast = error.localizedDescription
         }
     }
 
@@ -1044,9 +1078,21 @@ final class BenyuanNativeFlowModel: ObservableObject {
         activeGenerationJobId = jobId
         stage = .processing
         processingTitle = "正在取回云端生成"
-        processingDetail = "可以切出 App，云端任务会继续推进。"
+        processingDetail = "云端任务会在后台继续运行，回来后自动接上。"
         processingProgress = max(processingProgress, 0.18)
         do {
+            let job = try await client.fetchNativeGenerationJob(jobId: jobId)
+            applyNativeGenerationJob(job, source: .restore)
+            if job.status == "done" {
+                try await completeNativeGenerationJob(job)
+                return true
+            }
+            if job.status == "failed" {
+                session.activeGenerationJobId = nil
+                activeGenerationJobId = nil
+                persist()
+                throw BenyuanAPIError.server(status: 500, message: job.error ?? "native_generation_failed")
+            }
             try await pollNativeGenerationJob(jobId: jobId)
         } catch {
             stage = .error(error.localizedDescription)
@@ -1055,13 +1101,16 @@ final class BenyuanNativeFlowModel: ObservableObject {
     }
 
     private func pollNativeGenerationJob(jobId: String) async throws {
+        if isPollingNativeGenerationJob { return }
+        isPollingNativeGenerationJob = true
+        defer { isPollingNativeGenerationJob = false }
         activeGenerationJobId = jobId
         session.activeGenerationJobId = jobId
         persist()
         while true {
             try Task.checkCancellation()
             let job = try await client.fetchNativeGenerationJob(jobId: jobId)
-            applyNativeGenerationJob(job)
+            applyNativeGenerationJob(job, source: .live)
 
             if job.status == "done" {
                 try await completeNativeGenerationJob(job)
@@ -1074,13 +1123,25 @@ final class BenyuanNativeFlowModel: ObservableObject {
                 throw BenyuanAPIError.server(status: 500, message: job.error ?? "native_generation_failed")
             }
 
-            try await Task.sleep(nanoseconds: 2_000_000_000)
+            try await Task.sleep(nanoseconds: nativeGenerationPollIntervalNanoseconds)
         }
     }
 
-    private func applyNativeGenerationJob(_ job: BenyuanNativeGenerationJobResponse) {
-        processingProgress = min(max(job.progress, 0.02), 1)
-        processingDetail = job.message.isEmpty ? "可以切出 App，云端任务会继续推进。" : "\(job.message) 可以切出 App，稍后回来查看结果。"
+    private func applyNativeGenerationJob(_ job: BenyuanNativeGenerationJobResponse, source: BenyuanNativeGenerationJobPresentationSource) {
+        lastNativeGenerationJobSnapshot = job
+        processingProgress = max(processingProgress, min(max(job.progress, 0.02), 1))
+        let resumeCopy = job.canResumeInBackground ? "云端任务会在后台继续运行，回来后自动接上。" : "请停留在当前页面，云端任务正在收束。"
+        let sourcePrefix: String
+        switch source {
+        case .live:
+            sourcePrefix = ""
+        case .restore:
+            sourcePrefix = "已取回云端进度。"
+        case .foreground:
+            sourcePrefix = "已同步最新进度。"
+        }
+        let message = job.message.trimmingCharacters(in: .whitespacesAndNewlines)
+        processingDetail = [sourcePrefix, message, resumeCopy].filter { !$0.isEmpty }.joined(separator: " ")
         switch job.currentStage {
         case "queued":
             processingTitle = "云端任务正在排队"

@@ -4,6 +4,7 @@ struct BenyuanShellRootView: View {
     @StateObject private var state = BenyuanShellState()
     @StateObject private var networkMonitor = BenyuanNetworkMonitor()
     @StateObject private var nativeModel = BenyuanNativeFlowModel()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var reloadToken = UUID()
 #if DEBUG
     @State private var showsDebugWebInspector = false
@@ -79,6 +80,10 @@ struct BenyuanShellRootView: View {
         .animation(.easeInOut(duration: BenyuanMotion.base), value: networkMonitor.isOnline)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: state.nativeActivity)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: nativeModel.stage)
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await nativeModel.resumeProcessingIfNeeded() }
+        }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $state.isShareSheetPresented, onDismiss: state.clearShare) {
             BenyuanShareSheet(items: state.shareItems)

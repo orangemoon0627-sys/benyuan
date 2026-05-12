@@ -63,6 +63,20 @@ struct BenyuanNativeProcessingView: View {
                             .multilineTextAlignment(.center)
                             .foregroundStyle(BenyuanColor.textTertiary)
                             .padding(.horizontal, BenyuanSpacing.x6)
+                        if let jobId = model.activeGenerationJobId {
+                            Text("云端任务 \(jobId)")
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                                .foregroundStyle(BenyuanColor.accentGold.opacity(0.78))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .padding(.horizontal, BenyuanSpacing.x4)
+                                .padding(.vertical, 7)
+                                .background(
+                                    Capsule()
+                                        .fill(BenyuanColor.bgVoid.opacity(0.42))
+                                        .overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72), lineWidth: 1))
+                                )
+                        }
                     }
 
                     VStack(spacing: BenyuanSpacing.x4) {
