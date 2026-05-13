@@ -585,36 +585,46 @@ struct BenyuanNativeOptionButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: BenyuanSpacing.x4) {
-                Text(String(UnicodeScalar(65 + index)!))
-                    .font(.system(size: 13, weight: .black, design: .monospaced))
-                    .foregroundStyle(active ? BenyuanColor.bgVoid : BenyuanColor.accentGold)
+                ZStack {
+                    Circle()
+                        .fill(active ? BenyuanColor.bgVoid.opacity(0.90) : BenyuanColor.glassFill)
+                    Circle()
+                        .trim(from: 0.08, to: 0.72)
+                        .stroke(active ? BenyuanColor.textPrimary.opacity(0.72) : BenyuanColor.accentGold.opacity(0.60), style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
+                        .rotationEffect(.degrees(Double(index) * 28 - 18))
+                    Circle()
+                        .fill(active ? BenyuanColor.textPrimary : BenyuanColor.accentGold)
+                        .frame(width: active ? 5 : 4, height: active ? 5 : 4)
+                        .offset(x: 10, y: -8)
+                }
                     .frame(width: 34, height: 34)
-                    .background(Circle().fill(active ? BenyuanColor.accentGold : BenyuanColor.glassFill))
 
                 Text(title.removingLeadingEmoji())
                     .font(.system(size: 15, weight: .semibold))
                     .lineSpacing(4)
-                    .foregroundStyle(BenyuanColor.textPrimary)
+                    .foregroundStyle(active ? BenyuanColor.bgVoid : BenyuanColor.textPrimary)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Circle()
-                    .stroke(active ? BenyuanColor.accentGold : BenyuanColor.glassStroke, lineWidth: 1.5)
+                    .stroke(active ? BenyuanColor.bgVoid.opacity(0.72) : BenyuanColor.glassStroke, lineWidth: 1.5)
                     .frame(width: 18, height: 18)
-                    .overlay(Circle().fill(active ? BenyuanColor.accentGold : .clear).frame(width: 8, height: 8))
+                    .overlay(Circle().fill(active ? BenyuanColor.bgVoid.opacity(0.84) : .clear).frame(width: 8, height: 8))
             }
             .padding(.horizontal, BenyuanSpacing.x4)
             .padding(.vertical, BenyuanSpacing.x3)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(active ? BenyuanColor.glassFillStrong : BenyuanColor.glassFill)
+                    .fill(active ? BenyuanColor.textPrimary.opacity(0.96) : BenyuanColor.glassFill)
                     .overlay(
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(active ? BenyuanColor.accentGold.opacity(0.36) : BenyuanColor.glassStroke, lineWidth: 1)
+                            .stroke(active ? BenyuanColor.accentGold.opacity(0.68) : BenyuanColor.glassStroke, lineWidth: 1)
                     )
+                    .shadow(color: BenyuanColor.accentGold.opacity(active ? 0.18 : 0), radius: 18, y: 6)
                 )
         }
         .buttonStyle(BenyuanPressableMotionStyle(scale: 0.982, glow: active ? 0.14 : 0.08))
+        .animation(.easeOut(duration: 0.18), value: active)
     }
 }
 

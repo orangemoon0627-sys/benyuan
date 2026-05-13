@@ -81,7 +81,12 @@ assert.match(nativeFlow, /submitFeedback/, "native flow must expose feedback sub
 assert.match(nativeFlow, /isFeedbackComposerPresented/, "native flow must track feedback composer presentation");
 assert.match(nativeFlow, /feedbackStatus/, "native flow must surface feedback status");
 assert.match(nativeAccountView, /feedbackComposer/, "native account view must include a feedback composer");
-assert.match(nativeAccountView, /反馈这次体验/, "native account view must expose a feedback entry");
+assert.match(nativeAccountView, /问题收集/, "native account view must expose an issue collection flow");
+assert.match(nativeAccountView, /待填写/, "native feedback UI must show idle draft status");
+assert.match(nativeAccountView, /提交中/, "native feedback UI must show submitting status");
+assert.match(nativeAccountView, /已收到编号/, "native feedback UI must show received feedback id status");
+assert.match(nativeAccountView, /提交失败/, "native feedback UI must show failed submission status");
+assert.doesNotMatch(nativeAccountActions, /已归档到测试清单/, "native feedback status should not imply backend handling progress");
 assert.match(packageJson, /smoke:feedback:contract/, "package scripts should include feedback contract smoke");
 assert.match(authRuntimeSmoke, /\/api\/internal\/feedback/, "auth runtime smoke must verify internal feedback listing");
 assert.match(authRuntimeSmoke, /PATCH/, "auth runtime smoke must verify feedback status update");

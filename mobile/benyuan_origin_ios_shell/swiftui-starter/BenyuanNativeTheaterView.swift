@@ -2,6 +2,8 @@ import SwiftUI
 
 struct BenyuanNativeTheaterView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @State private var novaBurstToken = 0
+    @State private var novaBurstOptionId: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,20 +19,20 @@ struct BenyuanNativeTheaterView: View {
                         .frame(height: max(260, proxy.size.height * 0.44))
                         .padding(.top, proxy.size.height * 0.10)
                         .allowsHitTesting(false)
-                    BenyuanMomentaryChoiceFeedback(isActive: model.selectedTheaterOptionId != nil)
+                    BenyuanMomentaryChoiceFeedback(isActive: model.selectedTheaterOptionId != nil || model.selectedMirrorOptionId != nil)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         .allowsHitTesting(false)
 
                     ScrollView(showsIndicators: false) {
                         phaseContent
+                            .id(model.theaterPhase)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
                             .frame(minHeight: max(560, proxy.size.height - BenyuanSpacing.x4), alignment: .top)
                             .padding(.horizontal, BenyuanSpacing.x4)
                             .padding(.top, BenyuanSpacing.x6)
                             .padding(.bottom, BenyuanSpacing.x8)
                     }
                 }
-                .id(model.theaterPhase)
-                .transition(.opacity.combined(with: .scale(scale: 0.985)))
             }
         }
     }
@@ -100,9 +102,12 @@ struct BenyuanNativeTheaterView: View {
                 VStack(spacing: BenyuanSpacing.x3) {
                     ForEach(Array(choice.options.enumerated()), id: \.element.id) { index, option in
                         BenyuanNativeOptionButton(index: index, title: option.text, active: model.selectedTheaterOptionId == option.id) {
+                            novaBurstOptionId = option.id
+                            novaBurstToken += 1
                             model.chooseAct2(option)
                         }
                         .overlay(BenyuanSelectionPulseLayer(isActive: model.selectedTheaterOptionId == option.id, cornerRadius: 24))
+                        .overlay(BenyuanNovaSelectionBurst(trigger: novaBurstOptionId == option.id ? novaBurstToken : 0))
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
                 }
@@ -129,9 +134,13 @@ struct BenyuanNativeTheaterView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: BenyuanSpacing.x3) {
                     ForEach(Array(question.options.enumerated()), id: \.element.id) { index, option in
-                        BenyuanNativeOptionButton(index: index, title: option.text, active: false) {
+                        BenyuanNativeOptionButton(index: index, title: option.text, active: model.selectedMirrorOptionId == option.id) {
+                            novaBurstOptionId = option.id
+                            novaBurstToken += 1
                             model.chooseAct3(option)
                         }
+                        .overlay(BenyuanSelectionPulseLayer(isActive: model.selectedMirrorOptionId == option.id, cornerRadius: 24))
+                        .overlay(BenyuanNovaSelectionBurst(trigger: novaBurstOptionId == option.id ? novaBurstToken : 0))
                         .transition(.opacity.combined(with: .move(edge: .trailing)))
                     }
                 }

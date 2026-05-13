@@ -201,9 +201,10 @@ assert.match(nativeAuthView, /BenyuanWechatAuthClient/, "native auth view must i
 assert.match(nativeAuthView, /手机号绑定/, "native auth view should reserve the phone binding entry");
 assert.match(nativeAuthView, /TextField\("手机号"/, "native auth view should include a phone input");
 assert.match(nativeAuthView, /TextField\("验证码"/, "native auth view should include a verification code input");
-assert.match(nativeAccountView, /账户/, "native account view must present account management copy");
-assert.match(nativeAccountView, /账户绑定/, "native account view must show account binding section");
-assert.match(nativeAccountView, /我的探索/, "native account view must show exploration history");
+assert.match(nativeAccountView, /档案设置/, "native account view must expose quiet account settings copy");
+assert.match(nativeAccountView, /管理恢复方式/, "native account view must describe account settings as recovery management");
+assert.doesNotMatch(nativeAccountView, /Apple、微信、手机号统一放在这里，不占用主页面。/, "native account home should not stack provider names in the main binding entry");
+assert.match(nativeAccountView, /探索历史/, "native account view must show exploration history");
 assert.match(nativeAccountView, /accountIdentityPanel/, "native account view must keep account identity as a dedicated visual panel");
 assert.match(nativeAccountView, /bindingOrbitSection/, "native account view must present provider binding as a clear orbit section");
 assert.match(nativeAccountView, /historyTimelineSection/, "native account view must present exploration history as a timeline section");
@@ -217,6 +218,7 @@ assert.match(nativeAccountView, /知道了/, "native account binding detail shee
 assert.match(nativeAccountView, /退出登录/, "native account view must expose logout");
 assert.match(nativeAccountView, /微信/, "native account view must show WeChat binding status");
 assert.match(nativeAccountView, /手机号/, "native account view must show phone binding status");
+assert.match(nativeAccountView, /当前可恢复方式/, "native account binding detail should read like a settings page");
 assert.match(nativeShellApp, /BenyuanWechatAuthClient\.shared\.configure/, "native app must configure WeChat SDK at launch");
 assert.match(nativeShellApp, /\.onOpenURL/, "native app must handle legacy WeChat URL callbacks");
 assert.match(nativeShellApp, /onContinueUserActivity/, "native app must handle WeChat Universal Link callbacks");

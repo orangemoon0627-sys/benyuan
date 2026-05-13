@@ -27,17 +27,17 @@ assert.match(
 
 assert.match(
   account,
-  /Text\(model\.session\.user\?\.displayName \?\? "本源访客"\)[\s\S]*?\.font\(\.system\(size:\s*32,\s*weight:\s*\.semibold\)\)/,
+  /Text\(model\.session\.user\?\.displayName \?\? "我的本源档案"\)[\s\S]*?\.font\(\.system\(size:\s*30,\s*weight:\s*\.semibold\)\)/,
   "native account identity title should stay large but not return to oversized poster scale"
 );
 assert.match(
   account,
-  /Text\("账户与绑定"\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.semibold\)\)/,
+  /Text\("档案设置"\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.semibold\)\)/,
   "native account binding entry should stay compact on the main account page"
 );
 assert.match(
   account,
-  /Text\("我的探索"\)[\s\S]*?\.font\(\.system\(size:\s*21,\s*weight:\s*\.semibold\)\)/,
+  /Text\("探索历史"\)[\s\S]*?\.font\(\.system\(size:\s*20,\s*weight:\s*\.semibold\)\)/,
   "native account history title should match the calmer app-section scale"
 );
 assert.match(
@@ -47,12 +47,12 @@ assert.match(
 );
 assert.match(
   account,
-  /Text\(item\.title\)[\s\S]*?\.font\(\.system\(size:\s*18,\s*weight:\s*\.semibold\)\)/,
+  /Text\(item\.title\)[\s\S]*?\.font\(\.system\(size:\s*16,\s*weight:\s*\.semibold\)\)/,
   "native account history cards should keep a readable archive title scale"
 );
 assert.match(
   account,
-  /Text\("反馈这次体验"\)[\s\S]*?\.font\(\.system\(size:\s*22,\s*weight:\s*\.semibold\)\)/,
+  /Text\("问题收集"\)[\s\S]*?\.font\(\.system\(size:\s*22,\s*weight:\s*\.semibold\)\)/,
   "feedback composer title should feel like an app sheet, not a poster block"
 );
 assert.doesNotMatch(
@@ -72,7 +72,7 @@ assert.match(
 );
 assert.match(
   account,
-  /Text\(model\.isFeedbackSubmitting \? "正在记录" : "提交反馈"\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.semibold\)\)/,
+  /Text\(model\.isFeedbackSubmitting \? "提交中" : "提交问题"\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.semibold\)\)/,
   "feedback submit button should keep a calmer semibold CTA"
 );
 
@@ -131,7 +131,7 @@ assert.match(
 
 assert.match(
   constellation,
-  /Text\("是你此刻的精神坐标。"\)[\s\S]*?\.font\(\.system\(size:\s*30,\s*weight:\s*\.semibold\)\)/,
+  /Text\("是你此刻的精神坐标。"\)[\s\S]*?\.font\(\.system\(size:\s*31,\s*weight:\s*\.semibold\)\)/,
   "constellation closing line should end quietly enough to leave room for the fixed action dock"
 );
 assert.match(

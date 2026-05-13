@@ -82,6 +82,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var theaterChoiceIndex = 0
     @Published var theaterMirrorIndex = 0
     @Published var selectedTheaterOptionId: String?
+    @Published var selectedMirrorOptionId: String?
     @Published var constellation: ConstellationGenerateResponse?
     @Published var prefersConstellationEndPreview = false
     @Published var shareItems: [Any] = []
@@ -149,7 +150,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         case .processing:
             return 0.58 + min(max(processingProgress, 0), 1) * 0.18
         case .theater:
-            return 0.78
+            return 0.76 + theaterMotionProgress * 0.16
         case .constellation:
             return 0.96
         case .error:
@@ -167,6 +168,21 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     var currentMirrorQuestion: TheaterMirrorQuestion? {
         theater?.theaterScript.act3.mirrorQuestions[safe: theaterMirrorIndex]
+    }
+
+    var theaterMotionProgress: Double {
+        switch theaterPhase {
+        case .act1:
+            return 0.08
+        case .act2:
+            let total = max(1, theater?.theaterScript.act2.choices.count ?? 1)
+            return 0.18 + Double(theaterChoiceIndex) / Double(total) * 0.34
+        case .act3:
+            let total = max(1, theater?.theaterScript.act3.mirrorQuestions.count ?? 1)
+            return 0.58 + Double(theaterMirrorIndex) / Double(total) * 0.26
+        case .epilogue:
+            return 0.96
+        }
     }
 
     var choiceLogCount: Int {
@@ -239,8 +255,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
         logNativeE2E("autorun_start")
         restart()
         stage = .processing
-        processingTitle = "正在执行链路验收"
-        processingDetail = "连接 staging，自动完成收集、剧场与星图。"
+        processingTitle = "正在连接云端深场"
+        processingDetail = "云端会自动走完线索、剧场与星图，确认这一条体验链能完整显影。"
         processingProgress = 0.08
 
         do {
@@ -251,21 +267,21 @@ final class BenyuanNativeFlowModel: ObservableObject {
             persist()
             logNativeE2E("auth_created user_id=\(auth.user.userId)")
 
-            processingTitle = "正在读取真实题库"
-            processingDetail = "App 正在拉取 staging 的 Part1 schema。"
+            processingTitle = "正在读取第一段问题"
+            processingDetail = "App 正在取回当前云端题面。"
             processingProgress = 0.16
             let schema = try await client.fetchSchema()
             questions = schema.questions
             logNativeE2E("schema_fetched questions=\(schema.questions.count)")
 
-            processingTitle = "正在上传验收图片"
-            processingDetail = "使用 App 内置 fixture，模拟真实图片选择。"
+            processingTitle = "正在送入图片线索"
+            processingDetail = "用本地样张模拟一次真实选择，检查图片能不能进入分析。"
             processingProgress = 0.24
             let fixtureAssets = try await uploadNativeE2EFixtures(for: schema.questions)
             logNativeE2E("fixtures_uploaded assets=\(fixtureAssets.count)")
 
-            processingTitle = "正在填充测试答案"
-            processingDetail = "覆盖单选、多选、分配和图片题。"
+            processingTitle = "正在点亮回答轨道"
+            processingDetail = "云端会收到选择、比例和图片线索，继续生成后面的剧场。"
             processingProgress = 0.32
             applyNativeE2EAutorunSeed(questions: schema.questions, fixtureAssets: fixtureAssets)
             logNativeE2E("answers_seeded answered=\(answeredCount)")
@@ -493,6 +509,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         choiceLogs = record.act2Choices
         mirrorLogs = record.act3Responses
         selectedTheaterOptionId = nil
+        selectedMirrorOptionId = nil
 
         let act2Count = theater?.theaterScript.act2.choices.count ?? 0
         let act3Count = theater?.theaterScript.act3.mirrorQuestions.count ?? 0
@@ -574,6 +591,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         theaterChoiceIndex = 0
         theaterMirrorIndex = 0
         selectedTheaterOptionId = nil
+        selectedMirrorOptionId = nil
         choiceLogs = []
         mirrorLogs = []
         phaseStartedAt = Date()

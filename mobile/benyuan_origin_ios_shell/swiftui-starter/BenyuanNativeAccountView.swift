@@ -76,19 +76,19 @@ struct BenyuanNativeAccountView: View {
                 }
             }
 
-            Text(model.session.user?.displayName ?? "本源访客")
-                .font(.system(size: 32, weight: .semibold))
+            Text(model.session.user?.displayName ?? "我的本源档案")
+                .font(.system(size: 30, weight: .semibold))
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .minimumScaleFactor(0.72)
 
-            Text("你的答案、图片线索、剧场选择和精神星图会归入这个私人月相档案。")
-                .font(.system(size: 15, weight: .regular))
-                .lineSpacing(6)
+            Text("身份摘要会跟随你的探索、剧场选择和星图记录一起保存。")
+                .font(.system(size: 14, weight: .regular))
+                .lineSpacing(5)
                 .foregroundStyle(BenyuanColor.textSecondary)
 
             HStack(spacing: BenyuanSpacing.x2) {
+                identityStat("探索", value: "\(model.accountHistory.count)")
                 identityStat("身份", value: sessionProviderDisplayLabel)
-                identityStat("绑定", value: "\(boundProviderCount)/4")
                 identityStat("线索", value: "\(totalHistoryAssets)")
             }
         }
@@ -137,10 +137,10 @@ struct BenyuanNativeAccountView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("账户与绑定")
+                    Text("档案设置")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("Apple、微信、手机号统一放在这里，不占用主页面。")
+                    Text("管理恢复方式和当前身份，不打断主探索。")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(BenyuanColor.textSecondary)
                         .lineLimit(2)
@@ -148,7 +148,7 @@ struct BenyuanNativeAccountView: View {
 
                 Spacer(minLength: 0)
 
-                Text("\(boundProviderCount)/4")
+                Text("管理")
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(BenyuanColor.accentGold)
 
@@ -167,13 +167,13 @@ struct BenyuanNativeAccountView: View {
     }
 
     private var historyTimelineSection: some View {
-        VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
+        VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("我的探索")
-                        .font(.system(size: 21, weight: .semibold))
+                    Text("探索历史")
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("草稿、剧场和星图都会按时间留在这里。")
+                    Text("按时间收纳草稿、剧场和星图。")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(BenyuanColor.textSecondary)
                 }
@@ -194,7 +194,7 @@ struct BenyuanNativeAccountView: View {
             if model.accountHistory.isEmpty {
                 emptyHistory
             } else {
-                VStack(spacing: BenyuanSpacing.x3) {
+                VStack(spacing: BenyuanSpacing.x2) {
                     ForEach(model.accountHistory) { item in
                         historyCard(item)
                     }
@@ -223,52 +223,40 @@ struct BenyuanNativeAccountView: View {
     }
 
     private func historyCard(_ item: BenyuanAccountHistoryItem) -> some View {
-        HStack(alignment: .top, spacing: BenyuanSpacing.x3) {
-            VStack(spacing: 0) {
-                Circle()
-                    .fill(item.stage == .constellation ? BenyuanColor.accentGold : BenyuanColor.textPrimary.opacity(0.20))
-                    .frame(width: 12, height: 12)
-                    .shadow(color: item.stage == .constellation ? BenyuanColor.accentGold.opacity(0.36) : .clear, radius: 12)
-                Rectangle()
-                    .fill(BenyuanColor.glassStroke.opacity(0.72))
-                    .frame(width: 1)
-            }
-            .frame(width: 18)
+        VStack(alignment: .leading, spacing: BenyuanSpacing.x2) {
+            historyMetaStrip(item)
 
-            VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
-                historyMetaStrip(item)
+            HStack(alignment: .top, spacing: BenyuanSpacing.x3) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textPrimary)
+                        .lineLimit(1)
 
-                Text(item.title)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(BenyuanColor.textPrimary)
-                    .lineLimit(2)
-
-                Text(item.subtitle)
-                    .font(.system(size: 12, weight: .semibold))
-                    .lineSpacing(4)
-                    .foregroundStyle(BenyuanColor.textSecondary)
-
-                if let archetypeName = item.archetypeName {
-                    Text(archetypeName)
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(BenyuanColor.accentGold)
+                    Text(compactHistorySubtitle(item))
+                        .font(.system(size: 12, weight: .regular))
+                        .lineSpacing(3)
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .lineLimit(2)
                 }
+
+                Spacer(minLength: 0)
 
                 HStack(spacing: BenyuanSpacing.x2) {
                     Button {
                         model.openHistoryItem(item)
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             if model.restoringHistoryPart1Id == item.part1Id {
                                 ProgressView()
                                     .tint(BenyuanColor.bgVoid)
-                                    .scaleEffect(0.72)
+                                    .scaleEffect(0.66)
                             }
                             Text(model.restoringHistoryPart1Id == item.part1Id ? "正在接回" : actionLabel(for: item))
                         }
-                        .font(.system(size: 13, weight: .black))
+                        .font(.system(size: 12, weight: .black))
                         .foregroundStyle(BenyuanColor.bgVoid)
-                        .frame(maxWidth: .infinity, minHeight: 42)
+                        .frame(width: 92, height: 38)
                         .background(Capsule().fill(BenyuanColor.textPrimary))
                     }
                     .buttonStyle(.plain)
@@ -278,22 +266,23 @@ struct BenyuanNativeAccountView: View {
                         model.requestDeleteHistoryItem(item)
                     } label: {
                         Image(systemName: "trash")
-                            .font(.system(size: 13, weight: .black))
+                            .font(.system(size: 12, weight: .black))
                             .foregroundStyle(BenyuanColor.textSecondary)
-                            .frame(width: 46, height: 42)
+                            .frame(width: 38, height: 38)
                             .background(Capsule().fill(BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("删除")
                 }
             }
-            .padding(BenyuanSpacing.x4)
-            .background(
-                RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous)
-                    .fill(BenyuanColor.glassFillStrong.opacity(0.84))
-                    .overlay(RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.86)))
-            )
         }
+        .padding(.horizontal, BenyuanSpacing.x4)
+        .padding(.vertical, BenyuanSpacing.x3)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(BenyuanColor.glassFillStrong.opacity(0.78))
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.76)))
+        )
     }
 
     private func historyMetaStrip(_ item: BenyuanAccountHistoryItem) -> some View {
@@ -396,12 +385,54 @@ struct BenyuanNativeAccountView: View {
         model.session.user?.providers[provider.rawValue] != nil || model.session.authSession?.provider == provider
     }
 
+    private func isProviderBound(_ provider: BenyuanAuthProvider) -> Bool {
+        switch provider {
+        case .anonymous, .apple:
+            return hasProvider(provider)
+        case .wechat:
+            return model.session.user?.wechatBound == true || hasProvider(.wechat)
+        case .phone:
+            return model.session.user?.phoneBound == true || hasProvider(.phone)
+        }
+    }
+
     private var boundProviderCount: Int {
-        [.anonymous, .apple, .wechat, .phone].filter { hasProvider($0) }.count
+        [.anonymous, .apple, .wechat, .phone].filter { isProviderBound($0) }.count
     }
 
     private var totalHistoryAssets: Int {
         model.accountHistory.reduce(0) { $0 + $1.assetCount }
+    }
+
+    private var feedbackStateLabel: String {
+        if model.isFeedbackSubmitting {
+            return "提交中"
+        }
+
+        if let status = model.feedbackStatus {
+            if status.contains("已收到编号") {
+                return "已收到编号"
+            }
+            if status.contains("提交失败") {
+                return "提交失败"
+            }
+            if status.contains("待填写") {
+                return "待填写"
+            }
+        }
+
+        return model.canSubmitFeedback ? "待提交" : "待填写"
+    }
+
+    private var feedbackStateColor: Color {
+        switch feedbackStateLabel {
+        case "已收到编号":
+            return BenyuanColor.accentGold
+        case "提交失败", "待填写":
+            return BenyuanColor.textTertiary
+        default:
+            return BenyuanColor.textSecondary
+        }
     }
 
     private var identityProgress: Double {
@@ -418,6 +449,13 @@ struct BenyuanNativeAccountView: View {
         case .theater, .part2: return "回看剧场"
         case .constellation: return "查看星图"
         }
+    }
+
+    private func compactHistorySubtitle(_ item: BenyuanAccountHistoryItem) -> String {
+        if let archetypeName = item.archetypeName {
+            return "\(archetypeName) · \(item.subtitle)"
+        }
+        return item.subtitle
     }
 
     private func accountOverlay<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -482,10 +520,10 @@ struct BenyuanNativeAccountView: View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("账户绑定")
+                    Text("档案设置")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("这些入口会合并到同一份私人档案。")
+                    Text("当前可恢复方式")
                         .font(.system(size: 13, weight: .regular))
                         .foregroundStyle(BenyuanColor.textSecondary)
                 }
@@ -503,10 +541,10 @@ struct BenyuanNativeAccountView: View {
             }
 
             VStack(spacing: BenyuanSpacing.x2) {
-                bindingRow(provider: .apple, title: "Apple", systemImage: "apple.logo", bound: hasProvider(.apple), detail: hasProvider(.apple) ? "已连接系统身份" : "可在登录页接入")
-                bindingRow(provider: .wechat, title: "微信", systemImage: "message.fill", bound: model.session.user?.wechatBound == true || hasProvider(.wechat), detail: model.session.user?.wechatBound == true ? "已绑定微信" : "待开放平台资料")
-                bindingRow(provider: .phone, title: "手机号", systemImage: "iphone.gen3", bound: model.session.user?.phoneBound == true || hasProvider(.phone), detail: model.session.user?.phoneBound == true ? "已绑定手机号" : "待短信网关资料")
-                bindingRow(provider: .anonymous, title: "访客", systemImage: "moonphase.waxing.crescent", bound: hasProvider(.anonymous), detail: hasProvider(.anonymous) ? "当前身份" : "未使用访客身份")
+                bindingRow(provider: .apple, title: "Apple", systemImage: "apple.logo", bound: isProviderBound(.apple), detail: isProviderBound(.apple) ? "已连接" : "未连接")
+                bindingRow(provider: .wechat, title: "微信", systemImage: "message.fill", bound: isProviderBound(.wechat), detail: isProviderBound(.wechat) ? "已连接" : "待配置")
+                bindingRow(provider: .phone, title: "手机号", systemImage: "iphone.gen3", bound: isProviderBound(.phone), detail: isProviderBound(.phone) ? "已连接" : "待配置")
+                bindingRow(provider: .anonymous, title: "访客", systemImage: "moonphase.waxing.crescent", bound: isProviderBound(.anonymous), detail: isProviderBound(.anonymous) ? "当前可用" : "未使用")
             }
 
             Text(bindingDetail(provider))
@@ -555,7 +593,7 @@ struct BenyuanNativeAccountView: View {
 
                 Spacer(minLength: 0)
 
-                Text(bound ? "已连" : "待开")
+                Text(bound ? "已启用" : "未启用")
                     .font(.system(size: 10, weight: .black))
                     .foregroundStyle(bound ? BenyuanColor.bgVoid : BenyuanColor.textTertiary)
                     .padding(.horizontal, 10)
@@ -581,10 +619,10 @@ struct BenyuanNativeAccountView: View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("反馈这次体验")
+                    Text("问题收集")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("它会带上当前阶段与探索编号，方便后续定位。")
+                    Text("描述一个具体问题，提交后只返回记录编号。")
                         .font(.system(size: 13, weight: .regular))
                         .foregroundStyle(BenyuanColor.textSecondary)
                 }
@@ -638,7 +676,7 @@ struct BenyuanNativeAccountView: View {
                     .padding(BenyuanSpacing.x3)
 
                 if model.feedbackDraft.isEmpty {
-                    Text("写下最影响测试判断的一处问题，越具体越容易进入下一轮修正。")
+                    Text("写下看到的问题、发生位置和复现线索。")
                         .font(.system(size: 14, weight: .regular))
                         .foregroundStyle(BenyuanColor.textTertiary)
                         .lineSpacing(5)
@@ -655,9 +693,9 @@ struct BenyuanNativeAccountView: View {
             )
 
             HStack {
-                Text(model.canSubmitFeedback ? "可归档到测试清单" : "至少 \(model.feedbackMinimumCharacterCount) 个字后可提交")
+                Text(feedbackStateLabel)
                     .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .foregroundStyle(model.canSubmitFeedback ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
+                    .foregroundStyle(feedbackStateColor)
                 Spacer()
                 Text("\(model.feedbackCharacterCount) 字")
                     .font(.system(size: 11, weight: .black, design: .monospaced))
@@ -667,7 +705,7 @@ struct BenyuanNativeAccountView: View {
             if let feedbackStatus = model.feedbackStatus {
                 Text(feedbackStatus)
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(feedbackStatus.contains("至少") ? BenyuanColor.textSecondary : BenyuanColor.accentGold)
+                    .foregroundStyle(feedbackStatus.contains("提交失败") || feedbackStatus.contains("待填写") ? BenyuanColor.textSecondary : BenyuanColor.accentGold)
                     .lineSpacing(4)
             }
 
@@ -680,7 +718,7 @@ struct BenyuanNativeAccountView: View {
                             .tint(BenyuanColor.primaryCTAText)
                             .scaleEffect(0.74)
                     }
-                    Text(model.isFeedbackSubmitting ? "正在记录" : "提交反馈")
+                    Text(model.isFeedbackSubmitting ? "提交中" : "提交问题")
                 }
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(model.canSubmitFeedback ? BenyuanColor.bgVoid : BenyuanColor.textTertiary)
@@ -722,13 +760,13 @@ struct BenyuanNativeAccountView: View {
     private func bindingDetail(_ provider: BenyuanAuthProvider) -> String {
         switch provider {
         case .anonymous:
-            return hasProvider(.anonymous) ? "当前访客身份可以继续探索；绑定 Apple、微信或手机号后，后续换设备也能找回这份档案。" : "访客身份还没有建立，可以回到登录页先进入。"
+            return isProviderBound(.anonymous) ? "访客状态已写入当前档案；需要跨设备恢复时，可在登录入口接入其他方式。" : "访客状态还没有建立，可以回到登录页先进入。"
         case .apple:
-            return hasProvider(.apple) ? "Apple 已连接到当前档案。" : "Apple 登录可在入口页接入，成功后会合并到当前本源档案。"
+            return isProviderBound(.apple) ? "Apple 已连接到当前档案。" : "Apple 登录可在入口页接入，成功后会合并到当前本源档案。"
         case .wechat:
-            return model.session.user?.wechatBound == true || hasProvider(.wechat) ? "微信已绑定到当前档案。" : "微信登录入口已经预留，开放平台资料配置完成后会在这里变成可绑定。"
+            return isProviderBound(.wechat) ? "微信已绑定到当前档案。" : "微信登录入口已经预留，开放平台资料配置完成后会在这里变成可绑定。"
         case .phone:
-            return model.session.user?.phoneBound == true || hasProvider(.phone) ? "手机号已绑定到当前档案。" : "短信网关和签名模板配置完成后，这里会开放手机号绑定。"
+            return isProviderBound(.phone) ? "手机号已绑定到当前档案。" : "短信网关和签名模板配置完成后，这里会开放手机号绑定。"
         }
     }
 }

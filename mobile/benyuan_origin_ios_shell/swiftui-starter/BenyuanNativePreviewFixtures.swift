@@ -323,7 +323,9 @@ extension BenyuanNativeFlowModel {
                     "meaning_seeking": PsycheDimension(score: 91, interpretation: "你会把关系、选择和作品放进更大的意义结构里反复观看。"),
                     "aesthetic_sensitivity": PsycheDimension(score: 88, interpretation: "氛围、材质与语气会直接影响你对一件事是否真实的判断。"),
                     "emotional_depth": PsycheDimension(score: 79, interpretation: "情绪很少只停在表层，你会追问它背后的需要与防御。"),
-                    "independence": PsycheDimension(score: 74, interpretation: "你需要自己的节奏，不喜欢被过早定义，也不愿把复杂性降成口号。")
+                    "independence": PsycheDimension(score: 74, interpretation: "你需要自己的节奏，不喜欢被过早定义，也不愿把复杂性降成口号。"),
+                    "action_tendency": PsycheDimension(score: 63, interpretation: "你并非缺少行动，而是需要先确认动作和内在方向之间没有背叛。"),
+                    "relationship_need": PsycheDimension(score: 69, interpretation: "你期待一种安静但稳定的回应，能接住复杂性，而不是急着把你变简单。")
                 ],
                 narrativeOverview: "你像一颗慢速经过黑潮的月体：外侧安静，内部却持续发生潮汐。你不是单纯回避世界，而是在等待一种能与你的深度相称的抵达。",
                 coreTensions: [

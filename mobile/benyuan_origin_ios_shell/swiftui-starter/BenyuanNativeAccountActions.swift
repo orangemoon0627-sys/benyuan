@@ -107,12 +107,12 @@ extension BenyuanNativeFlowModel {
     func submitFeedback() async {
         let message = feedbackTrimmedMessage
         guard message.count >= feedbackMinimumCharacterCount else {
-            feedbackStatus = "至少写 4 个字，方便我定位问题。"
+            feedbackStatus = "待填写：至少写 4 个字，方便定位问题。"
             return
         }
 
         isFeedbackSubmitting = true
-        feedbackStatus = nil
+        feedbackStatus = "提交中"
         defer { isFeedbackSubmitting = false }
 
         do {
@@ -123,11 +123,11 @@ extension BenyuanNativeFlowModel {
                 session: session
             )
             feedbackDraft = ""
-            feedbackStatus = "已归档到测试清单：\(response.feedbackId)"
-            toast = "反馈已归档。"
+            feedbackStatus = "已收到编号：\(response.feedbackId)"
+            toast = "问题已收到。"
             isFeedbackComposerPresented = true
         } catch {
-            feedbackStatus = error.localizedDescription
+            feedbackStatus = "提交失败：\(error.localizedDescription)"
         }
     }
 

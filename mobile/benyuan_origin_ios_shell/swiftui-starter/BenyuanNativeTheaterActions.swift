@@ -38,6 +38,7 @@ extension BenyuanNativeFlowModel {
 
     func chooseAct3(_ option: TheaterMirrorQuestionOption) {
         guard let question = currentMirrorQuestion else { return }
+        selectedMirrorOptionId = option.id
         let hesitation = Date().timeIntervalSince(interactionStartedAt)
         mirrorLogs.append(Part2MirrorRecord(
             questionId: question.questionId,
@@ -46,13 +47,19 @@ extension BenyuanNativeFlowModel {
             timestamp: Date().benyuanISOString
         ))
 
-        if let theater, theaterMirrorIndex < theater.theaterScript.act3.mirrorQuestions.count - 1 {
-            theaterMirrorIndex += 1
-            resetInteractionTimer()
-        } else {
-            markPhaseDuration("act3")
-            theaterPhase = .epilogue
-            resetInteractionTimer()
+        Task {
+            try? await Task.sleep(nanoseconds: 460_000_000)
+            await MainActor.run {
+                selectedMirrorOptionId = nil
+                if let theater, theaterMirrorIndex < theater.theaterScript.act3.mirrorQuestions.count - 1 {
+                    theaterMirrorIndex += 1
+                    resetInteractionTimer()
+                } else {
+                    markPhaseDuration("act3")
+                    theaterPhase = .epilogue
+                    resetInteractionTimer()
+                }
+            }
         }
     }
 

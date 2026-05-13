@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BenyuanNativeProcessingView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @State private var displayedProgress = 0.12
     private let processingCardCornerRadius: CGFloat = 42
 
     var body: some View {
@@ -26,15 +27,15 @@ struct BenyuanNativeProcessingView: View {
                             .stroke(BenyuanColor.glassStroke.opacity(0.84), lineWidth: 1)
                     )
                     .shadow(color: BenyuanColor.bgVoid.opacity(0.64), radius: 40, y: 28)
-                BenyuanFlowOrbitTrail(progress: model.processingProgress, intensity: 0.48, tilt: -8)
+                BenyuanFlowOrbitTrail(progress: displayedProgress, intensity: 0.48, tilt: -8)
                     .padding(.horizontal, BenyuanSpacing.x2)
                     .opacity(0.88)
 
                 VStack(spacing: 24) {
                     ZStack {
-                        BenyuanProcessingPhaseCurrent(progress: model.processingProgress)
+                        BenyuanProcessingPhaseCurrent(progress: displayedProgress)
                             .frame(width: 248, height: 152)
-                        BenyuanDeepCelestialBody(size: 196, progress: model.processingProgress, mode: .accretionBlackHole)
+                        BenyuanDeepCelestialBody(size: 196, progress: displayedProgress, mode: .accretionBlackHole)
                     }
                     .padding(.top, BenyuanSpacing.x2)
 
@@ -81,10 +82,18 @@ struct BenyuanNativeProcessingView: View {
 
             Spacer(minLength: BenyuanSpacing.x12)
         }
+        .onAppear {
+            displayedProgress = model.processingProgress
+        }
+        .onChange(of: model.processingProgress) { _, newValue in
+            withAnimation(.easeInOut(duration: 0.82)) {
+                displayedProgress = min(max(newValue, displayedProgress), 1)
+            }
+        }
     }
 
     private var processingPhaseLabel: String {
-        switch model.processingProgress {
+        switch displayedProgress {
         case ..<0.28: return "校准中"
         case ..<0.58: return "显影中"
         case ..<0.84: return "折射中"
@@ -102,7 +111,7 @@ struct BenyuanNativeProcessingView: View {
                 Capsule().fill(BenyuanColor.textPrimary.opacity(0.08))
                 Capsule()
                     .fill(LinearGradient(colors: [BenyuanColor.accentGold.opacity(0.75), BenyuanColor.textPrimary.opacity(0.88)], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: max(22, proxy.size.width * min(max(model.processingProgress, 0), 1)))
+                    .frame(width: max(22, proxy.size.width * min(max(displayedProgress, 0), 1)))
             }
         }
     }
@@ -142,6 +151,6 @@ struct BenyuanNativeProcessingView: View {
     }
 
     private func dotIsActive(_ index: Int) -> Bool {
-        model.processingProgress >= Double(index) * 0.28 + 0.08
+        displayedProgress >= Double(index) * 0.28 + 0.08
     }
 }
