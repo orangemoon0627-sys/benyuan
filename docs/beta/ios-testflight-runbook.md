@@ -47,6 +47,16 @@ BENYUAN_IOS_DEVELOPMENT_TEAM=<Apple Team ID> BENYUAN_IOS_EXPORT_METHOD=app-store
 
 生成的 ipa 路径会写入 `output/benyuan-ios-shell-export.json`。
 
+## Upload
+
+本机 Xcode 账号已具备发布权限时，可直接上传当前 archive：
+
+```bash
+BENYUAN_IOS_DEVELOPMENT_TEAM=<Apple Team ID> npm run ios:shell:upload
+```
+
+上传结果会写入 `output/benyuan-ios-shell-upload.json`。看到 `Uploaded BenyuanOriginShell` 后，进入 App Store Connect 等待 Apple 处理 build。
+
 ## App Store Connect 手动项
 
 - 创建 App，Bundle ID 使用 `com.fanhao.benyuan.origin.shell`

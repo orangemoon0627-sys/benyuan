@@ -48,7 +48,7 @@ for (const command of ["npm run lint", "npm run build", "npm run test:product:ga
 }
 
 const iosRunbook = readFileSync("docs/beta/ios-testflight-runbook.md", "utf8");
-for (const command of ["ios:shell:testflight:preflight", "ios:shell:archive", "ios:shell:export"]) {
+for (const command of ["ios:shell:testflight:preflight", "ios:shell:archive", "ios:shell:export", "ios:shell:upload"]) {
   assert(iosRunbook.includes(command), `iOS runbook must include ${command}`);
 }
 assert(iosRunbook.includes("com.fanhao.benyuan.origin.shell"), "iOS runbook must include Bundle ID");
@@ -62,5 +62,6 @@ assert(
 );
 assert(scripts["ios:shell:archive"] === "node scripts/benyuan-ios-shell-archive.mjs", "package.json must expose iOS archive");
 assert(scripts["ios:shell:export"] === "node scripts/benyuan-ios-shell-export.mjs", "package.json must expose iOS export");
+assert(scripts["ios:shell:upload"] === "node scripts/benyuan-ios-shell-upload.mjs", "package.json must expose iOS upload");
 
 console.log("beta-kit-contract:ok");

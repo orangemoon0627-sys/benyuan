@@ -62,6 +62,7 @@
     "smoke:ios:staging-progress-sampler": "node scripts/benyuan-ios-staging-progress-sampler-contract-smoke.mjs",
     "ios:shell:archive": "node scripts/benyuan-ios-shell-archive.mjs",
     "ios:shell:export": "node scripts/benyuan-ios-shell-export.mjs",
+    "ios:shell:upload": "node scripts/benyuan-ios-shell-upload.mjs",
     "smoke:benyuan:test-packs": "node scripts/benyuan-test-pack-audit.mjs",
     "smoke:benyuan:golden": "node scripts/benyuan-golden-audit.mjs",
     "smoke:benyuan:benchmark": "node scripts/benyuan-pack-benchmark.mjs",
