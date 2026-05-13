@@ -10,7 +10,7 @@ struct BenyuanNativeCollectView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            BenyuanNativeTopBar(progress: model.progress, label: "原生收集 \(model.answeredCount)/\(model.questions.count)", onAccount: model.showAccount)
+            BenyuanNativeTopBar(progress: model.progress, label: "线索收集 \(model.answeredCount)/\(model.questions.count)", onAccount: model.showAccount)
 
             if let question = model.currentQuestion {
                 ScrollView(showsIndicators: false) {

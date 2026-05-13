@@ -14,6 +14,8 @@
 		21D0763D938A0B9165A98B3E /* BenyuanNativeTheaterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FB07AB9D9B9A0769D0CC9D9 /* BenyuanNativeTheaterView.swift */; };
 		22DEC28C09436615F7E51EB2 /* BenyuanImagePayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDEAD6013E8939952640CFAF /* BenyuanImagePayload.swift */; };
 		2809B680A092A505B9D11C7C /* BenyuanNetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3415E25E48504958A7150987 /* BenyuanNetworkMonitor.swift */; };
+		2F7F449895C2FBABCC00EE18 /* BenyuanMotionRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26DD5E646E66A882A193FBF4 /* BenyuanMotionRuntime.swift */; };
+		2F94CD5BAC7F1410BE840D35 /* BenyuanNativeConstellationActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B545C1CD17D2CBE65CFF4A28 /* BenyuanNativeConstellationActions.swift */; };
 		33BDEE7FAF4D74A890B991EB /* BenyuanAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA23BE4CD0E36EEFE0A2E2CD /* BenyuanAPIClient.swift */; };
 		375B5C589F83091EE39EE62D /* BenyuanConstellationImageRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEF3B3536FAE7D137531D3BD /* BenyuanConstellationImageRenderer.swift */; };
 		3E14B7F2822912910B3B792F /* BenyuanFlowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9327C7D6C6170B0073E1F2 /* BenyuanFlowStore.swift */; };
@@ -22,12 +24,16 @@
 		7324A5F3938CE286E76A89B9 /* native-smoke-fixture.png in Resources */ = {isa = PBXBuildFile; fileRef = 0362B686F60505AF544324D8 /* native-smoke-fixture.png */; };
 		76FD0E0D00FDCB3326F22894 /* BenyuanDesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF8805C2203AB3A5FCAE87FD /* BenyuanDesignTokens.swift */; };
 		777218E9E67718DEF95D8787 /* BenyuanShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307DE9631DC4B6949F272C68 /* BenyuanShellRootView.swift */; };
+		780BCFD87FABBE766EA45AF1 /* BenyuanNativeGenerationJobs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E9CB6ABC073AA777A4BDE9D /* BenyuanNativeGenerationJobs.swift */; };
 		7D3FB1BE6B78CED4E9338EFB /* BenyuanNativeAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE67F19E95ED1B208F38CDD /* BenyuanNativeAccountView.swift */; };
 		87AD940206CC0DFB4450A007 /* BenyuanShellConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77ABE8DB480480B21CC15D2 /* BenyuanShellConfig.swift */; };
 		8853B57152116BCAA2D67D66 /* BenyuanNativeAuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE65033AE5CADAAC3A68423 /* BenyuanNativeAuthView.swift */; };
+		8AF3D0AE546628B37FAC1015 /* BenyuanNativeAccountActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6383F369AD0887789AE80542 /* BenyuanNativeAccountActions.swift */; };
 		8D3D62EC198E4C548715E785 /* BenyuanShellState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 569437A108793ED68968852F /* BenyuanShellState.swift */; };
 		8DFEAF4D44708F332FF04A7C /* BenyuanWechatAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED79191C059ACC97044B3C8A /* BenyuanWechatAuthClient.swift */; };
 		9014A74A28E5B5969476EB65 /* BenyuanCoreNativeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52ADA74F3043898EC9DB3B88 /* BenyuanCoreNativeTests.swift */; };
+		9172649CDCF2B449387124AF /* BenyuanNativeCollectActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491A4B57CEF6CCFB9A63068D /* BenyuanNativeCollectActions.swift */; };
+		933B375C1AA9C0D5F2A78506 /* BenyuanNativeHistoryActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8B20D02C0DDAA9C6689467 /* BenyuanNativeHistoryActions.swift */; };
 		9B5C3319C1623FCB6574E292 /* BenyuanShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B40AD6C5516B6D0209AD132 /* BenyuanShareSheet.swift */; };
 		9EED86F2D24C6D42E02DCE71 /* BenyuanWebContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDA1B974999DECD2676F2DB /* BenyuanWebContainerView.swift */; };
 		A7D13CE3A5AB296691019CF4 /* BenyuanNativeCollectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C59274E886B964C57CED6EA4 /* BenyuanNativeCollectView.swift */; };
@@ -37,6 +43,8 @@
 		E63BF5C2CEE0ED510C327A90 /* BenyuanLaunchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E13CAF88FCD678552DF32C3 /* BenyuanLaunchOverlay.swift */; };
 		E823DFD3600C3D95FEBDE7B4 /* BenyuanRouteRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0637A14CCD52810CB93A7072 /* BenyuanRouteRecovery.swift */; };
 		F5203ECCE34599577FA7C7F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 04D61981B5B59C2E8CAFFE88 /* Assets.xcassets */; };
+		F66EB124C32B5F679EA2F88B /* BenyuanNativePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB9697E54D7013E4AFFFCF7 /* BenyuanNativePreviewFixtures.swift */; };
+		F859A93B11B043A6A2044B9D /* BenyuanNativeTheaterActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97333A0E01E7528CCF26115E /* BenyuanNativeTheaterActions.swift */; };
 		FC357916C615A5FC1AA7B639 /* BenyuanNativeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48442EF2DF87BA1767B61860 /* BenyuanNativeModels.swift */; };
 /* End PBXBuildFile section */
 
@@ -54,27 +62,34 @@
 		0362B686F60505AF544324D8 /* native-smoke-fixture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "native-smoke-fixture.png"; sourceTree = "<group>"; };
 		04D61981B5B59C2E8CAFFE88 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0637A14CCD52810CB93A7072 /* BenyuanRouteRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanRouteRecovery.swift; sourceTree = "<group>"; };
+		0E9CB6ABC073AA777A4BDE9D /* BenyuanNativeGenerationJobs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeGenerationJobs.swift; sourceTree = "<group>"; };
 		1D48C07333F12CEC5C1B7996 /* BenyuanNativeImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeImagePicker.swift; sourceTree = "<group>"; };
 		1FB07AB9D9B9A0769D0CC9D9 /* BenyuanNativeTheaterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeTheaterView.swift; sourceTree = "<group>"; };
+		26DD5E646E66A882A193FBF4 /* BenyuanMotionRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanMotionRuntime.swift; sourceTree = "<group>"; };
 		2C50851EBC2E67222FB268CC /* BenyuanOriginShell.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BenyuanOriginShell.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FB9697E54D7013E4AFFFCF7 /* BenyuanNativePreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativePreviewFixtures.swift; sourceTree = "<group>"; };
 		2FE67F19E95ED1B208F38CDD /* BenyuanNativeAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeAccountView.swift; sourceTree = "<group>"; };
 		307DE9631DC4B6949F272C68 /* BenyuanShellRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanShellRootView.swift; sourceTree = "<group>"; };
 		3415E25E48504958A7150987 /* BenyuanNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNetworkMonitor.swift; sourceTree = "<group>"; };
 		48442EF2DF87BA1767B61860 /* BenyuanNativeModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeModels.swift; sourceTree = "<group>"; };
+		491A4B57CEF6CCFB9A63068D /* BenyuanNativeCollectActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeCollectActions.swift; sourceTree = "<group>"; };
 		4A29B73991BDAFFDB951B8DE /* BenyuanShellRouteContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanShellRouteContext.swift; sourceTree = "<group>"; };
 		52ADA74F3043898EC9DB3B88 /* BenyuanCoreNativeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanCoreNativeTests.swift; sourceTree = "<group>"; };
 		569437A108793ED68968852F /* BenyuanShellState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanShellState.swift; sourceTree = "<group>"; };
+		6383F369AD0887789AE80542 /* BenyuanNativeAccountActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeAccountActions.swift; sourceTree = "<group>"; };
 		7F67A5C4A8895424FA9D84E6 /* BenyuanShellApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanShellApp.swift; sourceTree = "<group>"; };
 		822A4681017BD700F30A81C4 /* BenyuanNativeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeBridge.swift; sourceTree = "<group>"; };
 		8532F7D68298E88C1C7573EB /* BenyuanNativeFlowModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeFlowModel.swift; sourceTree = "<group>"; };
 		8C9327C7D6C6170B0073E1F2 /* BenyuanFlowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanFlowStore.swift; sourceTree = "<group>"; };
 		8C9AECEC8FE142671B128D32 /* BenyuanOriginShellTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BenyuanOriginShellTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		97333A0E01E7528CCF26115E /* BenyuanNativeTheaterActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeTheaterActions.swift; sourceTree = "<group>"; };
 		98470422A6C18548ABCEC4C0 /* BenyuanNativeDesignPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeDesignPrimitives.swift; sourceTree = "<group>"; };
 		9B40AD6C5516B6D0209AD132 /* BenyuanShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanShareSheet.swift; sourceTree = "<group>"; };
 		9E13CAF88FCD678552DF32C3 /* BenyuanLaunchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanLaunchOverlay.swift; sourceTree = "<group>"; };
 		9FE65033AE5CADAAC3A68423 /* BenyuanNativeAuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeAuthView.swift; sourceTree = "<group>"; };
 		ABDA1B974999DECD2676F2DB /* BenyuanWebContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanWebContainerView.swift; sourceTree = "<group>"; };
 		AD574852514009C42EBDC31B /* BenyuanNativeProcessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeProcessingView.swift; sourceTree = "<group>"; };
+		B545C1CD17D2CBE65CFF4A28 /* BenyuanNativeConstellationActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeConstellationActions.swift; sourceTree = "<group>"; };
 		BDEAD6013E8939952640CFAF /* BenyuanImagePayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanImagePayload.swift; sourceTree = "<group>"; };
 		C59274E886B964C57CED6EA4 /* BenyuanNativeCollectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeCollectView.swift; sourceTree = "<group>"; };
 		CA23BE4CD0E36EEFE0A2E2CD /* BenyuanAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanAPIClient.swift; sourceTree = "<group>"; };
@@ -83,6 +98,7 @@
 		EB9F9294A97167B2E4B0ABA8 /* BenyuanShellBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanShellBackdrop.swift; sourceTree = "<group>"; };
 		ED79191C059ACC97044B3C8A /* BenyuanWechatAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanWechatAuthClient.swift; sourceTree = "<group>"; };
 		F291BF299E3CAE9A6A9A463A /* BenyuanOriginShell-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "BenyuanOriginShell-Bridging-Header.h"; sourceTree = "<group>"; };
+		FA8B20D02C0DDAA9C6689467 /* BenyuanNativeHistoryActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeHistoryActions.swift; sourceTree = "<group>"; };
 		FB6838F4ABFE9962DFD7BAA6 /* BenyuanNativeConstellationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeConstellationView.swift; sourceTree = "<group>"; };
 		FEF3B3536FAE7D137531D3BD /* BenyuanConstellationImageRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanConstellationImageRenderer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -113,16 +129,24 @@
 				8C9327C7D6C6170B0073E1F2 /* BenyuanFlowStore.swift */,
 				BDEAD6013E8939952640CFAF /* BenyuanImagePayload.swift */,
 				9E13CAF88FCD678552DF32C3 /* BenyuanLaunchOverlay.swift */,
+				26DD5E646E66A882A193FBF4 /* BenyuanMotionRuntime.swift */,
+				6383F369AD0887789AE80542 /* BenyuanNativeAccountActions.swift */,
 				2FE67F19E95ED1B208F38CDD /* BenyuanNativeAccountView.swift */,
 				9FE65033AE5CADAAC3A68423 /* BenyuanNativeAuthView.swift */,
 				822A4681017BD700F30A81C4 /* BenyuanNativeBridge.swift */,
+				491A4B57CEF6CCFB9A63068D /* BenyuanNativeCollectActions.swift */,
 				C59274E886B964C57CED6EA4 /* BenyuanNativeCollectView.swift */,
+				B545C1CD17D2CBE65CFF4A28 /* BenyuanNativeConstellationActions.swift */,
 				FB6838F4ABFE9962DFD7BAA6 /* BenyuanNativeConstellationView.swift */,
 				98470422A6C18548ABCEC4C0 /* BenyuanNativeDesignPrimitives.swift */,
 				8532F7D68298E88C1C7573EB /* BenyuanNativeFlowModel.swift */,
+				0E9CB6ABC073AA777A4BDE9D /* BenyuanNativeGenerationJobs.swift */,
+				FA8B20D02C0DDAA9C6689467 /* BenyuanNativeHistoryActions.swift */,
 				1D48C07333F12CEC5C1B7996 /* BenyuanNativeImagePicker.swift */,
 				48442EF2DF87BA1767B61860 /* BenyuanNativeModels.swift */,
+				2FB9697E54D7013E4AFFFCF7 /* BenyuanNativePreviewFixtures.swift */,
 				AD574852514009C42EBDC31B /* BenyuanNativeProcessingView.swift */,
+				97333A0E01E7528CCF26115E /* BenyuanNativeTheaterActions.swift */,
 				1FB07AB9D9B9A0769D0CC9D9 /* BenyuanNativeTheaterView.swift */,
 				3415E25E48504958A7150987 /* BenyuanNetworkMonitor.swift */,
 				0637A14CCD52810CB93A7072 /* BenyuanRouteRecovery.swift */,
@@ -253,16 +277,24 @@
 				3E14B7F2822912910B3B792F /* BenyuanFlowStore.swift in Sources */,
 				22DEC28C09436615F7E51EB2 /* BenyuanImagePayload.swift in Sources */,
 				E63BF5C2CEE0ED510C327A90 /* BenyuanLaunchOverlay.swift in Sources */,
+				2F7F449895C2FBABCC00EE18 /* BenyuanMotionRuntime.swift in Sources */,
+				8AF3D0AE546628B37FAC1015 /* BenyuanNativeAccountActions.swift in Sources */,
 				7D3FB1BE6B78CED4E9338EFB /* BenyuanNativeAccountView.swift in Sources */,
 				8853B57152116BCAA2D67D66 /* BenyuanNativeAuthView.swift in Sources */,
 				0E86482DE7257D7FB5760927 /* BenyuanNativeBridge.swift in Sources */,
+				9172649CDCF2B449387124AF /* BenyuanNativeCollectActions.swift in Sources */,
 				A7D13CE3A5AB296691019CF4 /* BenyuanNativeCollectView.swift in Sources */,
+				2F94CD5BAC7F1410BE840D35 /* BenyuanNativeConstellationActions.swift in Sources */,
 				1EA17CB7BFFFE30B054714FC /* BenyuanNativeConstellationView.swift in Sources */,
 				087EF56E456487AB932CCB35 /* BenyuanNativeDesignPrimitives.swift in Sources */,
 				04A4F87EE811A5A4B391BFBD /* BenyuanNativeFlowModel.swift in Sources */,
+				780BCFD87FABBE766EA45AF1 /* BenyuanNativeGenerationJobs.swift in Sources */,
+				933B375C1AA9C0D5F2A78506 /* BenyuanNativeHistoryActions.swift in Sources */,
 				5810598AA6AEFA84FF370EF0 /* BenyuanNativeImagePicker.swift in Sources */,
 				FC357916C615A5FC1AA7B639 /* BenyuanNativeModels.swift in Sources */,
+				F66EB124C32B5F679EA2F88B /* BenyuanNativePreviewFixtures.swift in Sources */,
 				B5C1567CADB34783BDB3F62F /* BenyuanNativeProcessingView.swift in Sources */,
+				F859A93B11B043A6A2044B9D /* BenyuanNativeTheaterActions.swift in Sources */,
 				21D0763D938A0B9165A98B3E /* BenyuanNativeTheaterView.swift in Sources */,
 				2809B680A092A505B9D11C7C /* BenyuanNetworkMonitor.swift in Sources */,
 				E823DFD3600C3D95FEBDE7B4 /* BenyuanRouteRecovery.swift in Sources */,

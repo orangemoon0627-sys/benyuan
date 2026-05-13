@@ -80,6 +80,19 @@ export function assertAllRequiredRuntimeStagesBelongToSession({
   }
 }
 
+export function assertNativeConstellationPersisted({ nativeSession }) {
+  const constellationId = nativeSession?.session?.constellationId;
+  if (!constellationId) {
+    throw new Error("ios_staging_e2e_native_session_missing_constellation");
+  }
+
+  const events = Array.isArray(nativeSession?.e2eEvents) ? nativeSession.e2eEvents : [];
+  const expectedMessage = `constellation_generated constellation_id=${constellationId}`;
+  if (!events.some((event) => event?.message === expectedMessage)) {
+    throw new Error(`ios_staging_e2e_native_constellation_event_missing:${constellationId}`);
+  }
+}
+
 export function safeNativeSessionSummary(session) {
   if (!session || typeof session !== "object") return null;
   const auth = session.auth_session;

@@ -12,6 +12,7 @@ import {
 import {
   assertAllRequiredRuntimeStagesBelongToSession,
   assertAllRequiredRuntimeStagesLive,
+  assertNativeConstellationPersisted,
   buildLaunchArgs,
   safeNativeE2EEvents,
   safeNativeSessionSummary,
@@ -232,6 +233,23 @@ async function waitForConstellation(startedAtMs) {
   throw new Error(`ios_staging_e2e_timeout:${JSON.stringify(lastRuntime?.agentTiming?.stages?.constellation?.latest ?? null)}`);
 }
 
+async function waitForNativeConstellationPersistence(udid, bundleId) {
+  const deadline = Date.now() + maxWaitMs;
+  let lastNativeSession = null;
+  let lastError = null;
+  while (Date.now() < deadline) {
+    lastNativeSession = collectNativeSessionSummary(udid, bundleId);
+    try {
+      assertNativeConstellationPersisted({ nativeSession: lastNativeSession });
+      return lastNativeSession;
+    } catch (error) {
+      lastError = error;
+      await sleep(1000);
+    }
+  }
+  throw lastError ?? new Error("ios_staging_e2e_native_constellation_persistence_timeout");
+}
+
 async function main() {
   await mkdir(outputDir, { recursive: true });
   await mkdir(tempDir, { recursive: true });
@@ -277,7 +295,7 @@ async function main() {
     const result = await waitForConstellation(launchedAtMs);
     latest = result.latest;
     runtimePayload = result.runtimePayload;
-    await sleep(3500);
+    await waitForNativeConstellationPersistence(device.udid, bundleId);
   } catch (error) {
     e2eError = error;
     try {
@@ -356,6 +374,7 @@ async function main() {
     nativeSession,
     launchedAtMs,
   });
+  assertNativeConstellationPersisted({ nativeSession });
 }
 
 main().catch((error) => {

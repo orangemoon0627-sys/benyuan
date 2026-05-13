@@ -63,19 +63,8 @@ struct BenyuanNativeProcessingView: View {
                             .multilineTextAlignment(.center)
                             .foregroundStyle(BenyuanColor.textTertiary)
                             .padding(.horizontal, BenyuanSpacing.x6)
-                        if let jobId = model.activeGenerationJobId {
-                            Text("云端任务 \(jobId)")
-                                .font(.system(size: 11, weight: .black, design: .monospaced))
-                                .foregroundStyle(BenyuanColor.accentGold.opacity(0.78))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .padding(.horizontal, BenyuanSpacing.x4)
-                                .padding(.vertical, 7)
-                                .background(
-                                    Capsule()
-                                        .fill(BenyuanColor.bgVoid.opacity(0.42))
-                                        .overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72), lineWidth: 1))
-                                )
+                        if model.activeGenerationJobId != nil {
+                            generationStatusBadge
                         }
                     }
 
@@ -116,6 +105,26 @@ struct BenyuanNativeProcessingView: View {
                     .frame(width: max(22, proxy.size.width * min(max(model.processingProgress, 0), 1)))
             }
         }
+    }
+
+    private var generationStatusBadge: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(BenyuanColor.accentGold.opacity(0.88))
+                .frame(width: 5, height: 5)
+                .shadow(color: BenyuanColor.accentGold.opacity(0.42), radius: 8)
+            Text("云端生成已接管")
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.accentGold.opacity(0.82))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, BenyuanSpacing.x4)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(BenyuanColor.bgVoid.opacity(0.42))
+                .overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72), lineWidth: 1))
+        )
     }
 
     private var phaseDots: some View {

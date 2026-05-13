@@ -143,8 +143,7 @@ struct BenyuanDeepCelestialBody: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
             let spin = phase.truncatingRemainder(dividingBy: 24) / 24
             let pulse = 0.5 + 0.5 * sin(phase * 0.72)
             let clampedProgress = min(max(progress, 0.04), 1)
@@ -210,8 +209,7 @@ struct BenyuanLivingDistantMoon: View {
     var size: CGFloat
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
             let pulse = 0.5 + 0.5 * sin(phase * 0.18)
 
             ZStack {

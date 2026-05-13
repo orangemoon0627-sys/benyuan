@@ -26,6 +26,7 @@ final class BenyuanFlowStore {
         // BenyuanNativeSession carries activeGenerationJobId so cloud generation can resume after app relaunch.
         guard let data = try? JSONEncoder.benyuan.encode(session) else { return }
         defaults.set(data, forKey: key)
+        defaults.synchronize()
     }
 
     func reset() {
@@ -49,6 +50,7 @@ final class BenyuanFlowStore {
         events = Array(events.suffix(80))
         guard let data = try? JSONEncoder.benyuan.encode(events) else { return }
         defaults.set(data, forKey: e2eEventsKey)
+        defaults.synchronize()
     }
 
     func resetE2EEvents() {

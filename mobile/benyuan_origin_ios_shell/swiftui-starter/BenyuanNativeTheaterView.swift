@@ -5,7 +5,7 @@ struct BenyuanNativeTheaterView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            BenyuanNativeTopBar(progress: theaterProgress, label: "原生剧场")
+            BenyuanNativeTopBar(progress: theaterProgress, label: "月下剧场")
 
             GeometryReader { proxy in
                 ZStack(alignment: .top) {

@@ -5,6 +5,7 @@ import {
   buildLaunchArgs,
   assertAllRequiredRuntimeStagesBelongToSession,
   assertAllRequiredRuntimeStagesLive,
+  assertNativeConstellationPersisted,
   safeNativeE2EEvents,
   safeNativeSessionSummary,
   shouldTreatAppLogsAsNativeError,
@@ -174,4 +175,45 @@ test("assertAllRequiredRuntimeStagesBelongToSession accepts same-run live record
     },
     launchedAtMs: Date.parse("2026-05-10T00:00:00.000Z"),
   }));
+});
+
+test("assertNativeConstellationPersisted requires session id and completion event", () => {
+  assert.doesNotThrow(() => assertNativeConstellationPersisted({
+    nativeSession: {
+      session: {
+        constellationId: "const_current",
+      },
+      e2eEvents: [
+        { recordedAt: "2026-05-10T00:01:30.000Z", message: "constellation_generated constellation_id=const_current" },
+      ],
+    },
+  }));
+
+  assert.throws(
+    () => assertNativeConstellationPersisted({
+      nativeSession: {
+        session: {
+          constellationId: null,
+        },
+        e2eEvents: [
+          { recordedAt: "2026-05-10T00:01:30.000Z", message: "native_job_started kind=constellation job_id=job_1" },
+        ],
+      },
+    }),
+    /ios_staging_e2e_native_session_missing_constellation/
+  );
+
+  assert.throws(
+    () => assertNativeConstellationPersisted({
+      nativeSession: {
+        session: {
+          constellationId: "const_current",
+        },
+        e2eEvents: [
+          { recordedAt: "2026-05-10T00:01:30.000Z", message: "native_job_started kind=constellation job_id=job_1" },
+        ],
+      },
+    }),
+    /ios_staging_e2e_native_constellation_event_missing:const_current/
+  );
 });

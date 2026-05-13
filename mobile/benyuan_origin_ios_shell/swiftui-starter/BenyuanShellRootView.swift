@@ -6,6 +6,7 @@ struct BenyuanShellRootView: View {
     @StateObject private var nativeModel = BenyuanNativeFlowModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var reloadToken = UUID()
+    @State private var isMotionActive = true
 #if DEBUG
     @State private var showsDebugWebInspector = false
 #endif
@@ -71,6 +72,7 @@ struct BenyuanShellRootView: View {
             }
 #endif
         }
+        .environment(\.benyuanMotionActive, isMotionActive)
         .task {
             guard !Self.isRunningUnitTests else { return }
             await nativeModel.start()
@@ -81,6 +83,7 @@ struct BenyuanShellRootView: View {
         .animation(.easeInOut(duration: BenyuanMotion.base), value: state.nativeActivity)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: nativeModel.stage)
         .onChange(of: scenePhase) { _, phase in
+            isMotionActive = phase == .active
             guard phase == .active else { return }
             Task { await nativeModel.resumeProcessingIfNeeded() }
         }

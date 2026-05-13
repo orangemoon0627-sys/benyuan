@@ -6,10 +6,11 @@ struct BenyuanFlowTransitionLayer: View {
     var intensity: Double = 1
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.benyuanMotionActive) private var benyuanMotionActive
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+        TimelineView(.animation(minimumInterval: BenyuanMotionRuntime.animationInterval(preferredFramesPerSecond: 30, active: benyuanMotionActive, reduceMotion: accessibilityReduceMotion))) { timeline in
+            let phase = BenyuanMotionRuntime.phase(from: timeline.date, active: benyuanMotionActive, reduceMotion: accessibilityReduceMotion)
             let clamped = min(max(progress, 0), 1)
             let breath = accessibilityReduceMotion ? 0.45 : 0.5 + 0.5 * sin(phase * 0.34)
 
@@ -137,10 +138,12 @@ struct BenyuanStarTransitModifier: ViewModifier {
 
 private struct BenyuanStarTransitLayer: View {
     var direction: BenyuanQuestionMotionDirection
+    @Environment(\.benyuanMotionActive) private var benyuanMotionActive
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        TimelineView(.animation(minimumInterval: BenyuanMotionRuntime.animationInterval(preferredFramesPerSecond: 30, active: benyuanMotionActive, reduceMotion: accessibilityReduceMotion))) { timeline in
+            let phase = BenyuanMotionRuntime.phase(from: timeline.date, active: benyuanMotionActive, reduceMotion: accessibilityReduceMotion)
             let pass = phase.truncatingRemainder(dividingBy: 0.92) / 0.92
             let eased = 1 - pow(1 - pass, 3)
 
@@ -202,10 +205,11 @@ struct BenyuanProcessingPhaseCurrent: View {
     var progress: Double
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.benyuanMotionActive) private var benyuanMotionActive
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+        TimelineView(.animation(minimumInterval: BenyuanMotionRuntime.animationInterval(preferredFramesPerSecond: 30, active: benyuanMotionActive, reduceMotion: accessibilityReduceMotion))) { timeline in
+            let phase = BenyuanMotionRuntime.phase(from: timeline.date, active: benyuanMotionActive, reduceMotion: accessibilityReduceMotion)
             let clamped = min(max(progress, 0.04), 1)
             let pulse = accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 0.74)
 
@@ -271,8 +275,7 @@ struct BenyuanFlowOrbitTrail: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
             let clamped = min(max(progress, 0.04), 1)
             let pulse = accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 0.52)
 
@@ -362,8 +365,7 @@ struct BenyuanSelectionPulseLayer: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
             let pulse = isActive ? (accessibilityReduceMotion ? 0.45 : 0.5 + 0.5 * sin(phase * 3.2)) : 0
 
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -463,8 +465,7 @@ struct BenyuanMomentaryChoiceFeedback: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
             let pulse = isActive ? (accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 5.2)) : 0
 
             VStack(spacing: BenyuanSpacing.x2) {
@@ -670,8 +671,7 @@ struct BenyuanQuestionSignalField: View {
     var module: BenyuanModuleKey
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
             let clamped = min(max(progress, 0.04), 1)
 
             GeometryReader { proxy in
@@ -741,8 +741,7 @@ struct BenyuanUploadCelestialPortal: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = accessibilityReduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
             let clamped = min(max(progress, 0.04), 1)
             let pulse = accessibilityReduceMotion ? 0.45 : 0.5 + 0.5 * sin(phase * 0.56)
 
@@ -1036,8 +1035,7 @@ struct BenyuanStageLens: View {
     var intensity: Double = 1
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
             let clamped = min(max(progress, 0), 1)
 
             GeometryReader { proxy in
@@ -1083,8 +1081,7 @@ struct BenyuanNebulaTheaterField: View {
     var progress: Double
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
             let clamped = min(max(progress, 0), 1)
             let pulse = 0.5 + 0.5 * sin(phase * 0.32)
 

@@ -329,8 +329,7 @@ struct BenyuanConstellationActionDock: View {
     let onRestart: () -> Void
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
             let pulse = 0.5 + 0.5 * sin(phase * 0.44)
 
             VStack(spacing: 0) {
@@ -430,8 +429,7 @@ struct BenyuanConstellationDeepFieldMask: View {
     var progress: Double
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
             let pulse = 0.5 + 0.5 * sin(phase * 0.46)
             let clamped = min(max(progress, 0.12), 1)
 
@@ -496,8 +494,7 @@ struct BenyuanDimensionOrbitMap: View {
     let activeKey: String?
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
 
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
@@ -593,8 +590,7 @@ struct BenyuanDimensionResonanceGraph: View {
     let onSelect: (String) -> Void
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in
-            let phase = timeline.date.timeIntervalSinceReferenceDate
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
 
             VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
                 ForEach(Array(dimensions.prefix(7).enumerated()), id: \.element.key) { index, dimension in
