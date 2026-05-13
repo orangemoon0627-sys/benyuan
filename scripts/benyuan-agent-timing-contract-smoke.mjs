@@ -20,6 +20,11 @@ assert.match(telemetry, /benyuan-agent-timings\.jsonl/, "timing telemetry must p
 assert.match(telemetry, /appendFile/, "timing telemetry should append events without rewriting the main store");
 assert.match(telemetry, /duration_ms/, "timing telemetry must record duration_ms");
 assert.match(telemetry, /runtime_mode/, "timing telemetry must record runtime mode");
+assert.match(telemetry, /cache_status/, "timing telemetry must record structured multimodal cache status");
+assert.match(telemetry, /cold_start/, "timing telemetry must record whether a multimodal run had a cold-start miss");
+assert.match(telemetry, /cache_hit_stages/, "timing telemetry must record which multimodal stages hit cache");
+assert.match(telemetry, /cache_miss_stages/, "timing telemetry must record which multimodal stages missed cache");
+assert.match(telemetry, /classifyBenyuanMultimodalCacheStatus/, "timing telemetry must expose a reusable multimodal cold-start classifier");
 
 for (const [label, source] of [
   ["multimodal", multimodalRoute],
@@ -34,6 +39,8 @@ for (const [label, source] of [
 assert.match(runtimeRoute, /summarizeBenyuanAgentTimings/, "runtime endpoint must expose timing summary");
 assert.match(summaryScript, /p50_ms/, "summary script must report p50_ms");
 assert.match(summaryScript, /p90_ms/, "summary script must report p90_ms");
+assert.match(summaryScript, /cold_p50_ms/, "summary script must report cold-start p50_ms for multimodal sampling");
+assert.match(summaryScript, /cache_status_counts/, "summary script must report cache status distribution");
 assert.match(summaryScript, /multimodal|theater|constellation/, "summary script must group known agent stages");
 
 console.log("agent-timing-contract:ok");

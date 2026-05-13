@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { assertPart1Owner } from "@/lib/benyuan-auth";
-import { getNativeGenerationJob, getPart1Record, runNativeGenerationJob, shouldResumeNativeGenerationJob } from "@/lib/benyuan-v3-store";
+import { getCurrentAuthSession, BenyuanAuthError } from "@/lib/benyuan-auth";
+import { getNativeGenerationJob, getPart1Record, presentNativeGenerationJob, runNativeGenerationJob, shouldResumeNativeGenerationJob } from "@/lib/benyuan-v3-store";
 
 export async function GET(request: Request, context: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await context.params;
@@ -13,9 +13,17 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
   if (!part1) {
     return NextResponse.json({ error: "part1_not_found" }, { status: 404 });
   }
-  const ownership = await assertPart1Owner(request, part1);
-  if (!ownership.ok) {
-    return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+  let auth;
+  try {
+    auth = await getCurrentAuthSession(request);
+  } catch (error) {
+    if (error instanceof BenyuanAuthError) {
+      return NextResponse.json({ error: error.code }, { status: error.status });
+    }
+    throw error;
+  }
+  if (auth.user.user_id !== part1.user_id) {
+    return NextResponse.json({ error: "part1_forbidden" }, { status: 403 });
   }
 
   if (job.status === "queued" || shouldResumeNativeGenerationJob(job)) {
@@ -24,9 +32,11 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
     });
   }
 
+  const presentedJob = presentNativeGenerationJob(job);
+
   return NextResponse.json({
-    ...job,
-    progress: Math.max(0, Math.min(1, job.progress)),
+    ...presentedJob,
+    progress: Math.max(0, Math.min(1, presentedJob.progress)),
     constellation_id: job.constellation_id,
   });
 }

@@ -14,7 +14,9 @@ assert.match(flowModel, /private var lastNativeGenerationJobSnapshot/, "native f
 assert.match(flowModel, /func resumeProcessingIfNeeded\(\) async/, "native flow should expose an explicit foreground resume hook");
 assert.match(generationSources, /restoreActiveGenerationJobIfNeeded[\s\S]*client\.fetchNativeGenerationJob/, "restore should fetch the current cloud job before polling");
 assert.match(generationSources, /applyNativeGenerationJob\(job,\s*source:\s*\.restore/, "restore should apply a restore-specific processing message");
-assert.match(generationSources, /max\(processingProgress,\s*min\(max\(job\.progress/, "job polling should keep processing progress monotonic");
+assert.match(generationSources, /resolvedProcessingProgress/, "job polling should resolve server progress through the shared helper");
+assert.match(generationSources, /isSameNativeGenerationJobAsLastSnapshot/, "job polling should only preserve monotonic progress inside the same job");
+assert.match(generationSources, /applyNativeGenerationJob\(job,\s*source:\s*\.live\)/, "native flow should apply the start-job response before waiting for the next poll");
 assert.match(generationSources, /job\.canResumeInBackground/, "native flow should surface whether the cloud job can continue in background");
 assert.match(flowModel, /BenyuanNativeGenerationJobPresentationSource/, "native flow should distinguish live polling from restore presentation");
 assert.match(generationSources, /后台继续运行/, "native processing copy should explicitly say cloud generation continues in background");

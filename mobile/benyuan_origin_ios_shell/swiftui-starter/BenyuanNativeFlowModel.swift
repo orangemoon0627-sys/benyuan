@@ -634,6 +634,10 @@ final class BenyuanNativeFlowModel: ObservableObject {
         lastNativeGenerationJobSnapshot = job
     }
 
+    func isSameNativeGenerationJobAsLastSnapshot(_ job: BenyuanNativeGenerationJobResponse) -> Bool {
+        job.jobId == lastNativeGenerationJobSnapshot?.jobId
+    }
+
     func logNativeE2E(_ message: String) {
 #if DEBUG
         if BenyuanShellConfig.nativeE2EAutorun || BenyuanShellConfig.nativeE2EDiagnostics {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertPart1Owner } from "@/lib/benyuan-auth";
+import { BenyuanAuthError, getCurrentAuthSession } from "@/lib/benyuan-auth";
 import { getPart1Record, getPart2Record, runNativeGenerationJob, shouldResumeNativeGenerationJob, startNativeGenerationJob } from "@/lib/benyuan-v3-store";
 import type { BenyuanNativeGenerationJobKind } from "@/lib/benyuan-v3-types";
 
@@ -22,9 +22,17 @@ export async function POST(request: Request) {
   if (!part1) {
     return NextResponse.json({ error: "part1_not_found" }, { status: 404 });
   }
-  const ownership = await assertPart1Owner(request, part1);
-  if (!ownership.ok) {
-    return NextResponse.json({ error: ownership.error }, { status: ownership.status });
+  let auth;
+  try {
+    auth = await getCurrentAuthSession(request);
+  } catch (error) {
+    if (error instanceof BenyuanAuthError) {
+      return NextResponse.json({ error: error.code }, { status: error.status });
+    }
+    throw error;
+  }
+  if (auth.user.user_id !== part1.user_id) {
+    return NextResponse.json({ error: "part1_forbidden" }, { status: 403 });
   }
 
   if (body.kind === "constellation") {

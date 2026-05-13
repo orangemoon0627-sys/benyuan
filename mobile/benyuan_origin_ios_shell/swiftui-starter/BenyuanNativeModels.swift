@@ -434,12 +434,29 @@ struct BenyuanNativeGenerationJobResponse: Codable, Equatable {
     let status: String
     let currentStage: String
     let progress: Double
+    let stageProgress: Double?
+    let progressBasis: String?
+    let stageStartedAt: String?
+    let stageUpdatedAt: String?
+    let stageDetail: BenyuanNativeGenerationJobStageDetail?
     let message: String
     let canResumeInBackground: Bool
     let error: String?
     let createdAt: String
     let updatedAt: String
     let finishedAt: String?
+}
+
+struct BenyuanNativeGenerationJobStageDetail: Codable, Equatable {
+    let label: String
+    let stepIndex: Int
+    let stepCount: Int
+    let progressMin: Double
+    let progressMax: Double
+    let elapsedMs: Double
+    let expectedMs: Double
+    let cacheStatus: String?
+    let assetCount: Int?
 }
 
 struct BenyuanConstellationRecordResponse: Codable, Equatable {

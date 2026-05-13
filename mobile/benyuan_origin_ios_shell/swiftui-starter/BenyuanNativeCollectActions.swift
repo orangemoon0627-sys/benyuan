@@ -165,11 +165,12 @@ extension BenyuanNativeFlowModel {
 
         processingTitle = "正在读取影像背面的情绪"
         processingDetail = "云端已接收线索，可以切出 App，稍后回来查看结果。"
-        processingProgress = 0.48
+        processingProgress = 0.12
         let job = try await client.startNativeGenerationJob(kind: "theater", part1Id: part1.part1Id)
         session.activeGenerationJobId = job.jobId
         activeGenerationJobId = job.jobId
         persist()
+        applyNativeGenerationJob(job, source: .live)
         logNativeE2E("native_job_started kind=theater job_id=\(job.jobId)")
         try await pollNativeGenerationJob(jobId: job.jobId)
     }

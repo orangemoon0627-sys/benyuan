@@ -305,6 +305,28 @@ export type ConstellationRecord = {
 export type BenyuanNativeGenerationJobKind = "theater" | "constellation";
 export type BenyuanNativeGenerationJobStatus = "queued" | "running" | "done" | "failed";
 export type BenyuanNativeGenerationJobStage = "queued" | "multimodal" | "theater" | "constellation" | "done" | "failed";
+export type BenyuanNativeGenerationJobProgressBasis = "server_stage_elapsed" | "completed" | "failed";
+
+export type BenyuanNativeGenerationJobStageDetail = {
+  label: string;
+  step_index: number;
+  step_count: number;
+  progress_min: number;
+  progress_max: number;
+  elapsed_ms: number;
+  expected_ms: number;
+  cache_status?: "cold" | "partial_cache_hit" | "cache_hit" | "no_assets";
+  asset_count?: number;
+};
+
+export type BenyuanNativeGenerationJobStageTiming = {
+  status: "running" | "done" | "failed";
+  started_at: string;
+  updated_at: string;
+  duration_ms?: number;
+  cache_status?: "cold" | "partial_cache_hit" | "cache_hit" | "no_assets";
+  asset_count?: number;
+};
 
 export type BenyuanNativeGenerationJob = {
   job_id: string;
@@ -317,6 +339,12 @@ export type BenyuanNativeGenerationJob = {
   status: BenyuanNativeGenerationJobStatus;
   current_stage: BenyuanNativeGenerationJobStage;
   progress: number;
+  stage_progress?: number;
+  progress_basis?: BenyuanNativeGenerationJobProgressBasis;
+  stage_started_at?: string;
+  stage_updated_at?: string;
+  stage_detail?: BenyuanNativeGenerationJobStageDetail;
+  stage_timings?: Partial<Record<BenyuanNativeGenerationJobStage, BenyuanNativeGenerationJobStageTiming>>;
   message: string;
   can_resume_in_background: true;
   error?: string;

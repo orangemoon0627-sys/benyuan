@@ -32,6 +32,8 @@ const theaterDetailRoute = readRequired("src/app/api/theater/[theaterScriptId]/r
 const part2Route = readRequired("src/app/api/part2/submit/route.ts");
 const constellationRoute = readRequired("src/app/api/constellation/generate/route.ts");
 const constellationDetailRoute = readRequired("src/app/api/constellation/[constellationId]/route.ts");
+const nativeJobStartRoute = readRequired("src/app/api/native/jobs/start/route.ts");
+const nativeJobStatusRoute = readRequired("src/app/api/native/jobs/[jobId]/route.ts");
 const nativeModels = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeModels.swift");
 const nativeClient = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanAPIClient.swift");
 const nativeFlowModel = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeFlowModel.swift");
@@ -135,6 +137,9 @@ assert.match(theaterDetailRoute, /part1\.user_id\s*!==\s*auth\.user\.user_id/, "
 assert.match(constellationDetailRoute, /getCurrentAuthSession/, "constellation history detail route must require auth");
 assert.match(constellationDetailRoute, /getPart1Record/, "constellation history detail route must resolve parent part1");
 assert.match(constellationDetailRoute, /part1\.user_id\s*!==\s*auth\.user\.user_id/, "constellation history detail route must reject cross-account reads");
+assert.match(nativeJobStartRoute, /getCurrentAuthSession/, "native job start route must require auth");
+assert.match(nativeJobStatusRoute, /getCurrentAuthSession/, "native job status route must require auth");
+assert.match(nativeJobStatusRoute, /part1_forbidden/, "native job status route must reject cross-account reads");
 assert.match(part1Route, /readAuthFromRequest/, "part1 submit should resolve token user");
 assert.match(part1Route, /auth\?\.user\.user_id/, "part1 submit should prefer token user_id");
 for (const [label, source] of [

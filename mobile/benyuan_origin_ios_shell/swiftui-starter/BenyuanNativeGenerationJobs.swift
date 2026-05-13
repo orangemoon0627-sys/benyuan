@@ -61,8 +61,8 @@ extension BenyuanNativeFlowModel {
     }
 
     func applyNativeGenerationJob(_ job: BenyuanNativeGenerationJobResponse, source: BenyuanNativeGenerationJobPresentationSource) {
+        processingProgress = resolvedProcessingProgress(for: job)
         rememberNativeGenerationJobSnapshot(job)
-        processingProgress = max(processingProgress, min(max(job.progress, 0.02), 1))
         let resumeCopy = job.canResumeInBackground ? "云端任务会在后台继续运行，回来后自动接上。" : "请停留在当前页面，云端任务正在收束。"
         let sourcePrefix: String
         switch source {
@@ -74,7 +74,8 @@ extension BenyuanNativeFlowModel {
             sourcePrefix = "已同步最新进度。"
         }
         let message = job.message.trimmingCharacters(in: .whitespacesAndNewlines)
-        processingDetail = [sourcePrefix, message, resumeCopy].filter { !$0.isEmpty }.joined(separator: " ")
+        let stepCopy = nativeGenerationStepCopy(for: job)
+        processingDetail = [sourcePrefix, stepCopy, message, resumeCopy].filter { !$0.isEmpty }.joined(separator: " ")
         switch job.currentStage {
         case "queued":
             processingTitle = "云端任务正在排队"
@@ -91,6 +92,22 @@ extension BenyuanNativeFlowModel {
         default:
             processingTitle = "本源正在云端生成"
         }
+    }
+
+    func resolvedProcessingProgress(for job: BenyuanNativeGenerationJobResponse) -> Double {
+        let serverProgress = min(max(job.progress, 0.02), 1)
+        guard isSameNativeGenerationJobAsLastSnapshot(job) else {
+            return serverProgress
+        }
+        return max(processingProgress, serverProgress)
+    }
+
+    func nativeGenerationStepCopy(for job: BenyuanNativeGenerationJobResponse) -> String {
+        guard let detail = job.stageDetail else { return "" }
+        let step = min(max(detail.stepIndex, 0), max(detail.stepCount, 1))
+        let total = max(detail.stepCount, 1)
+        guard total > 1 else { return detail.label.isEmpty ? "" : "当前层：\(detail.label)。" }
+        return "第 \(step)/\(total) 层：\(detail.label)。"
     }
 
     func completeNativeGenerationJob(_ job: BenyuanNativeGenerationJobResponse) async throws {

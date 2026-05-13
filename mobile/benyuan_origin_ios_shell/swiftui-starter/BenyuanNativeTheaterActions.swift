@@ -99,11 +99,12 @@ extension BenyuanNativeFlowModel {
 
         processingTitle = "精神星图正在显影"
         processingDetail = "云端正在把选择、停顿和回望压成星图，可以切出 App。"
-        processingProgress = 0.88
+        processingProgress = 0.12
         let job = try await client.startNativeGenerationJob(kind: "constellation", part1Id: part1Id, part2Id: part2.part2Id)
         session.activeGenerationJobId = job.jobId
         activeGenerationJobId = job.jobId
         persist()
+        applyNativeGenerationJob(job, source: .live)
         logNativeE2E("native_job_started kind=constellation job_id=\(job.jobId)")
         try await pollNativeGenerationJob(jobId: job.jobId)
     }

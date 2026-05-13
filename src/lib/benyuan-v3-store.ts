@@ -10,6 +10,7 @@ import type {
   BenyuanNativeGenerationJob,
   BenyuanNativeGenerationJobKind,
   BenyuanNativeGenerationJobStage,
+  BenyuanNativeGenerationJobStageTiming,
   BenyuanNativeGenerationJobStatus,
   BenyuanTestPlanItem,
   BenyuanAccountHistoryItem,
@@ -28,7 +29,7 @@ import type {
   SocialPostOverallPattern,
   TheaterScriptRecord,
 } from "@/lib/benyuan-v3-types";
-import { recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
+import { classifyBenyuanMultimodalCacheStatus, recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
 import { aggregateTraitsFromPart1, generateDeterministicConstellation } from "@/lib/benyuan-v3-engine";
 import { generateConstellationWithAgent, generateTheaterScriptWithAgent, runMultimodalAnalysis } from "@/lib/benyuan-v3-agent";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
@@ -39,6 +40,14 @@ import { ensureBenyuanDataDirs, getBenyuanPersistenceHealth, getBenyuanV3StorePa
 const STORE_PATH = getBenyuanV3StorePath();
 const TEMP_STORE_PATH = `${STORE_PATH}.${process.pid}.tmp`;
 const NATIVE_GENERATION_JOB_STALE_MS = 3 * 60 * 1000;
+const NATIVE_GENERATION_STAGE_EXPECTED_MS: Record<BenyuanNativeGenerationJobStage, number> = {
+  queued: 4_000,
+  multimodal: 16_000,
+  theater: 24_000,
+  constellation: 36_000,
+  done: 1,
+  failed: 1,
+};
 
 const EMPTY_STORE: BenyuanV3Store = {
   users: {},
@@ -320,17 +329,100 @@ function jobMessage(stage: BenyuanNativeGenerationJobStage) {
   }
 }
 
+function clampProgress(value: number) {
+  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+}
+
+function nativeGenerationStageBounds(kind: BenyuanNativeGenerationJobKind, stage: BenyuanNativeGenerationJobStage) {
+  if (stage === "queued") return { min: 0.04, max: 0.16, stepIndex: 0, stepCount: kind === "theater" ? 3 : 1, label: "云端排队" };
+  if (stage === "multimodal") return { min: 0.18, max: 0.46, stepIndex: 1, stepCount: 3, label: "影像线索" };
+  if (stage === "theater") return { min: 0.50, max: 0.94, stepIndex: 2, stepCount: 3, label: "连续剧场" };
+  if (stage === "constellation") return { min: 0.18, max: 0.96, stepIndex: 1, stepCount: 1, label: "精神星图" };
+  return { min: 1, max: 1, stepIndex: kind === "theater" ? 3 : 1, stepCount: kind === "theater" ? 3 : 1, label: stage === "failed" ? "生成中断" : "生成完成" };
+}
+
+function buildNativeGenerationJobPresentation(
+  job: BenyuanNativeGenerationJob,
+  update: Partial<BenyuanNativeGenerationJob> = {},
+  now = new Date(),
+): Partial<BenyuanNativeGenerationJob> {
+  const current = { ...job, ...update };
+  const currentStage = current.current_stage;
+  const nowIso = now.toISOString();
+  const stageChanged = typeof update.current_stage === "string" && update.current_stage !== job.current_stage;
+  const stageStartedAt = update.stage_started_at ?? (stageChanged ? nowIso : current.stage_started_at ?? current.updated_at ?? current.created_at ?? nowIso);
+  const stageUpdatedAt = update.stage_updated_at ?? nowIso;
+  const startedAtMs = new Date(stageStartedAt).getTime();
+  const nowMs = now.getTime();
+  const elapsedMs = Number.isFinite(startedAtMs) ? Math.max(0, nowMs - startedAtMs) : 0;
+  const expectedMs = NATIVE_GENERATION_STAGE_EXPECTED_MS[currentStage] ?? 20_000;
+  const stageProgress = currentStage === "done" || currentStage === "failed"
+    ? 1
+    : clampProgress(Math.max(update.stage_progress ?? current.stage_progress ?? 0, expectedMs > 0 ? elapsedMs / expectedMs : 0));
+  const bounds = nativeGenerationStageBounds(current.kind, currentStage);
+  const progress = currentStage === "done"
+    ? 1
+    : currentStage === "failed"
+      ? clampProgress(update.progress ?? current.progress)
+      : clampProgress(bounds.min + (bounds.max - bounds.min) * stageProgress);
+  const previousStageTiming = current.stage_timings?.[currentStage];
+  const timingStatus: BenyuanNativeGenerationJobStageTiming["status"] =
+    currentStage === "done" ? "done" : currentStage === "failed" ? "failed" : current.status === "done" ? "done" : "running";
+  const stageTiming = {
+    status: timingStatus,
+    started_at: previousStageTiming?.started_at ?? stageStartedAt,
+    updated_at: stageUpdatedAt,
+    duration_ms: currentStage === "done" || currentStage === "failed" ? previousStageTiming?.duration_ms : elapsedMs,
+    cache_status: update.stage_detail?.cache_status ?? current.stage_detail?.cache_status ?? previousStageTiming?.cache_status,
+    asset_count: update.stage_detail?.asset_count ?? current.stage_detail?.asset_count ?? previousStageTiming?.asset_count,
+  };
+
+  return {
+    progress,
+    stage_progress: stageProgress,
+    progress_basis: currentStage === "done" ? "completed" : currentStage === "failed" ? "failed" : "server_stage_elapsed",
+    stage_started_at: stageStartedAt,
+    stage_updated_at: stageUpdatedAt,
+    stage_detail: {
+      label: update.stage_detail?.label ?? bounds.label,
+      step_index: update.stage_detail?.step_index ?? bounds.stepIndex,
+      step_count: update.stage_detail?.step_count ?? bounds.stepCount,
+      progress_min: bounds.min,
+      progress_max: bounds.max,
+      elapsed_ms: elapsedMs,
+      expected_ms: expectedMs,
+      cache_status: update.stage_detail?.cache_status ?? current.stage_detail?.cache_status,
+      asset_count: update.stage_detail?.asset_count ?? current.stage_detail?.asset_count,
+    },
+    stage_timings: {
+      ...current.stage_timings,
+      [currentStage]: stageTiming,
+    },
+  };
+}
+
+export function presentNativeGenerationJob(job: BenyuanNativeGenerationJob, now = new Date()): BenyuanNativeGenerationJob {
+  const presentation = buildNativeGenerationJobPresentation(job, {}, now);
+  return {
+    ...job,
+    ...presentation,
+    progress: clampProgress(presentation.progress ?? job.progress),
+  };
+}
+
 async function updateNativeGenerationJob(
   jobId: string,
-  update: Partial<Pick<BenyuanNativeGenerationJob, "status" | "current_stage" | "progress" | "message" | "error" | "theater_script_id" | "constellation_id" | "finished_at">>,
+  update: Partial<Pick<BenyuanNativeGenerationJob, "status" | "current_stage" | "progress" | "stage_progress" | "progress_basis" | "stage_started_at" | "stage_updated_at" | "stage_detail" | "stage_timings" | "message" | "error" | "theater_script_id" | "constellation_id" | "finished_at">>,
 ) {
   return withStoreWrite((store) => {
     const current = store.native_generation_jobs[jobId];
     if (!current) return undefined;
+    const now = new Date();
     const next = {
       ...current,
       ...update,
-      updated_at: new Date().toISOString(),
+      ...buildNativeGenerationJobPresentation(current, update, now),
+      updated_at: now.toISOString(),
     };
     store.native_generation_jobs[jobId] = next;
     return next;
@@ -670,7 +762,7 @@ export async function startNativeGenerationJob(input: {
     const status: BenyuanNativeGenerationJobStatus = existingTheater || existingConstellation ? "done" : "queued";
     const currentStage: BenyuanNativeGenerationJobStage =
       existingTheater || existingConstellation ? "done" : "queued";
-    const job: BenyuanNativeGenerationJob = {
+    const baseJob: BenyuanNativeGenerationJob = {
       job_id: createBenyuanV3Id("job"),
       user_id: part1.user_id,
       part1_id: input.part1Id,
@@ -686,6 +778,10 @@ export async function startNativeGenerationJob(input: {
       created_at: timestamp,
       updated_at: timestamp,
       finished_at: status === "done" ? timestamp : undefined,
+    };
+    const job: BenyuanNativeGenerationJob = {
+      ...baseJob,
+      ...buildNativeGenerationJobPresentation(baseJob, {}, new Date(timestamp)),
     };
     if (status === "done") {
       job.progress = 1;
@@ -720,7 +816,7 @@ export async function runNativeGenerationJob(jobId: string) {
     await updateNativeGenerationJob(jobId, {
       status: "running",
       current_stage: "multimodal",
-      progress: 0.32,
+      stage_progress: 0,
       message: jobMessage("multimodal"),
       error: undefined,
     });
@@ -728,7 +824,7 @@ export async function runNativeGenerationJob(jobId: string) {
     await updateNativeGenerationJob(jobId, {
       status: "running",
       current_stage: "constellation",
-      progress: 0.58,
+      stage_progress: 0,
       message: jobMessage("constellation"),
       error: undefined,
     });
@@ -776,6 +872,11 @@ export async function runNativeGenerationJob(jobId: string) {
         error: analysis.runtime.error,
         request_id: analysis.runtime.request_id,
         part1_id: record.part1_id,
+        ...classifyBenyuanMultimodalCacheStatus(analysis.runtime.error, {
+          music: musicRefs.length,
+          social: socialRefs.length,
+          photo: photoRefs.length,
+        }),
       });
       const updatedPart1: Part1Record = {
         ...record,
@@ -799,7 +900,7 @@ export async function runNativeGenerationJob(jobId: string) {
 
       await updateNativeGenerationJob(jobId, {
         current_stage: "theater",
-        progress: 0.72,
+        stage_progress: 0,
         message: jobMessage("theater"),
       });
 

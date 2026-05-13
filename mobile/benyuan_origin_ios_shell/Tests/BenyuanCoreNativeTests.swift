@@ -112,6 +112,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
             theaterScriptId: "theater_test",
             part2Id: "part2_test",
             constellationId: "const_test",
+            activeGenerationJobId: "job_test",
             answers: ["A1_core_image": .string("A1-1")],
             uploadedAssets: [
                 "A2_music_analysis": [
@@ -174,6 +175,116 @@ final class BenyuanCoreNativeTests: XCTestCase {
         ))
 
         XCTAssertEqual(client.authorizationHeaderValue, "Bearer bya_anonymous_test")
+    }
+
+    func testNativeGenerationJobDecodesStageProgressMetadata() throws {
+        let json = """
+        {
+          "job_id": "job_stage_test",
+          "user_id": "usr_test",
+          "part1_id": "part1_test",
+          "part2_id": "part2_test",
+          "kind": "constellation",
+          "status": "running",
+          "current_stage": "constellation",
+          "progress": 0.46,
+          "stage_progress": 0.42,
+          "progress_basis": "server_stage_elapsed",
+          "message": "云端正在生成精神星图。",
+          "can_resume_in_background": true,
+          "created_at": "2026-05-13T00:00:00.000Z",
+          "updated_at": "2026-05-13T00:00:08.000Z",
+          "stage_started_at": "2026-05-13T00:00:01.000Z",
+          "stage_updated_at": "2026-05-13T00:00:08.000Z",
+          "stage_detail": {
+            "label": "精神星图",
+            "step_index": 1,
+            "step_count": 1,
+            "progress_min": 0.18,
+            "progress_max": 0.96,
+            "elapsed_ms": 7000,
+            "expected_ms": 36000
+          }
+        }
+        """.data(using: .utf8)!
+
+        let job = try JSONDecoder.benyuan.decode(BenyuanNativeGenerationJobResponse.self, from: json)
+
+        XCTAssertEqual(job.stageProgress, 0.42)
+        XCTAssertEqual(job.progressBasis, "server_stage_elapsed")
+        XCTAssertEqual(job.stageDetail?.label, "精神星图")
+        XCTAssertEqual(job.stageDetail?.stepIndex, 1)
+        XCTAssertEqual(job.stageDetail?.progressMax, 0.96)
+    }
+
+    @MainActor
+    func testNativeJobProgressIsMonotonicOnlyWithinSameCloudJob() throws {
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
+        let firstPayload = """
+        {
+          "job_id": "job_first",
+          "user_id": "usr_test",
+          "part1_id": "part1_test",
+          "kind": "theater",
+          "status": "running",
+          "current_stage": "theater",
+          "progress": 0.52,
+          "stage_progress": 0.2,
+          "progress_basis": "server_stage_elapsed",
+          "message": "云端正在生成连续剧场。",
+          "can_resume_in_background": true,
+          "created_at": "2026-05-13T00:00:00.000Z",
+          "updated_at": "2026-05-13T00:00:01.000Z"
+        }
+        """.data(using: .utf8)!
+        let sameJobLowerPayload = """
+        {
+          "job_id": "job_first",
+          "user_id": "usr_test",
+          "part1_id": "part1_test",
+          "kind": "theater",
+          "status": "running",
+          "current_stage": "theater",
+          "progress": 0.48,
+          "stage_progress": 0.18,
+          "progress_basis": "server_stage_elapsed",
+          "message": "云端正在生成连续剧场。",
+          "can_resume_in_background": true,
+          "created_at": "2026-05-13T00:00:00.000Z",
+          "updated_at": "2026-05-13T00:00:02.000Z"
+        }
+        """.data(using: .utf8)!
+        let nextJobPayload = """
+        {
+          "job_id": "job_second",
+          "user_id": "usr_test",
+          "part1_id": "part1_test",
+          "part2_id": "part2_test",
+          "kind": "constellation",
+          "status": "running",
+          "current_stage": "constellation",
+          "progress": 0.18,
+          "stage_progress": 0.02,
+          "progress_basis": "server_stage_elapsed",
+          "message": "云端正在生成精神星图。",
+          "can_resume_in_background": true,
+          "created_at": "2026-05-13T00:01:00.000Z",
+          "updated_at": "2026-05-13T00:01:01.000Z"
+        }
+        """.data(using: .utf8)!
+
+        let first = try JSONDecoder.benyuan.decode(BenyuanNativeGenerationJobResponse.self, from: firstPayload)
+        let sameJobLower = try JSONDecoder.benyuan.decode(BenyuanNativeGenerationJobResponse.self, from: sameJobLowerPayload)
+        let nextJob = try JSONDecoder.benyuan.decode(BenyuanNativeGenerationJobResponse.self, from: nextJobPayload)
+
+        model.applyNativeGenerationJob(first, source: .live)
+        XCTAssertEqual(model.processingProgress, 0.52, accuracy: 0.001)
+
+        model.applyNativeGenerationJob(sameJobLower, source: .live)
+        XCTAssertEqual(model.processingProgress, 0.52, accuracy: 0.001)
+
+        model.applyNativeGenerationJob(nextJob, source: .live)
+        XCTAssertEqual(model.processingProgress, 0.18, accuracy: 0.001)
     }
 
     func testAPIClientServerErrorIncludesHTTPStatusAndBodyPreview() async throws {
@@ -291,6 +402,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
                 theaterScriptId: "theater_test",
                 part2Id: "part2_test",
                 constellationId: "const_test",
+                activeGenerationJobId: nil,
                 answers: [:],
                 uploadedAssets: [:],
                 phaseDurations: [:]
@@ -312,7 +424,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertTrue(model.isFeedbackComposerPresented)
         XCTAssertEqual(model.feedbackDraft, " 卡 ")
-        XCTAssertEqual(model.feedbackStatus, "至少写 4 个字，方便我定位问题。")
+        XCTAssertEqual(model.feedbackStatus, "待填写：至少写 4 个字，方便定位问题。")
         XCTAssertFalse(model.canSubmitFeedback)
     }
 
@@ -343,8 +455,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertTrue(model.isFeedbackComposerPresented)
         XCTAssertEqual(model.feedbackDraft, "")
-        XCTAssertEqual(model.feedbackStatus, "已归档到测试清单：feedback_archived")
-        XCTAssertEqual(model.toast, "反馈已归档。")
+        XCTAssertEqual(model.feedbackStatus, "已收到编号：feedback_archived")
+        XCTAssertEqual(model.toast, "问题已收到。")
         XCTAssertFalse(model.canSubmitFeedback)
     }
 
@@ -1273,7 +1385,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(budget.topMaskHeight, 44)
         XCTAssertEqual(budget.endPreviewAnchor, .center)
-        XCTAssertGreaterThanOrEqual(budget.firstViewportReserve, 300)
+        XCTAssertGreaterThanOrEqual(budget.firstViewportReserve, 72)
+        XCTAssertGreaterThanOrEqual(budget.bottomContentReserve, 300)
         XCTAssertGreaterThanOrEqual(
             budget.scrollBottomPadding(safeAreaBottom: 34),
             budget.bottomDockHeight + 260 + 34

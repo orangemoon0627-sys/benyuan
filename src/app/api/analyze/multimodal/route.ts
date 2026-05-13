@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertPart1Owner } from "@/lib/benyuan-auth";
-import { recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
+import { classifyBenyuanMultimodalCacheStatus, recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
 import { aggregateTraitsFromPart1 } from "@/lib/benyuan-v3-engine";
 import { runMultimodalAnalysis } from "@/lib/benyuan-v3-agent";
 import { getPart1Record, savePart1Record } from "@/lib/benyuan-v3-store";
@@ -81,6 +81,11 @@ export async function POST(request: Request) {
     error: analysis.runtime.error,
     request_id: analysis.runtime.request_id,
     part1_id: record.part1_id,
+    ...classifyBenyuanMultimodalCacheStatus(analysis.runtime.error, {
+      music: musicRefs.length,
+      social: socialRefs.length,
+      photo: photoRefs.length,
+    }),
   });
 
   const updated = {

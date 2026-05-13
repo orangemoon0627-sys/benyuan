@@ -21,17 +21,34 @@ function summarize(events) {
   return Object.fromEntries(stages.map((stage) => {
     const stageEvents = events.filter((event) => event.stage === stage);
     const durations = stageEvents.map((event) => Number(event.duration_ms)).filter(Number.isFinite).sort((left, right) => left - right);
+    const coldDurations = stageEvents
+      .filter((event) => event.cold_start)
+      .map((event) => Number(event.duration_ms))
+      .filter(Number.isFinite)
+      .sort((left, right) => left - right);
+    const cache_status_counts = stageEvents.reduce((counts, event) => {
+      const status = event.cache_status ?? "unknown";
+      counts[status] = (counts[status] ?? 0) + 1;
+      return counts;
+    }, {});
     const p50_ms = percentile(durations, 0.5);
     const p90_ms = percentile(durations, 0.9);
+    const cold_p50_ms = percentile(coldDurations, 0.5);
+    const cold_p90_ms = percentile(coldDurations, 0.9);
     return [
       stage,
       {
         count: stageEvents.length,
         p50_ms,
         p90_ms,
+        cold_p50_ms,
+        cold_p90_ms,
         p50_s: seconds(p50_ms),
         p90_s: seconds(p90_ms),
+        cold_p50_s: seconds(cold_p50_ms),
+        cold_p90_s: seconds(cold_p90_ms),
         max_ms: durations.at(-1) ?? null,
+        cache_status_counts,
         live_count: stageEvents.filter((event) => event.runtime_mode === "live").length,
         fallback_count: stageEvents.filter((event) => event.runtime_mode === "fallback").length,
         latest: stageEvents.at(-1) ?? null,
