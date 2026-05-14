@@ -18,17 +18,18 @@ enum BenyuanConstellationImageRenderer {
             draw("本源 · 精神星图", at: CGPoint(x: 96, y: 112), size: 32, weight: .semibold, color: UIColor(red: 0.72, green: 0.66, blue: 0.48, alpha: 1))
             drawWrapped(constellation.archetype.name, at: CGPoint(x: 96, y: 190), width: 780, size: 78, weight: .black, color: .white, lineHeight: 88)
             draw(constellation.archetype.englishName, at: CGPoint(x: 96, y: 380), size: 28, weight: .medium, color: UIColor(red: 0.72, green: 0.66, blue: 0.48, alpha: 0.92))
-            drawWrapped(constellation.archetype.coreEssence, at: CGPoint(x: 96, y: 460), width: 830, size: 36, weight: .regular, color: UIColor(white: 0.92, alpha: 1), lineHeight: 52)
+            drawWrapped("\(constellation.archetype.displayName)：\(constellation.archetype.displaySubtitle)", at: CGPoint(x: 96, y: 432), width: 830, size: 30, weight: .regular, color: UIColor(white: 0.84, alpha: 1), lineHeight: 42)
+            drawWrapped(constellation.archetype.coreEssence, at: CGPoint(x: 96, y: 548), width: 830, size: 36, weight: .regular, color: UIColor(white: 0.92, alpha: 1), lineHeight: 52)
 
             let tension = constellation.coreTensions.first?.name ?? "未命名张力"
             let action = constellation.growthSuggestions.first?.actionableSteps.first ?? constellation.growthSuggestions.first?.title ?? "慢慢靠近自己"
-            draw("核心张力", at: CGPoint(x: 96, y: 780), size: 28, weight: .semibold, color: UIColor(red: 0.72, green: 0.66, blue: 0.48, alpha: 1))
-            drawWrapped(tension, at: CGPoint(x: 96, y: 832), width: 840, size: 42, weight: .bold, color: .white, lineHeight: 58)
-            draw("行动入口", at: CGPoint(x: 96, y: 1010), size: 28, weight: .semibold, color: UIColor(red: 0.72, green: 0.66, blue: 0.48, alpha: 1))
-            drawWrapped(action, at: CGPoint(x: 96, y: 1062), width: 840, size: 34, weight: .regular, color: UIColor(white: 0.86, alpha: 1), lineHeight: 50)
+            draw("核心张力", at: CGPoint(x: 96, y: 820), size: 28, weight: .semibold, color: UIColor(red: 0.72, green: 0.66, blue: 0.48, alpha: 1))
+            drawWrapped(tension, at: CGPoint(x: 96, y: 872), width: 840, size: 42, weight: .bold, color: .white, lineHeight: 58)
+            draw("行动入口", at: CGPoint(x: 96, y: 1048), size: 28, weight: .semibold, color: UIColor(red: 0.72, green: 0.66, blue: 0.48, alpha: 1))
+            drawWrapped(action, at: CGPoint(x: 96, y: 1100), width: 840, size: 34, weight: .regular, color: UIColor(white: 0.86, alpha: 1), lineHeight: 50)
 
             let narrative = constellation.narrativeOverview.components(separatedBy: "\n").first ?? constellation.narrativeOverview
-            drawWrapped(narrative, at: CGPoint(x: 96, y: 1240), width: 840, size: 30, weight: .regular, color: UIColor(white: 0.78, alpha: 1), lineHeight: 46)
+            drawWrapped(narrative, at: CGPoint(x: 96, y: 1278), width: 840, size: 30, weight: .regular, color: UIColor(white: 0.78, alpha: 1), lineHeight: 46)
         }
     }
 

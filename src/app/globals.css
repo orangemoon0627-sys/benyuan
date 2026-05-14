@@ -1196,6 +1196,15 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
+.constellation-personal-subtitle {
+  max-width: 22rem;
+  margin-top: 0.9rem;
+  color: rgba(245, 239, 226, 0.82);
+  font-size: 0.94rem;
+  line-height: 1.72;
+  letter-spacing: 0;
+}
+
 .constellation-essence-copy {
   max-width: 21rem;
   margin-top: 1.45rem;

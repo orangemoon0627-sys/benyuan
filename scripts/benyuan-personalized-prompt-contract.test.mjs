@@ -17,8 +17,11 @@ registerHooks({
   },
 });
 
-const { buildAnalystUserPrompt, buildDirectorUserPrompt } = await import("../src/lib/benyuan-v3-prompts.ts");
+const { buildAnalystUserPrompt, buildDirectorUserPrompt, buildFastAnalystUserPrompt } = await import("../src/lib/benyuan-v3-prompts.ts");
 const { generateDeterministicConstellation } = await import("../src/lib/benyuan-v3-engine.ts");
+const { getBenyuanArchetypeProfile } = await import("../src/lib/benyuan-v3-report-profile.ts");
+const agentModule = await import("../src/lib/benyuan-v3-agent.ts");
+const { normalizeConstellation, mergeFastConstellationSeed } = agentModule;
 
 function createPart1Record() {
   return {
@@ -136,9 +139,9 @@ test("director prompt includes readable A/B/C evidence and multimodal summaries"
 
   assert.match(prompt, /很大的天空、海面、远处的光/);
   assert.match(prompt, /塔可夫斯基《镜子》：雨、水、记忆和缓慢浮起的时间/);
-  assert.match(prompt, /身体最先知道答案：靠近时放松，抗拒时收紧/);
-  assert.match(prompt, /表面没什么，底下却一直有一股暗流在走/);
-  assert.match(prompt, /大多数时候自己待着，但偶尔能真正聊到深处/);
+  assert.match(prompt, /认真想它为什么出现，再决定要不要靠近/);
+  assert.match(prompt, /努力维持平静，但底下已经快要撑不住/);
+  assert.match(prompt, /对方回复和语气里的细微变化/);
   assert.match(prompt, /ambient \/ post-rock/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);
   assert.match(prompt, /lone_figure_seascape_sunset/);
@@ -172,4 +175,115 @@ test("analyst prompt includes theater choices as readable trajectory evidence", 
   assert.match(prompt, /ios-native/);
   assert.match(prompt, /精神分析、哲学与文艺旁证/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);
+});
+
+test("deterministic constellation keeps canonical archetype and adds personal title fields", () => {
+  const part1 = createPart1Record();
+  const part2 = createPart2Record();
+  const fallback = generateDeterministicConstellation(part1, part2);
+  const canonical = getBenyuanArchetypeProfile(part1.aggregated_traits.archetype_hints[0]).archetype;
+
+  assert.equal(fallback.archetype.name, canonical.name);
+  assert.ok(fallback.archetype.personalized_name?.length >= 4);
+  assert.ok(fallback.archetype.personalized_subtitle?.length >= 10);
+  assert.notEqual(fallback.archetype.personalized_name, fallback.archetype.name);
+  assert.doesNotMatch(fallback.archetype.personalized_name, /lone_seeker|post-rock|ambient|_/i);
+  assert.doesNotMatch(fallback.archetype.personalized_subtitle, /lone_seeker|post-rock|ambient|_/i);
+});
+
+test("normalizeConstellation treats model archetype name as personal label without changing canonical type", () => {
+  assert.equal(typeof normalizeConstellation, "function");
+
+  const part1 = createPart1Record();
+  const part2 = createPart2Record();
+  const fallback = generateDeterministicConstellation(part1, part2);
+  const normalized = normalizeConstellation(
+    {
+      psyche_constellation: {
+        ...fallback,
+        archetype: {
+          name: "黑潮边的守信者",
+          english_name: "The Model Tried To Rename The Canonical Type",
+          core_essence: "你把未寄出的信、海面和剧场里那次长停顿收成一条只属于自己的暗金轨道。",
+          visual_prompt: "black tide witness with sealed letter and event horizon",
+          personalized_name: "未寄之信的守夜人",
+          personalized_subtitle: "在海面、长停顿与暗金轨道之间保存真实的人",
+        },
+      },
+    },
+    fallback,
+  );
+
+  assert.ok(normalized);
+  assert.equal(normalized.archetype.name, fallback.archetype.name);
+  assert.equal(normalized.archetype.english_name, fallback.archetype.english_name);
+  assert.equal(normalized.archetype.personalized_name, "未寄之信的守夜人");
+  assert.equal(normalized.archetype.personalized_subtitle, "在海面、长停顿与暗金轨道之间保存真实的人");
+  assert.match(normalized.archetype.core_essence, /未寄出的信|暗金轨道/);
+});
+
+test("normalizeConstellation rejects sluggy or noisy personal labels", () => {
+  assert.equal(typeof normalizeConstellation, "function");
+
+  const fallback = generateDeterministicConstellation(createPart1Record(), createPart2Record());
+  const normalized = normalizeConstellation(
+    {
+      psyche_constellation: {
+        ...fallback,
+        archetype: {
+          ...fallback.archetype,
+          name: "lone_seeker",
+          personalized_name: "post-rock raw abandoned_post_rope",
+          personalized_subtitle: "undetermined_no_visible_music_playlist_or_music_screenshot",
+        },
+      },
+    },
+    fallback,
+  );
+
+  assert.ok(normalized);
+  assert.equal(normalized.archetype.name, fallback.archetype.name);
+  assert.equal(normalized.archetype.personalized_name, fallback.archetype.personalized_name);
+  assert.equal(normalized.archetype.personalized_subtitle, fallback.archetype.personalized_subtitle);
+  assert.doesNotMatch(normalized.archetype.personalized_name ?? "", /post-rock|abandoned|_/i);
+  assert.doesNotMatch(normalized.archetype.personalized_subtitle ?? "", /undetermined|no_visible|_/i);
+});
+
+test("fast constellation seed merges personalized label while preserving canonical archetype", () => {
+  assert.equal(typeof mergeFastConstellationSeed, "function");
+
+  const fallback = generateDeterministicConstellation(createPart1Record(), createPart2Record());
+  const merged = mergeFastConstellationSeed(fallback, {
+    archetype_name: "黑潮边的回声体",
+    personalized_subtitle: "把社交文本里的海与剧场里的停顿收进同一条轨道",
+    archetype_essence: "你把海面、未寄出的信和停顿里的边界感，收成一套更私人的精神潮汐。",
+    visual_prompt: "black tide personal orbit around fixed moonlit seeker archetype",
+    mirror_paragraphs: [],
+    dimension_interpretations: {},
+    tension_lenses: [],
+    growth_lenses: [],
+    recommendation_lenses: { books: [], films: [], music: [] },
+  });
+
+  assert.equal(merged.archetype.name, fallback.archetype.name);
+  assert.equal(merged.archetype.english_name, fallback.archetype.english_name);
+  assert.equal(merged.archetype.personalized_name, "黑潮边的回声体");
+  assert.equal(merged.archetype.personalized_subtitle, "把社交文本里的海与剧场里的停顿收进同一条轨道");
+  assert.match(merged.archetype.core_essence, /未寄出的信|精神潮汐/);
+});
+
+test("analyst prompts separate fixed archetype type from personalized naming", () => {
+  const part1 = createPart1Record();
+  const part2 = createPart2Record();
+  const fallback = generateDeterministicConstellation(part1, part2);
+  const fullPrompt = buildAnalystUserPrompt(part1, part2, fallback);
+  const fastPrompt = buildFastAnalystUserPrompt(part1, part2, fallback);
+
+  assert.match(fullPrompt, /canonical_archetype_name/);
+  assert.match(fullPrompt, /archetype\.name\s*必须保持/u);
+  assert.match(fullPrompt, /personalized_name/);
+  assert.match(fullPrompt, /personalized_subtitle/);
+  assert.match(fastPrompt, /不要覆盖 canonical_archetype_name/u);
+  assert.match(fastPrompt, /personalized_name/);
+  assert.match(fastPrompt, /personalized_subtitle/);
 });

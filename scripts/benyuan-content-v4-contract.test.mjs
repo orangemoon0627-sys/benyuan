@@ -149,10 +149,10 @@ test("part1 questions use everyday entry points without visible clinical labels"
 
   assert.doesNotMatch(optionText, /\p{Emoji_Presentation}/u);
   assert.doesNotMatch(optionText, /存在焦虑|依恋|神经质|精英意识|压抑型|低神经质|毁灭与重生/);
-  assert.match(benyuanPart1Questions.find((question) => question.id === "A1_core_image")?.prompt ?? "", /手机相册|反复留下/);
-  assert.match(getQuestionOption("B1_night_thoughts", "B1-6")?.text ?? "", /世界为什么会这样|人为什么这样活/);
-  assert.match(getQuestionOption("B2_decision_style", "B2-2")?.text ?? "", /身体|收紧|放松/);
-  assert.match(getQuestionOption("B5_relationship_philosophy", "B5-1")?.text ?? "", /大多数时候自己待着|真正聊到深处/);
+  assert.match(benyuanPart1Questions.find((question) => question.id === "A1_core_image")?.prompt ?? "", /手机相册|自我和世界|距离/);
+  assert.match(getQuestionOption("B1_night_thoughts", "B1-6")?.text ?? "", /一直想|意义|带向哪里/);
+  assert.match(getQuestionOption("B2_decision_style", "B2-2")?.text ?? "", /为什么出现|要不要靠近/);
+  assert.match(getQuestionOption("B5_relationship_philosophy", "B5-1")?.text ?? "", /回复|语气|细微变化/);
 });
 
 test("literature options pair philosophical works with everyday self-recognition cues", () => {

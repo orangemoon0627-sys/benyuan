@@ -11,13 +11,15 @@ struct BenyuanConstellationLayoutBudget {
     let topMaskHeight: CGFloat
     let firstViewportReserve: CGFloat
     let bottomContentReserve: CGFloat
+    let archetypeCardMaxWidth: CGFloat
     let endPreviewAnchor: EndPreviewAnchor
 
     static let defaults = BenyuanConstellationLayoutBudget(
         bottomDockHeight: 116,
         topMaskHeight: 52,
-        firstViewportReserve: 72,
-        bottomContentReserve: 326,
+        firstViewportReserve: 96,
+        bottomContentReserve: 300,
+        archetypeCardMaxWidth: 370,
         endPreviewAnchor: .center
     )
 
@@ -50,7 +52,7 @@ struct BenyuanNativeConstellationView: View {
                 GeometryReader { geometry in
                     ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: BenyuanSpacing.x8) {
+                        VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
                             BenyuanRevealedStack(delay: 0.02) {
                                 archetype(data)
                             }
@@ -80,8 +82,8 @@ struct BenyuanNativeConstellationView: View {
                         constellationTopScrollMask
                             .frame(height: layoutBudget.topMaskHeight)
                     }
-                    .safeAreaInset(edge: .bottom) {
-                        finalDock
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        finalDock(bottomEdgeOffset: geometry.safeAreaInsets.bottom)
                             .frame(height: layoutBudget.bottomDockHeight + geometry.safeAreaInsets.bottom)
                     }
                     .task(id: model.prefersConstellationEndPreview) {
@@ -100,67 +102,176 @@ struct BenyuanNativeConstellationView: View {
     }
 
     private func archetype(_ data: PsycheConstellation) -> some View {
-        VStack(alignment: .center, spacing: 14) {
-            ZStack {
-                BenyuanConstellationDeepFieldMask(progress: leadingConstellationProgress(data))
-                    .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
-                BenyuanFlowOrbitTrail(progress: leadingConstellationProgress(data), intensity: 0.82, tilt: -10)
-                    .padding(.horizontal, BenyuanSpacing.x2)
-                    .allowsHitTesting(false)
+        let progress = leadingConstellationProgress(data)
+        let mode = celestialMode(for: data.archetype)
+        let celestialFieldHeight: CGFloat = 246
 
-                RoundedRectangle(cornerRadius: 44, style: .continuous)
-                    .fill(
+        return VStack(alignment: .center, spacing: BenyuanSpacing.x2) {
+            ZStack {
+                BenyuanConstellationArchetypeField(progress: progress, mode: mode)
+                    .frame(height: celestialFieldHeight)
+                    .compositingGroup()
+                    .blendMode(.screen)
+                    .mask(
                         LinearGradient(
                             colors: [
-                                BenyuanColor.glassFill.opacity(0.54),
-                                BenyuanColor.bgVoid.opacity(0.10),
-                                BenyuanColor.glassFillStrong.opacity(0.60)
+                                .clear,
+                                .black.opacity(0.82),
+                                .black,
+                                .black.opacity(0.72),
+                                .clear
                             ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 44, style: .continuous)
-                            .stroke(BenyuanColor.glassStroke.opacity(0.88), lineWidth: 1)
-                    )
-                    .shadow(color: BenyuanColor.bgVoid.opacity(0.58), radius: 34, y: 24)
+                    .allowsHitTesting(false)
 
-                VStack(spacing: BenyuanSpacing.x2) {
-                    BenyuanDeepCelestialBody(size: 184, progress: leadingConstellationProgress(data), mode: .constellationMoon)
-                        .padding(.bottom, 2)
-                    Text("精神星图")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(BenyuanColor.accentGold)
-                    Text(data.archetype.name)
-                        .font(.system(size: 40, weight: .semibold))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(BenyuanColor.textPrimary)
-                        .minimumScaleFactor(0.62)
-                    Text(data.archetype.englishName)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(BenyuanColor.accentGold.opacity(0.86))
-                    Text(data.archetype.coreEssence)
-                        .font(.system(size: 17, weight: .regular))
-                        .lineSpacing(6)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(BenyuanColor.textSecondary)
-                        .padding(.horizontal, BenyuanSpacing.x4)
-                        .padding(.top, BenyuanSpacing.x1)
-                }
-                .padding(.horizontal, BenyuanSpacing.x4)
-                .padding(.top, 18)
-                .padding(.bottom, 22)
+                BenyuanFlowOrbitTrail(
+                    progress: progress,
+                    intensity: constellationFlowTrailIntensity(for: mode),
+                    tilt: mode.tilt,
+                    preferredFramesPerSecond: 16
+                )
+                .frame(height: celestialFieldHeight)
+                .padding(.horizontal, BenyuanSpacing.x2)
+                .compositingGroup()
+                .blendMode(.screen)
+                .mask(
+                    LinearGradient(
+                        colors: [.clear, .black.opacity(0.78), .black, .black.opacity(0.60), .clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .allowsHitTesting(false)
+
+                BenyuanConstellationSubjectIsolationField(mode: mode)
+                BenyuanDeepCelestialBody(size: 204, progress: progress, mode: mode)
+                    .contrast(mode.referenceArtworkSubjectContrast)
+                    .saturation(mode.referenceArtworkSubjectSaturation)
             }
-            .frame(minHeight: 448)
+            .frame(height: 232)
+            .padding(.horizontal, -BenyuanSpacing.x2)
+            .padding(.top, 8)
+
+            Text("精神星图")
+                .font(.system(size: 12, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.accentGold)
+                .padding(.top, -2)
+            Text(data.archetype.name)
+                .font(.system(size: 42, weight: .semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(BenyuanColor.textPrimary)
+                .minimumScaleFactor(0.62)
+            Text(data.archetype.englishName)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(BenyuanColor.accentGold.opacity(0.86))
+                .multilineTextAlignment(.center)
+            if data.archetype.displayName != data.archetype.name || data.archetype.displaySubtitle != data.archetype.englishName {
+                Text("\(data.archetype.displayName)：\(data.archetype.displaySubtitle)")
+                    .font(.system(size: 15, weight: .regular))
+                    .lineSpacing(5)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(BenyuanColor.textSecondary.opacity(0.92))
+                    .padding(.horizontal, BenyuanSpacing.x3)
+            }
+            Text(data.archetype.coreEssence)
+                .font(.system(size: 17, weight: .regular))
+                .lineSpacing(6)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(BenyuanColor.textSecondary)
+                .padding(.horizontal, BenyuanSpacing.x4)
+                .padding(.top, BenyuanSpacing.x1)
         }
-        .frame(maxWidth: .infinity)
+        .padding(.horizontal, BenyuanSpacing.x4)
+        .padding(.top, 10)
+        .padding(.bottom, 18)
+        .frame(maxWidth: layoutBudget.archetypeCardMaxWidth)
+        .frame(minHeight: 448)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private func leadingConstellationProgress(_ data: PsycheConstellation) -> Double {
         let scores = data.sevenDimensions.values.map { Double($0.score) / 100.0 }
         guard !scores.isEmpty else { return 0.68 }
         return scores.reduce(0, +) / Double(scores.count)
+    }
+
+    private func constellationFlowTrailIntensity(for mode: BenyuanDeepCelestialBody.Mode) -> Double {
+        switch mode {
+        case .eventHorizonDiver, .nebulaWeaver, .solarCorona, .deepSpaceAnchor:
+            return 0.24
+        case .rainWindowScribe, .moonHarbor, .existentialNomad:
+            return 0.30
+        default:
+            return 0.42
+        }
+    }
+
+    private func celestialMode(for archetype: PsycheArchetype) -> BenyuanDeepCelestialBody.Mode {
+        switch archetype.name.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "远潮观月者":
+            return .farTideMoon
+        case "星图筑序者":
+            return .starMapArchitect
+        case "月港栖岸者":
+            return .moonHarbor
+        case "存在游牧者":
+            return .existentialNomad
+        case "雨窗抒写者":
+            return .rainWindowScribe
+        case "事件视界沉潜者":
+            return .eventHorizonDiver
+        case "星云织梦者":
+            return .nebulaWeaver
+        case "日冕引燃者":
+            return .solarCorona
+        case "类地栖居者":
+            return .terrestrialPlanet
+        case "深空锚定者":
+            return .deepSpaceAnchor
+        default:
+            break
+        }
+
+        let fingerprint = [
+            archetype.name,
+            archetype.englishName,
+            archetype.visualPrompt
+        ].joined(separator: " ").lowercased()
+
+        if fingerprint.contains("event horizon") || fingerprint.contains("black hole") || fingerprint.contains("事件视界") || fingerprint.contains("黑洞") {
+            return .eventHorizonDiver
+        }
+        if fingerprint.contains("rain-window") || fingerprint.contains("rain window") || fingerprint.contains("雨窗") {
+            return .rainWindowScribe
+        }
+        if fingerprint.contains("star-map") || fingerprint.contains("star map") || fingerprint.contains("architect") || fingerprint.contains("筑序") || fingerprint.contains("星图") {
+            return .starMapArchitect
+        }
+        if fingerprint.contains("moon-harbor") || fingerprint.contains("moon harbor") || fingerprint.contains("月港") {
+            return .moonHarbor
+        }
+        if fingerprint.contains("existential") || fingerprint.contains("nomad") || fingerprint.contains("wanderer") || fingerprint.contains("游牧") {
+            return .existentialNomad
+        }
+        if fingerprint.contains("nebula") || fingerprint.contains("星云") {
+            return .nebulaWeaver
+        }
+        if fingerprint.contains("solar") || fingerprint.contains("corona") || fingerprint.contains("日冕") || fingerprint.contains("太阳") {
+            return .solarCorona
+        }
+        if fingerprint.contains("terrestrial") || fingerprint.contains("earth-like") || fingerprint.contains("类地") || fingerprint.contains("栖居") {
+            return .terrestrialPlanet
+        }
+        if fingerprint.contains("deep space") || fingerprint.contains("anchor") || fingerprint.contains("深空") || fingerprint.contains("锚") {
+            return .deepSpaceAnchor
+        }
+        if fingerprint.contains("moonlit") || fingerprint.contains("远潮") || fingerprint.contains("观月") || fingerprint.contains("月") {
+            return .farTideMoon
+        }
+        return .farTideMoon
     }
 
     private func dimensions(_ data: PsycheConstellation) -> some View {
@@ -174,13 +285,13 @@ struct BenyuanNativeConstellationView: View {
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(BenyuanColor.accentGold)
             Text(dimensions.prefix(3).map(\.label).joined(separator: " · "))
-                .font(.system(size: 27, weight: .semibold))
+                .font(.system(size: 25, weight: .semibold))
                 .foregroundStyle(BenyuanColor.textPrimary)
             Text(constellationReadingText(data, dimensions: dimensions))
                 .font(.system(size: 15, weight: .regular))
                 .lineSpacing(7)
                 .foregroundStyle(BenyuanColor.textSecondary)
-                .padding(.top, BenyuanSpacing.x1)
+                .padding(.top, 2)
             BenyuanDimensionOrbitMap(
                 dimensions: dimensions.map { dimension in
                     BenyuanDimensionOrbitMap.Dimension(
@@ -191,11 +302,11 @@ struct BenyuanNativeConstellationView: View {
                 },
                 activeKey: active?.key
             )
-            .frame(height: 384)
-            .padding(.top, BenyuanSpacing.x1)
-            BenyuanDimensionLineageGraph(
+            .frame(height: 392)
+            .padding(.top, 0)
+            BenyuanDimensionResonanceGraph(
                 dimensions: dimensions.map { dimension in
-                    BenyuanDimensionLineageGraph.Dimension(
+                    BenyuanDimensionResonanceGraph.Dimension(
                         key: dimension.key,
                         label: dimension.label,
                         score: dimension.score
@@ -319,7 +430,9 @@ struct BenyuanNativeConstellationView: View {
     }
 
     private var closing: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
+        let closingMode = (model.constellation?.psycheConstellation).map { celestialMode(for: $0.archetype) } ?? .farTideMoon
+
+        return BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
             let pulse = 0.5 + 0.5 * sin(phase * 0.38)
 
             ZStack {
@@ -327,21 +440,7 @@ struct BenyuanNativeConstellationView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 42, style: .continuous))
 
                 VStack(spacing: BenyuanSpacing.x4) {
-                    ZStack {
-                        ForEach(0..<3, id: \.self) { index in
-                            Ellipse()
-                                .trim(from: 0.08, to: 0.64 + pulse * 0.08)
-                                .stroke(
-                                    BenyuanColor.accentGold.opacity(0.11 + Double(index) * 0.045),
-                                    style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: index == 2 ? [3, 16] : [])
-                                )
-                                .frame(width: 150 + CGFloat(index) * 42, height: 48 + CGFloat(index) * 16)
-                                .rotationEffect(.degrees(-18 + Double(index) * 18 + phase * (1.0 + Double(index) * 0.36)))
-                        }
-
-                        BenyuanDeepCelestialBody(size: 116, progress: 0.86, mode: .constellationMoon)
-                    }
-                    .frame(height: 164)
+                    BenyuanConstellationClosingBody(phase: phase, pulse: pulse, mode: closingMode)
 
                     VStack(spacing: BenyuanSpacing.x2) {
                         Text("这不是结论")
@@ -374,8 +473,9 @@ struct BenyuanNativeConstellationView: View {
         }
     }
 
-    private var finalDock: some View {
+    private func finalDock(bottomEdgeOffset: CGFloat) -> some View {
         BenyuanConstellationActionDock(
+            bottomEdgeOffset: bottomEdgeOffset,
             onShare: { model.shareConstellation() },
             onSave: { model.saveConstellationImage() },
             onRestart: { model.restart() }
@@ -396,6 +496,40 @@ struct BenyuanNativeConstellationView: View {
     }
 }
 
+struct BenyuanConstellationClosingBody: View {
+    let phase: TimeInterval
+    let pulse: Double
+    let mode: BenyuanDeepCelestialBody.Mode
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<3, id: \.self) { index in
+                closingOrbit(index: index)
+            }
+
+            BenyuanDeepCelestialBody(size: 116, progress: 0.86, mode: mode)
+        }
+        .frame(height: 164)
+    }
+
+    private func closingOrbit(index: Int) -> some View {
+        let trimEnd = 0.64 + pulse * 0.08
+        let opacity = 0.11 + Double(index) * 0.045
+        let width = 150 + CGFloat(index) * 42
+        let height = 48 + CGFloat(index) * 16
+        let rotation = -18 + Double(index) * 18 + phase * (1.0 + Double(index) * 0.36)
+
+        return Ellipse()
+            .trim(from: 0.08, to: trimEnd)
+            .stroke(
+                BenyuanColor.accentGold.opacity(opacity),
+                style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: index == 2 ? [3, 16] : [])
+            )
+            .frame(width: width, height: height)
+            .rotationEffect(.degrees(rotation))
+    }
+}
+
 private extension BenyuanConstellationLayoutBudget {
     var scrollAnchor: UnitPoint {
         switch endPreviewAnchor {
@@ -408,47 +542,54 @@ private extension BenyuanConstellationLayoutBudget {
 }
 
 struct BenyuanConstellationActionDock: View {
+    let bottomEdgeOffset: CGFloat
     let onShare: () -> Void
     let onSave: () -> Void
     let onRestart: () -> Void
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
+        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
             let pulse = 0.5 + 0.5 * sin(phase * 0.44)
+            let backgroundHeight = 110 + bottomEdgeOffset
+            let solidStart = min(0.62, max(0.36, 48 / max(backgroundHeight, 1)))
 
-            VStack(spacing: 0) {
-                ZStack(alignment: .bottom) {
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    BenyuanColor.bgVoid.opacity(0),
-                                    BenyuanColor.bgVoid.opacity(0.72),
-                                    BenyuanColor.bgVoid
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
+            ZStack(alignment: .bottom) {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: BenyuanColor.bgVoid.opacity(0), location: 0),
+                                .init(color: BenyuanColor.bgVoid.opacity(0.78), location: solidStart * 0.62),
+                                .init(color: BenyuanColor.bgVoid, location: solidStart),
+                                .init(color: BenyuanColor.bgVoid, location: 1)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    .clear,
-                                    BenyuanColor.accentGold.opacity(0.08 + pulse * 0.04),
-                                    .clear
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: 190 + pulse * 28, height: 2)
-                        .blur(radius: 0.6)
-                        .blendMode(BlendMode.screen)
-                }
-                .frame(height: 44)
+                    )
+                    .frame(height: backgroundHeight)
+                .offset(y: bottomEdgeOffset)
+                .ignoresSafeArea(edges: .bottom)
                 .allowsHitTesting(false)
+
+                Ellipse()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                BenyuanColor.accentGold.opacity(0.045 + pulse * 0.025),
+                                BenyuanColor.accentGold.opacity(0.014),
+                                .clear
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 130
+                        )
+                    )
+                    .frame(width: 250 + pulse * 32, height: 38)
+                    .blur(radius: 14)
+                    .blendMode(BlendMode.screen)
+                    .offset(y: -74)
+                    .allowsHitTesting(false)
 
                 HStack(spacing: BenyuanSpacing.x3) {
                     dockButton("分享", phase: phase, offset: 0, action: onShare)
@@ -457,18 +598,9 @@ struct BenyuanConstellationActionDock: View {
                 }
                 .padding(.horizontal, BenyuanSpacing.x4)
                 .padding(.top, BenyuanSpacing.x3)
-                .padding(.bottom, 18)
-                .background(
-                    Rectangle()
-                        .fill(BenyuanColor.bgVoid)
-                        .overlay(alignment: .top) {
-                            Rectangle()
-                                .fill(BenyuanColor.textPrimary.opacity(0.035))
-                                .frame(height: 1)
-                        }
-                        .ignoresSafeArea()
-                )
+                .padding(.bottom, 0)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             .frame(maxWidth: .infinity)
         }
     }
@@ -509,11 +641,595 @@ struct BenyuanConstellationActionDock: View {
     }
 }
 
+struct BenyuanConstellationArchetypeField: View {
+    var progress: Double
+    var mode: BenyuanDeepCelestialBody.Mode
+
+    var body: some View {
+        ZStack {
+            BenyuanConstellationBaseField(progress: progress, mode: mode)
+
+            switch mode {
+            case .starMapArchitect:
+                BenyuanArchetypeStarMapField(progress: progress)
+            case .moonHarbor:
+                BenyuanArchetypeHarborField(progress: progress)
+            case .existentialNomad:
+                BenyuanArchetypeNomadField(progress: progress)
+            case .rainWindowScribe:
+                BenyuanArchetypeRainField(progress: progress)
+            case .eventHorizonDiver:
+                BenyuanArchetypeEventHorizonField(progress: progress)
+            case .nebulaWeaver:
+                BenyuanArchetypeNebulaField(progress: progress)
+            case .solarCorona:
+                BenyuanArchetypeSolarField(progress: progress)
+            case .terrestrialPlanet:
+                BenyuanArchetypeTerrestrialField(progress: progress)
+            case .deepSpaceAnchor:
+                BenyuanArchetypeAnchorField(progress: progress)
+            default:
+                BenyuanArchetypeMoonTideField(progress: progress)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+struct BenyuanConstellationSubjectIsolationField: View {
+    var mode: BenyuanDeepCelestialBody.Mode
+
+    var body: some View {
+        ZStack {
+            Ellipse()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            BenyuanColor.aubergineBlack.opacity(0.42),
+                            BenyuanColor.bgVoid.opacity(0.30),
+                            mode.subjectIsolationAccent.opacity(0.045),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 10,
+                        endRadius: 152
+                    )
+                )
+                .frame(width: 286, height: mode.subjectIsolationHeight)
+                .blur(radius: 16)
+                .blendMode(.plusLighter)
+
+            Ellipse()
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            .clear,
+                            mode.subjectIsolationAccent.opacity(0.16),
+                            BenyuanColor.textPrimary.opacity(0.05),
+                            .clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    lineWidth: 1
+                )
+                .frame(width: 286, height: mode.subjectIsolationHeight * 0.72)
+                .blur(radius: 0.7)
+                .opacity(mode.subjectIsolationRingOpacity)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct BenyuanConstellationBaseField: View {
+    var progress: Double
+    var mode: BenyuanDeepCelestialBody.Mode
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            let pulse = 0.5 + 0.5 * sin(phase * 0.46)
+            let clamped = min(max(progress, 0.12), 1)
+
+            GeometryReader { proxy in
+                let width = proxy.size.width
+                let height = proxy.size.height
+
+                ZStack {
+                    RadialGradient(
+                        colors: baseGradientColors(pulse: pulse, progress: clamped),
+                        center: baseGradientCenter,
+                        startRadius: 10,
+                        endRadius: max(width, height) * 0.92
+                    )
+
+                    baseOccludingShape(width: width, height: height, pulse: pulse)
+
+                    if usesSparseStarDrift {
+                        BenyuanSparseStarDrift(width: width, height: height, phase: phase, progress: clamped)
+                    }
+                }
+            }
+        }
+    }
+
+    private var baseGradientCenter: UnitPoint {
+        switch mode {
+        case .eventHorizonDiver: return UnitPoint(x: 0.48, y: 0.34)
+        case .nebulaWeaver: return UnitPoint(x: 0.42, y: 0.36)
+        case .solarCorona: return UnitPoint(x: 0.50, y: 0.35)
+        case .moonHarbor: return UnitPoint(x: 0.30, y: 0.30)
+        case .rainWindowScribe: return UnitPoint(x: 0.34, y: 0.26)
+        case .deepSpaceAnchor: return UnitPoint(x: 0.48, y: 0.46)
+        default: return UnitPoint(x: 0.62, y: 0.18)
+        }
+    }
+
+    private var usesSparseStarDrift: Bool {
+        switch mode {
+        case .rainWindowScribe, .moonHarbor:
+            return false
+        default:
+            return true
+        }
+    }
+
+    private func baseGradientColors(pulse: Double, progress: Double) -> [Color] {
+        switch mode {
+        case .eventHorizonDiver:
+            return [
+                BenyuanColor.bgVoid.opacity(0.98),
+                BenyuanColor.aubergineBlack.opacity(0.76),
+                BenyuanColor.planetEdge.opacity(0.18 + pulse * 0.04),
+                BenyuanColor.bgVoid.opacity(0.98)
+            ]
+        case .nebulaWeaver:
+            return [
+                BenyuanColor.textPrimary.opacity(0.16 + pulse * 0.03),
+                BenyuanColor.nebulaViolet.opacity(0.22 + progress * 0.05),
+                BenyuanColor.planetEdge.opacity(0.12),
+                BenyuanColor.bgVoid.opacity(0.96)
+            ]
+        case .solarCorona:
+            return [
+                BenyuanColor.accentGold.opacity(0.18 + pulse * 0.07),
+                BenyuanColor.planetEdge.opacity(0.18),
+                BenyuanColor.aubergineBlack.opacity(0.68),
+                BenyuanColor.bgVoid.opacity(0.96)
+            ]
+        case .terrestrialPlanet:
+            return [
+                BenyuanColor.textPrimary.opacity(0.10 + pulse * 0.03),
+                BenyuanColor.planetEdge.opacity(0.20),
+                BenyuanColor.accentGold.opacity(0.07 + progress * 0.03),
+                BenyuanColor.bgVoid.opacity(0.96)
+            ]
+        case .deepSpaceAnchor:
+            return [
+                BenyuanColor.textPrimary.opacity(0.09),
+                BenyuanColor.lunarBlueDeep.opacity(0.20),
+                BenyuanColor.aubergineBlack.opacity(0.62),
+                BenyuanColor.bgVoid.opacity(0.98)
+            ]
+        case .rainWindowScribe:
+            return [
+                BenyuanColor.textPrimary.opacity(0.09),
+                BenyuanColor.lunarBlueDeep.opacity(0.26),
+                BenyuanColor.bgVoid.opacity(0.96)
+            ]
+        default:
+            return [
+                BenyuanColor.planetEdge.opacity(0.30 + pulse * 0.05),
+                BenyuanColor.nebulaViolet.opacity(0.11 + progress * 0.03),
+                BenyuanColor.bgVoid.opacity(0.78),
+                BenyuanColor.bgVoid.opacity(0.97)
+            ]
+        }
+    }
+
+    @ViewBuilder
+    private func baseOccludingShape(width: CGFloat, height: CGFloat, pulse: Double) -> some View {
+        switch mode {
+        case .eventHorizonDiver:
+            Circle()
+                .fill(BenyuanColor.bgVoid.opacity(0.90))
+                .frame(width: min(width, height) * 0.56, height: min(width, height) * 0.56)
+                .blur(radius: 11)
+                .position(x: width * 0.50, y: height * 0.34)
+        case .nebulaWeaver, .solarCorona, .starMapArchitect, .rainWindowScribe, .moonHarbor, .existentialNomad, .deepSpaceAnchor:
+            EmptyView()
+        default:
+            let planetSize = min(width * 0.76, height * 0.58)
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            BenyuanColor.bgVoid.opacity(0.74),
+                            BenyuanColor.aubergineBlack.opacity(0.42),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: planetSize * 0.12,
+                        endRadius: planetSize * 0.58
+                    )
+                )
+                .frame(width: planetSize, height: planetSize)
+                .blur(radius: 18)
+                .position(x: width * (0.82 + pulse * 0.01), y: -height * 0.02)
+        }
+    }
+}
+
+struct BenyuanSparseStarDrift: View {
+    var width: CGFloat
+    var height: CGFloat
+    var phase: TimeInterval
+    var progress: Double
+
+    private let points: [(CGFloat, CGFloat, CGFloat)] = [
+        (0.16, 0.32, 0.20), (0.28, 0.64, 0.46), (0.38, 0.28, 0.70),
+        (0.48, 0.56, 0.34), (0.58, 0.42, 0.62), (0.70, 0.68, 0.38),
+        (0.82, 0.34, 0.54), (0.22, 0.78, 0.66), (0.76, 0.52, 0.26)
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(points.indices, id: \.self) { index in
+                let point = points[index]
+                let drift = sin(phase * (0.14 + Double(point.2) * 0.16) + Double(index))
+                Circle()
+                    .fill(index.isMultiple(of: 3) ? BenyuanColor.accentGold.opacity(0.22 + progress * 0.08) : BenyuanColor.textPrimary.opacity(0.10 + progress * 0.05))
+                    .frame(width: 2.2 + point.2 * 2.4, height: 2.2 + point.2 * 2.4)
+                    .position(
+                        x: width * point.0 + CGFloat(drift) * width * 0.012,
+                        y: height * point.1 - CGFloat(drift) * height * 0.010
+                    )
+                    .blur(radius: point.2 > 0.6 ? 0.2 : 0.7)
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeMoonTideField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            let pulse = 0.5 + 0.5 * sin(phase * 0.38)
+
+            ZStack {
+                ForEach(0..<5, id: \.self) { index in
+                    Path { path in
+                        let y = 170 + CGFloat(index) * 28
+                        path.move(to: CGPoint(x: 20, y: y))
+                        for step in 0...28 {
+                            let x = 20 + CGFloat(step) * 13
+                            let wave = sin(Double(step) * 0.54 + phase * (0.24 + Double(index) * 0.04))
+                            path.addLine(to: CGPoint(x: x, y: y + CGFloat(wave) * 4))
+                        }
+                    }
+                    .stroke(BenyuanColor.textPrimary.opacity(0.04 + Double(index) * 0.012), lineWidth: index == 2 ? 1.5 : 0.9)
+                    .blur(radius: CGFloat(index % 2) * 0.4)
+                }
+
+                Circle()
+                    .fill(BenyuanColor.textPrimary.opacity(0.08 + pulse * 0.03))
+                    .frame(width: 132, height: 132)
+                    .offset(x: -94, y: -116)
+                    .blur(radius: 22)
+                    .blendMode(.screen)
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeStarMapField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                ForEach(0..<4, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(
+                            BenyuanColor.textPrimary.opacity(0.045 + Double(index) * 0.014),
+                            style: StrokeStyle(lineWidth: 0.9, dash: index.isMultiple(of: 2) ? [4, 14] : [])
+                        )
+                        .frame(width: 150 + CGFloat(index) * 54, height: 98 + CGFloat(index) * 42)
+                        .rotationEffect(.degrees(-18 + Double(index) * 14 + phase * (0.25 + Double(index) * 0.06)))
+                        .offset(x: CGFloat(index - 1) * 18, y: CGFloat(index - 2) * 18)
+                }
+
+                Path { path in
+                    let points = [
+                        CGPoint(x: 66, y: 128), CGPoint(x: 168, y: 82), CGPoint(x: 294, y: 134),
+                        CGPoint(x: 320, y: 270), CGPoint(x: 188, y: 306), CGPoint(x: 76, y: 240)
+                    ]
+                    guard let first = points.first else { return }
+                    path.move(to: first)
+                    for point in points.dropFirst() {
+                        path.addLine(to: point)
+                    }
+                    path.closeSubpath()
+                }
+                .stroke(BenyuanColor.accentGold.opacity(0.17 + progress * 0.08), lineWidth: 1.3)
+                .offset(x: -32, y: -18)
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeHarborField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                ForEach(0..<6, id: \.self) { index in
+                    Path { path in
+                        let y = 170 + CGFloat(index) * 24
+                        path.move(to: CGPoint(x: -20, y: y))
+                        path.addQuadCurve(
+                            to: CGPoint(x: 420, y: y + CGFloat(sin(phase * 0.2 + Double(index))) * 7),
+                            control: CGPoint(x: 196, y: y + 18 + CGFloat(index) * 2)
+                        )
+                    }
+                    .stroke(BenyuanColor.textPrimary.opacity(0.045 + Double(index) * 0.014), lineWidth: index == 3 ? 1.5 : 0.9)
+                }
+
+                Path { path in
+                    path.move(to: CGPoint(x: 46, y: 264))
+                    path.addLine(to: CGPoint(x: 210, y: 264))
+                    path.move(to: CGPoint(x: 84, y: 264))
+                    path.addLine(to: CGPoint(x: 84, y: 356))
+                    path.move(to: CGPoint(x: 164, y: 264))
+                    path.addLine(to: CGPoint(x: 164, y: 338))
+                }
+                .stroke(BenyuanColor.accentGold.opacity(0.30 + progress * 0.08), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+
+                Circle()
+                    .fill(BenyuanColor.accentGold.opacity(0.46))
+                    .frame(width: 18, height: 18)
+                    .offset(x: 96, y: 18)
+                    .blur(radius: 4)
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeNomadField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                ForEach(0..<5, id: \.self) { index in
+                    Path { path in
+                        path.move(to: CGPoint(x: -20, y: 250 + CGFloat(index) * 34))
+                        path.addCurve(
+                            to: CGPoint(x: 430, y: 80 + CGFloat(index) * 36),
+                            control1: CGPoint(x: 104, y: 226 - CGFloat(index) * 12),
+                            control2: CGPoint(x: 246, y: 48 + CGFloat(index) * 24)
+                        )
+                    }
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                .clear,
+                                BenyuanColor.textPrimary.opacity(0.08 + Double(index) * 0.014),
+                                BenyuanColor.accentGold.opacity(0.14 + progress * 0.05),
+                                .clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        style: StrokeStyle(lineWidth: index == 2 ? 1.5 : 0.9, lineCap: .round, dash: index == 0 ? [5, 16] : [])
+                    )
+                    .rotationEffect(.degrees(sin(phase * 0.18 + Double(index)) * 2.6))
+                }
+
+                Circle()
+                    .fill(BenyuanColor.accentGold.opacity(0.42))
+                    .frame(width: 9, height: 9)
+                    .offset(x: -74 + CGFloat(sin(phase * 0.18)) * 12, y: 10)
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeRainField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(BenyuanColor.textPrimary.opacity(0.055 + progress * 0.03), lineWidth: 1)
+                    .frame(width: 280, height: 214)
+                    .offset(y: -46)
+
+                Path { path in
+                    path.move(to: CGPoint(x: 60, y: 88))
+                    path.addLine(to: CGPoint(x: 60, y: 304))
+                    path.move(to: CGPoint(x: 200, y: 88))
+                    path.addLine(to: CGPoint(x: 200, y: 304))
+                    path.move(to: CGPoint(x: 20, y: 188))
+                    path.addLine(to: CGPoint(x: 340, y: 188))
+                }
+                .stroke(BenyuanColor.textPrimary.opacity(0.055), lineWidth: 1)
+
+                ForEach(0..<18, id: \.self) { index in
+                    let fall = CGFloat((phase * (0.045 + Double(index % 5) * 0.008) + Double(index) * 0.13).truncatingRemainder(dividingBy: 1))
+                    Capsule()
+                        .fill(BenyuanColor.textPrimary.opacity(0.10 + progress * 0.04))
+                        .frame(width: 1, height: 34 + CGFloat(index % 3) * 12)
+                        .offset(x: -146 + CGFloat(index) * 18, y: -146 + fall * 360)
+                        .blur(radius: 0.3)
+                }
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeEventHorizonField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                Circle()
+                    .fill(BenyuanColor.bgVoid.opacity(0.86))
+                    .frame(width: 260, height: 260)
+                    .blur(radius: 8)
+                    .offset(y: -32)
+
+                ForEach(0..<4, id: \.self) { index in
+                    Ellipse()
+                        .stroke(
+                            AngularGradient(
+                                colors: [
+                                    .clear,
+                                    BenyuanColor.accentGold.opacity(0.12 + progress * 0.05),
+                                    BenyuanColor.textPrimary.opacity(0.10),
+                                    .clear
+                                ],
+                                center: .center,
+                                angle: .degrees(phase * (5 + Double(index)))
+                            ),
+                            style: StrokeStyle(lineWidth: index == 0 ? 1.8 : 1.0, lineCap: .round)
+                        )
+                        .frame(width: 330 + CGFloat(index) * 34, height: 86 + CGFloat(index) * 16)
+                        .rotationEffect(.degrees(-14 + Double(index) * 13 + phase * (1.2 + Double(index) * 0.3)))
+                        .blur(radius: index == 3 ? 0.9 : 0.2)
+                }
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeNebulaField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                ForEach(0..<9, id: \.self) { index in
+                    let drift = sin(phase * (0.10 + Double(index) * 0.018) + Double(index))
+                    Ellipse()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    (index.isMultiple(of: 2) ? BenyuanColor.nebulaViolet : BenyuanColor.textPrimary).opacity(0.10 + progress * 0.07),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 1,
+                                endRadius: 120
+                            )
+                        )
+                        .frame(width: 230 + CGFloat(index % 3) * 56, height: 70 + CGFloat(index % 4) * 26)
+                        .offset(x: CGFloat(drift) * 32 + CGFloat(index % 3 - 1) * 38, y: CGFloat(index / 3 - 1) * 44)
+                        .rotationEffect(.degrees(-28 + Double(index) * 17 + phase * (0.7 + Double(index) * 0.10)))
+                        .blur(radius: 11)
+                        .blendMode(.screen)
+                }
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeSolarField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                Circle()
+                    .fill(BenyuanColor.accentGold.opacity(0.07 + progress * 0.04))
+                    .frame(width: 310, height: 310)
+                    .blur(radius: 34)
+
+                ForEach(0..<22, id: \.self) { index in
+                    let angle = Double(index) / 22 * .pi * 2 + phase * 0.10
+                    Capsule()
+                        .fill(BenyuanColor.accentGold.opacity(0.16 + progress * 0.08))
+                        .frame(width: 80 + CGFloat(index % 4) * 15, height: index.isMultiple(of: 4) ? 2.4 : 1.4)
+                        .offset(x: cos(angle) * 136, y: sin(angle) * 136)
+                        .rotationEffect(.radians(angle))
+                        .blur(radius: index.isMultiple(of: 4) ? 0.2 : 0.8)
+                        .blendMode(.screen)
+                }
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeTerrestrialField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                ForEach(0..<4, id: \.self) { index in
+                    Ellipse()
+                        .stroke(BenyuanColor.textPrimary.opacity(0.05 + Double(index) * 0.012), lineWidth: 1)
+                        .frame(width: 250 + CGFloat(index) * 48, height: 58 + CGFloat(index) * 20)
+                        .rotationEffect(.degrees(-24 + Double(index) * 18 + phase * (0.6 + Double(index) * 0.16)))
+                }
+
+                ForEach(0..<7, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(BenyuanColor.accentGold.opacity(0.16 + progress * 0.10))
+                        .frame(width: 14 + CGFloat(index % 2) * 6, height: 4 + CGFloat(index % 3) * 2)
+                        .offset(x: -132 + CGFloat(index) * 42, y: 118 + CGFloat(sin(phase * 0.18 + Double(index))) * 5)
+                        .blur(radius: 0.35)
+                }
+            }
+        }
+    }
+}
+
+struct BenyuanArchetypeAnchorField: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            ZStack {
+                ForEach(0..<5, id: \.self) { index in
+                    let extent = 84 + CGFloat(index) * 34
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: -extent))
+                        path.addLine(to: CGPoint(x: 0, y: extent))
+                        path.move(to: CGPoint(x: -extent, y: 0))
+                        path.addLine(to: CGPoint(x: extent, y: 0))
+                    }
+                    .stroke(
+                        BenyuanColor.textPrimary.opacity(0.035 + Double(index) * 0.012),
+                        style: StrokeStyle(lineWidth: 0.8, lineCap: .round, dash: index > 2 ? [2, 14] : [])
+                    )
+                    .rotationEffect(.degrees(45 + Double(index) * 11 + phase * (0.22 + Double(index) * 0.06)))
+                }
+
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: -96))
+                    path.addLine(to: CGPoint(x: 0, y: 96))
+                    path.move(to: CGPoint(x: -42, y: 32))
+                    path.addQuadCurve(to: CGPoint(x: 42, y: 32), control: CGPoint(x: 0, y: 118))
+                    path.move(to: CGPoint(x: -64, y: -8))
+                    path.addLine(to: CGPoint(x: 64, y: -8))
+                }
+                .stroke(BenyuanColor.accentGold.opacity(0.24 + progress * 0.08), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                .offset(x: -138, y: -98)
+            }
+        }
+    }
+}
+
 struct BenyuanConstellationDeepFieldMask: View {
     var progress: Double
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
             let pulse = 0.5 + 0.5 * sin(phase * 0.46)
             let clamped = min(max(progress, 0.12), 1)
 
@@ -578,7 +1294,7 @@ struct BenyuanDimensionOrbitMap: View {
     let activeKey: String?
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
+        BenyuanMotionTimeline(preferredFramesPerSecond: 18) { phase in
 
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
@@ -664,7 +1380,7 @@ struct BenyuanDimensionOrbitMap: View {
     }
 }
 
-struct BenyuanDimensionLineageGraph: View {
+struct BenyuanDimensionResonanceGraph: View {
     struct Dimension: Equatable {
         let key: String
         let label: String
@@ -676,7 +1392,7 @@ struct BenyuanDimensionLineageGraph: View {
     let onSelect: (String) -> Void
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
             GeometryReader { proxy in
                 let visible = Array(dimensions.prefix(7))
                 let width = max(proxy.size.width, 1)

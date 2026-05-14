@@ -8,7 +8,7 @@ function constellation(overrides = {}) {
     user_id: "u1",
     generated_at: "2026-05-08T00:00:00.000Z",
     archetype: {
-      name: "暮海寻光者",
+      name: "远潮观月者",
       english_name: "The Moonlit Seeker",
       core_essence: "在幽暗与审美里寻找意义。",
       visual_prompt: "moonlit sea",

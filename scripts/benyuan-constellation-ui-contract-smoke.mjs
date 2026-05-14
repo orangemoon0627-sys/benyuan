@@ -10,6 +10,9 @@ const componentNeedles = [
   "constellation-dimension-orbit",
   "constellation-narrative-river",
   "constellation-final-dock",
+  "constellationDisplayName",
+  "constellationDisplaySubtitle",
+  "constellation-personal-subtitle",
   "data-constellation-state",
   "data-constellation-section",
 ];
@@ -20,6 +23,7 @@ const cssNeedles = [
   ".constellation-dimension-orbit",
   ".constellation-narrative-river",
   ".constellation-final-dock",
+  ".constellation-personal-subtitle",
 ];
 
 const forbiddenNeedles = [

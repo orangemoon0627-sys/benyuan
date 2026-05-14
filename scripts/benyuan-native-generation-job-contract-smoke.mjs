@@ -76,6 +76,11 @@ assert.match(flowStore, /activeGenerationJobId/, "flow store session must persis
 assert.match(processingView, /processingPercentText/, "native processing page must show a numeric percent label");
 assert.match(processingView, /可以切出 App/, "native processing page must tell the user they can leave and return");
 assert.match(processingView, /Int\(round\(model\.processingProgress \* 100\)\)/, "native processing percent must be derived from real progress");
+assert.match(processingView, /generationPhases:\s*\[GenerationPhase\]/, "native processing page must define visible cloud generation phases");
+assert.match(processingView, /generationPhaseRail/, "native processing page must render a cloud generation phase rail");
+for (const label of ["接收线索", "多模态读取", "剧场折射", "星图显影"]) {
+  assert.match(processingView, new RegExp(label), `native processing phase rail must include ${label}`);
+}
 assert.match(nativeGenerationSources, /resolvedProcessingProgress/, "native flow must resolve progress through a single helper");
 assert.match(nativeGenerationSources, /isSameNativeGenerationJobAsLastSnapshot/, "native flow must keep progress monotonic only within the same native job");
 assert.match(packageJson, /smoke:native-generation-job:contract/, "package scripts must expose the native generation job contract");

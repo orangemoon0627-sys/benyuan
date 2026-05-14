@@ -148,9 +148,12 @@ struct BenyuanNativeAccountView: View {
 
                 Spacer(minLength: 0)
 
-                Text("管理")
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                Text(recoverySummaryLabel)
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
                     .foregroundStyle(BenyuanColor.accentGold)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Capsule().fill(BenyuanColor.bgVoid.opacity(0.46)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72))))
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
@@ -398,6 +401,10 @@ struct BenyuanNativeAccountView: View {
 
     private var boundProviderCount: Int {
         [.anonymous, .apple, .wechat, .phone].filter { isProviderBound($0) }.count
+    }
+
+    private var recoverySummaryLabel: String {
+        "恢复 \(boundProviderCount)/4"
     }
 
     private var totalHistoryAssets: Int {

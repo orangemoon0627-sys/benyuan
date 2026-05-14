@@ -93,8 +93,23 @@ assert.match(
 );
 assert.match(
   collect,
-  /private func uploadQuestionTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 30 \{ return 24 \}[\s\S]*?return 28[\s\S]*?\}/,
-  "native upload question titles should cap at 28pt after visual screenshot review"
+  /private func uploadQuestionTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 30 \{ return 23 \}[\s\S]*?return 26[\s\S]*?\}/,
+  "native upload question titles should use a compact cap after first-screen screenshot review"
+);
+assert.match(
+  collect,
+  /\.frame\(height:\s*132\)[\s\S]*?\.clipShape\(RoundedRectangle\(cornerRadius:\s*30,\s*style:\s*\.continuous\)\)/,
+  "native upload celestial art panel should stay compact enough to keep selected thumbnails above the bottom dock"
+);
+assert.match(
+  collect,
+  /\.frame\(width:\s*98,\s*height:\s*102\)/,
+  "native upload thumbnails should stay compact enough for the first-screen manage strip"
+);
+assert.match(
+  collect,
+  /ScrollView\(showsIndicators:\s*false\)[\s\S]*?\.safeAreaInset\(edge:\s*\.bottom,\s*spacing:\s*0\)[\s\S]*?bottomBar/,
+  "native collect bottom dock should be installed as a safe-area inset so the final upload thumbnail row remains readable"
 );
 
 assert.match(
@@ -110,22 +125,22 @@ assert.match(
 
 assert.match(
   theater,
-  /\.font\(\.system\(size:\s*theaterTitleSize\(model\.theater\?\.theaterScript\.act1\.sceneDescription \?\? ""\),\s*weight:\s*\.semibold\)\)/,
-  "native theater act1 scene title should use semibold, not black"
+  /theaterLensCard\([\s\S]*?title:\s*displayText\(model\.theater\?\.theaterScript\.act1\.sceneDescription[\s\S]*?Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*theaterTitleSize\(title\),\s*weight:\s*\.semibold\)\)/,
+  "native theater act1 scene title should use sanitized semibold text inside the lens card, not black"
 );
 assert.match(
   theater,
-  /\.font\(\.system\(size:\s*theaterTitleSize\(choice\.scene\),\s*weight:\s*\.semibold\)\)/,
-  "native theater act2 scene title should use semibold, not black"
+  /theaterLensCard\([\s\S]*?title:\s*displayText\(choice\.scene[\s\S]*?Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*theaterTitleSize\(title\),\s*weight:\s*\.semibold\)\)/,
+  "native theater act2 scene title should use sanitized semibold text inside the lens card, not black"
 );
 assert.match(
   theater,
-  /\.font\(\.system\(size:\s*theaterTitleSize\(question\.question\),\s*weight:\s*\.semibold\)\)/,
-  "native theater act3 mirror question should use semibold, not black"
+  /theaterLensCard\([\s\S]*?title:\s*displayText\(question\.question[\s\S]*?Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*theaterTitleSize\(title\),\s*weight:\s*\.semibold\)\)/,
+  "native theater act3 mirror question should use sanitized semibold text inside the lens card, not black"
 );
 assert.match(
   theater,
-  /private func theaterTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 86 \{ return 22 \}[\s\S]*?if value\.count > 56 \{ return 25 \}[\s\S]*?return 29[\s\S]*?\}/,
+  /private func theaterTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 92 \{ return 19 \}[\s\S]*?if value\.count > 64 \{ return 22 \}[\s\S]*?if value\.count > 36 \{ return 25 \}[\s\S]*?return 29[\s\S]*?\}/,
   "native theater title sizing should leave more breathing room after visual screenshot review"
 );
 
@@ -138,6 +153,11 @@ assert.match(
   constellation,
   /Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*14,\s*weight:\s*\.semibold\)\)[\s\S]*?\.minimumScaleFactor\(0\.78\)/,
   "constellation bottom dock buttons should use restrained type and keep long labels stable"
+);
+assert.match(
+  constellation,
+  /firstViewportReserve:\s*96/,
+  "constellation first viewport should leave a clearer visual gap before seven-dimensional orbit content appears under the bottom dock"
 );
 
 assert.match(

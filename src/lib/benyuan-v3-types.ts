@@ -259,6 +259,8 @@ export type BenyuanPart2HistoryRecordResponse = Part2Record;
 export type PsycheArchetype = {
   name: string;
   english_name: string;
+  personalized_name?: string;
+  personalized_subtitle?: string;
   core_essence: string;
   visual_prompt: string;
 };

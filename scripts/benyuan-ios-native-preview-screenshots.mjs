@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import sharp from "sharp";
 
 import {
   chooseSimulatorDevice,
@@ -21,13 +22,25 @@ const outputDir = path.join(root, "output");
 const debugPreviewDir = path.join(outputDir, "debug-previews");
 const tempDir = path.join(os.tmpdir(), "benyuan-ios-native-preview");
 const jsonPath = path.join(outputDir, "benyuan-ios-native-preview-screenshots.json");
+const showsPreviewWatermark = process.env.BENYUAN_IOS_NATIVE_PREVIEW_WATERMARK === "1";
+const suppressesTransientChrome = process.env.BENYUAN_IOS_NATIVE_PREVIEW_CLEAN_CHROME !== "0";
 const previewRunStamp = new Date()
   .toISOString()
   .replace(/[-:]/g, "")
   .replace(/\.\d{3}Z$/, "Z");
+const previewGitRevision = (() => {
+  try {
+    const revision = run("git", ["rev-parse", "--short", "HEAD"], { cwd: root }) || "nogit";
+    const status = run("git", ["status", "--short"], { cwd: root });
+    return status ? `${revision}-dirty` : revision;
+  } catch {
+    return "nogit";
+  }
+})();
 
 const previewConfigs = [
-  { stage: "auth", screenshotPath: path.join(outputDir, "benyuan-ios-preview-auth.png"), waitMs: 3600 },
+  { stage: "home", screenshotPath: path.join(outputDir, "benyuan-ios-preview-home.png"), waitMs: 7200, minMeanLuma: 10 },
+  { stage: "auth", screenshotPath: path.join(outputDir, "benyuan-ios-preview-auth.png"), waitMs: 7200, minMeanLuma: 10 },
   { stage: "account", screenshotPath: path.join(outputDir, "benyuan-ios-preview-account.png"), waitMs: 3000 },
   { stage: "account-feedback", screenshotPath: path.join(outputDir, "benyuan-ios-preview-account-feedback.png"), waitMs: 3000 },
   { stage: "collect", screenshotPath: path.join(outputDir, "benyuan-ios-preview-collect.png"), waitMs: 3000 },
@@ -36,6 +49,19 @@ const previewConfigs = [
   { stage: "theater", screenshotPath: path.join(outputDir, "benyuan-ios-preview-theater.png"), waitMs: 3000 },
   { stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-constellation.png"), waitMs: 3200 },
   { stage: "constellation-end", screenshotPath: path.join(outputDir, "benyuan-ios-preview-constellation-end.png"), waitMs: 4600 },
+];
+
+const archetypePreviewConfigs = [
+  { variant: "moonlit-seeker", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-moonlit-seeker.png"), waitMs: 3200 },
+  { variant: "star-map-architect", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-star-map-architect.png"), waitMs: 3200 },
+  { variant: "moon-harbor-keeper", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-moon-harbor-keeper.png"), waitMs: 3200 },
+  { variant: "existential-nomad", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-existential-nomad.png"), waitMs: 3200 },
+  { variant: "rain-window-scribe", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-rain-window-scribe.png"), waitMs: 3200 },
+  { variant: "event-horizon-diver", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-event-horizon-diver.png"), waitMs: 3200 },
+  { variant: "nebula-weaver", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-nebula-weaver.png"), waitMs: 3200 },
+  { variant: "solar-corona", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-solar-corona.png"), waitMs: 3200 },
+  { variant: "terrestrial-planet", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-terrestrial-planet.png"), waitMs: 3200 },
+  { variant: "deep-space-anchor", stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-archetype-deep-space-anchor.png"), waitMs: 3200 },
 ];
 
 function run(command, args, options = {}) {
@@ -48,6 +74,20 @@ function run(command, args, options = {}) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function imageMeanLuma(filePath) {
+  const { data, info } = await sharp(filePath)
+    .removeAlpha()
+    .resize(96, 192, { fit: "fill" })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let total = 0;
+  const pixelCount = info.width * info.height;
+  for (let index = 0; index < data.length; index += info.channels) {
+    total += 0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2];
+  }
+  return total / Math.max(pixelCount, 1);
 }
 
 function parseBuildSettings(raw) {
@@ -120,7 +160,7 @@ function terminateApp(udid, bundleId) {
 async function capturePreview(device, bundleId, config) {
   terminateApp(device.udid, bundleId);
   const launchedAt = new Date().toISOString();
-  const launchOutput = run("xcrun", [
+  const launchArgs = [
     "simctl",
     "launch",
     device.udid,
@@ -130,15 +170,37 @@ async function capturePreview(device, bundleId, config) {
     baseUrl,
     "--benyuan-native-preview",
     config.stage,
-  ]);
+    "--benyuan-native-preview-stamp",
+    previewRunStamp,
+    "--benyuan-native-preview-revision",
+    previewGitRevision,
+  ];
+  if (!showsPreviewWatermark) {
+    launchArgs.push("--benyuan-native-preview-no-watermark");
+  }
+  if (suppressesTransientChrome) {
+    launchArgs.push("--benyuan-native-preview-clean");
+  }
+  if (config.variant) {
+    launchArgs.push("--benyuan-native-preview-archetype", config.variant);
+  }
+  const launchOutput = run("xcrun", launchArgs);
 
   await sleep(config.waitMs);
-  const tempScreenshotPath = path.join(tempDir, path.basename(config.screenshotPath));
+  const stableBaseName = path.basename(config.screenshotPath, path.extname(config.screenshotPath));
+  const tempScreenshotPath = path.join(
+    tempDir,
+    `${stableBaseName}-${config.variant ?? "stage"}-${previewRunStamp}.png`
+  );
   run("xcrun", ["simctl", "io", device.udid, "screenshot", tempScreenshotPath]);
+  const meanLuma = await imageMeanLuma(tempScreenshotPath);
+  if (config.minMeanLuma != null && meanLuma < config.minMeanLuma) {
+    throw new Error(`ios_native_preview_underexposed:${config.stage}:mean_luma=${meanLuma.toFixed(2)}`);
+  }
   await copyFile(tempScreenshotPath, config.screenshotPath);
   const presentationScreenshotPath = path.join(
     debugPreviewDir,
-    `benyuan-ios-preview-${config.stage}-${previewRunStamp}.png`
+    `benyuan-ios-preview-${config.variant ? `${config.stage}-${config.variant}` : config.stage}-${previewRunStamp}.png`
   );
   await copyFile(config.screenshotPath, presentationScreenshotPath);
   const screenshot = await readFile(config.screenshotPath);
@@ -153,11 +215,13 @@ async function capturePreview(device, bundleId, config) {
 
   return {
     stage: config.stage,
+    variant: config.variant,
     launchedAt,
     screenshotPath: config.screenshotPath,
     stableScreenshotPath: config.screenshotPath,
     presentationScreenshotPath,
     launchOutput,
+    meanLuma: Number(meanLuma.toFixed(2)),
     showsShellError,
   };
 }
@@ -185,6 +249,10 @@ async function main() {
   for (const config of previewConfigs) {
     runs.push(await capturePreview(device, bundleId, config));
   }
+  const archetypeRuns = [];
+  for (const config of archetypePreviewConfigs) {
+    archetypeRuns.push(await capturePreview(device, bundleId, config));
+  }
   terminateApp(device.udid, bundleId);
 
   const summary = {
@@ -195,13 +263,18 @@ async function main() {
     bundleId,
     baseUrl,
     appPath,
+    previewRunStamp,
+    previewGitRevision,
+    showsPreviewWatermark,
+    suppressesTransientChrome,
     runs,
+    archetypeRuns,
   };
 
   await writeFile(jsonPath, `${JSON.stringify(summary, null, 2)}\n`);
   console.log(JSON.stringify(summary, null, 2));
 
-  if (runs.some((runResult) => runResult.showsShellError)) {
+  if ([...runs, ...archetypeRuns].some((runResult) => runResult.showsShellError)) {
     throw new Error("ios_native_preview_shell_error_page");
   }
 }

@@ -125,16 +125,51 @@ extension BenyuanNativeFlowModel {
 
     func previousQuestion() {
         let nextIndex = max(0, activeQuestionIndex - 1)
-        guard nextIndex != activeQuestionIndex else { return }
+        guard nextIndex != activeQuestionIndex else {
+            pulseCollectValidation("已经是第一题。")
+            return
+        }
         recordQuestionMotion(direction: .backward)
         activeQuestionIndex = nextIndex
     }
 
     func nextQuestion() {
+        guard let question = currentQuestion else { return }
+        guard isAnswered(question) else {
+            pulseCollectValidation(collectRequirementHint(for: question))
+            return
+        }
         let nextIndex = min(max(questions.count - 1, 0), activeQuestionIndex + 1)
-        guard nextIndex != activeQuestionIndex else { return }
+        guard nextIndex != activeQuestionIndex else {
+            if allQuestionsAnswered {
+                toast = "线索已完整，可以进入剧场。"
+            } else {
+                pulseCollectValidation("还有未完成的问题。")
+            }
+            return
+        }
         recordQuestionMotion(direction: .forward)
         activeQuestionIndex = nextIndex
+    }
+
+    func continueCollectOrSubmit() async {
+        if allQuestionsAnswered {
+            await submitPart1AndGenerateTheater()
+            return
+        }
+
+        guard let question = currentQuestion else { return }
+        guard isAnswered(question) else {
+            pulseCollectValidation(collectRequirementHint(for: question))
+            return
+        }
+
+        let incompleteIndex = firstIncompleteQuestionIndex()
+        if incompleteIndex != activeQuestionIndex {
+            moveToQuestion(incompleteIndex)
+        } else {
+            nextQuestion()
+        }
     }
 
     func submitPart1AndGenerateTheater() async {
@@ -150,7 +185,7 @@ extension BenyuanNativeFlowModel {
     func submitPart1AndGenerateTheaterPipeline() async throws {
         guard allQuestionsAnswered else {
             moveToQuestion(firstIncompleteQuestionIndex())
-            toast = "还有问题没有完成。"
+            pulseCollectValidation("还有问题没有完成。")
             throw BenyuanNativeFlowError.incompletePart1
         }
 
@@ -173,5 +208,24 @@ extension BenyuanNativeFlowModel {
         applyNativeGenerationJob(job, source: .live)
         logNativeE2E("native_job_started kind=theater job_id=\(job.jobId)")
         try await pollNativeGenerationJob(jobId: job.jobId)
+    }
+
+    func pulseCollectValidation(_ message: String) {
+        toast = message
+        collectValidationPulse += 1
+    }
+
+    func collectRequirementHint(for question: BenyuanQuestion) -> String {
+        switch question.kind {
+        case .single:
+            return "先选择一个答案，再继续。"
+        case .multi:
+            return "至少选择 \(question.minSelections ?? 1) 个方向。"
+        case .distribution:
+            return "把三个时间比例调到总和 100%。"
+        case .upload:
+            let minimum = question.uploadRange?.min ?? 1
+            return "至少上传 \(minimum) 张图片线索。"
+        }
     }
 }

@@ -75,7 +75,18 @@
     "lane:benyuan:start": "bash scripts/parallel-lane.sh start benyuan",
     "lane:benyuan:stop": "bash scripts/parallel-lane.sh stop benyuan",
     "lane:benyuan:tail": "bash scripts/parallel-lane.sh tail benyuan",
-    "lane:benyuan:prompt": "bash scripts/parallel-lane.sh prompt benyuan"
+    "lane:benyuan:prompt": "bash scripts/parallel-lane.sh prompt benyuan",
+    "smoke:ios:native-preview:contract": "node scripts/benyuan-ios-native-preview-contract-smoke.mjs",
+    "smoke:ios:celestial-ui": "node scripts/benyuan-ios-celestial-ui-contract-smoke.mjs",
+    "smoke:ios:celestial-assets": "node scripts/benyuan-ios-celestial-assets-contract-smoke.mjs",
+    "smoke:ios:celestial-motion:frames": "node scripts/benyuan-ios-celestial-motion-frame-diff.mjs",
+    "smoke:ios:flow-motion-layer": "node scripts/benyuan-ios-flow-motion-layer-contract-smoke.mjs",
+    "smoke:ios:interaction-motion": "node scripts/benyuan-ios-interaction-motion-contract-smoke.mjs",
+    "smoke:content:psychoanalytic": "node scripts/benyuan-psychoanalytic-content-contract.test.mjs",
+    "smoke:content:part1-depth": "node scripts/benyuan-part1-depth-signal-contract.test.mjs",
+    "smoke:content:personalized-prompt": "node scripts/benyuan-personalized-prompt-contract.test.mjs",
+    "smoke:ios:motion-contracts": "npm run smoke:ios:flow-motion-layer && npm run smoke:ios:interaction-motion && npm run smoke:ios:celestial-ui && npm run smoke:ios:celestial-assets",
+    "smoke:content:archetype-contracts": "npm run smoke:visible-archetypes && npm run smoke:theater:agent-normalization && npm run smoke:content:personalized-prompt && npm run smoke:content:psychoanalytic && npm run smoke:content:part1-depth"
   },
   "dependencies": {
     "framer-motion": "^12.35.1",

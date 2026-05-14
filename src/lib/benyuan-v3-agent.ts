@@ -323,9 +323,13 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
     multimodal: {},
     theater: {},
     constellation: {
+      maxOutputTokens: 1100,
+      reasoningEffort: "high",
       timeoutMs: 90000,
       transport: "json_first",
       allowSecondaryAttempts: false,
+      maxProviderAttempts: 2,
+      compactPrompt: true,
     },
   },
   fast: {
@@ -415,6 +419,74 @@ function formatStatusError(prefix: string, status: number, detail?: string) {
 function snippet(value: string, maxLength = 160) {
   const compact = value.replace(/\s+/g, " ").trim();
   return compact.length > maxLength ? compact.slice(0, maxLength) : compact;
+}
+
+const visibleSlugLabels: Record<string, string> = {
+  undetermined_no_visible_music_playlist_or_music_screenshot: "音乐截图没有留下清晰文字，但仍像一段模糊的低频回声",
+  melancholic_introspective: "安静内省的暗光",
+  reflective_open: "清醒而敞开的回声",
+  surrealist_melancholic: "梦境化的幽暗诗意",
+  introspective_cinematic: "内省的电影感",
+  reflective_symbolic: "象征性的沉思底色",
+  aesthetic_sensitivity: "审美敏感",
+  meaning_seeking: "意义追问",
+  emotional_resonance: "情绪共振",
+  solitary_comfort: "独处时的安慰感",
+  post_rock: "后摇般的低频回声",
+  postrock: "后摇般的低频回声",
+  ambient: "氛围声场",
+  indie: "独立旋律",
+  classical: "古典余韵",
+  electronic: "电子微光",
+};
+
+function normalizeVisibleKey(value: string) {
+  return value.trim().toLocaleLowerCase("zh-CN").replace(/\s+/g, "_").replace(/-/g, "_");
+}
+
+function isBlankVisibleNoise(value: string) {
+  const key = normalizeVisibleKey(value);
+  return !key || key === "n/a" || key === "none" || key === "unknown" || key === "null" || key.includes("undetermined") || key.includes("no_visible") || key.includes("ocr");
+}
+
+function replaceVisibleSlugFragments(value: string) {
+  let next = value;
+  const replacements: Array<[RegExp, string]> = [
+    [/\bundetermined[_\s-]*no[_\s-]*visible[_\s-]*music[_\s-]*playlist[_\s-]*or[_\s-]*music[_\s-]*screenshot\b/gi, visibleSlugLabels.undetermined_no_visible_music_playlist_or_music_screenshot],
+    [/\bpost[_\s-]*rock(?:\s+raw)?\b/gi, visibleSlugLabels.post_rock],
+    [/\bmelancholic[_\s-]*introspective\b/gi, visibleSlugLabels.melancholic_introspective],
+    [/\breflective[_\s-]*open\b/gi, visibleSlugLabels.reflective_open],
+    [/\bsurrealist[_\s-]*melancholic\b/gi, visibleSlugLabels.surrealist_melancholic],
+    [/\bintrospective[_\s-]*cinematic\b/gi, visibleSlugLabels.introspective_cinematic],
+    [/\breflective[_\s-]*symbolic\b/gi, visibleSlugLabels.reflective_symbolic],
+    [/\baesthetic[_\s-]*sensitivity\b/gi, visibleSlugLabels.aesthetic_sensitivity],
+    [/\bmeaning[_\s-]*seeking\b/gi, visibleSlugLabels.meaning_seeking],
+    [/\bemotional[_\s-]*resonance\b/gi, visibleSlugLabels.emotional_resonance],
+    [/\bambient\b/gi, visibleSlugLabels.ambient],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    next = next.replace(pattern, replacement);
+  }
+
+  return next.replace(/\s+/g, " ").trim();
+}
+
+function cleanVisibleText(value: string | undefined, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (isBlankVisibleNoise(compact)) return fallback;
+  const exact = visibleSlugLabels[normalizeVisibleKey(compact)];
+  return exact ?? (replaceVisibleSlugFragments(compact) || fallback);
+}
+
+function cleanVisibleTextArray(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) return fallback;
+  const next = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item, index) => cleanVisibleText(item, fallback[index] ?? "未命名的内在主题"))
+    .filter((item) => item.trim().length > 0);
+  return next.length > 0 ? [...new Set(next)] : fallback;
 }
 
 function looksLikeHtmlResponse(value: string | undefined) {
@@ -1140,21 +1212,18 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
       core_archetype: isSuspiciousArchetypeName(sourceCoreArchetype) ? fallback.personalization_summary.core_archetype : sourceCoreArchetype,
       aesthetic_style:
         typeof personalizationSummary.aesthetic_style === "string"
-          ? personalizationSummary.aesthetic_style
+          ? cleanVisibleText(personalizationSummary.aesthetic_style, fallback.personalization_summary.aesthetic_style)
           : fallback.personalization_summary.aesthetic_style,
       emotional_tone:
         typeof personalizationSummary.emotional_tone === "string"
-          ? personalizationSummary.emotional_tone
+          ? cleanVisibleText(personalizationSummary.emotional_tone, fallback.personalization_summary.emotional_tone)
           : fallback.personalization_summary.emotional_tone,
-      key_themes:
-        Array.isArray(personalizationSummary.key_themes)
-          ? personalizationSummary.key_themes.filter((item): item is string => typeof item === "string")
-          : fallback.personalization_summary.key_themes,
+      key_themes: cleanVisibleTextArray(personalizationSummary.key_themes, fallback.personalization_summary.key_themes),
     },
     act1: {
       scene_description:
         isRecord(source.act1) && typeof source.act1.scene_description === "string"
-          ? source.act1.scene_description
+          ? cleanVisibleText(source.act1.scene_description, fallback.act1.scene_description)
           : fallback.act1.scene_description,
       visual_prompt:
         isRecord(source.act1) && typeof source.act1.visual_prompt === "string" ? source.act1.visual_prompt : fallback.act1.visual_prompt,
@@ -1170,11 +1239,16 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
         const options = Array.isArray(choiceRecord.options) ? choiceRecord.options : fallbackChoice.options;
         return {
           choice_id: index + 1,
-          scene: typeof choiceRecord.scene === "string" ? choiceRecord.scene : typeof choiceRecord.prompt === "string" ? choiceRecord.prompt : fallbackChoice.scene,
+          scene:
+            typeof choiceRecord.scene === "string"
+              ? cleanVisibleText(choiceRecord.scene, fallbackChoice.scene)
+              : typeof choiceRecord.prompt === "string"
+                ? cleanVisibleText(choiceRecord.prompt, fallbackChoice.scene)
+                : fallbackChoice.scene,
           options: options.map((option, optionIndex) => {
             const fallbackOption = fallbackChoice.options[optionIndex] ?? fallbackChoice.options[fallbackChoice.options.length - 1];
             if (!isRecord(option)) {
-              return { ...fallbackOption, id: `${index + 1}${String.fromCharCode(65 + optionIndex)}`, text: typeof option === "string" ? option : fallbackOption.text };
+              return { ...fallbackOption, id: `${index + 1}${String.fromCharCode(65 + optionIndex)}`, text: cleanVisibleText(typeof option === "string" ? option : undefined, fallbackOption.text) };
             }
             return {
               id:
@@ -1183,9 +1257,9 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
                   : typeof option.option_id === "string"
                     ? `${index + 1}${option.option_id}`
                     : fallbackOption.id,
-              text: typeof option.text === "string" ? option.text : fallbackOption.text,
+              text: cleanVisibleText(typeof option.text === "string" ? option.text : undefined, fallbackOption.text),
               trait_signal: typeof option.trait_signal === "string" ? option.trait_signal : fallbackOption.trait_signal,
-              response: typeof option.response === "string" ? option.response : fallbackOption.response,
+              response: cleanVisibleText(typeof option.response === "string" ? option.response : undefined, fallbackOption.response),
             };
           }),
         };
@@ -1194,7 +1268,7 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
     act3: {
       scene_description:
         isRecord(source.act3) && typeof source.act3.scene_description === "string"
-          ? source.act3.scene_description
+          ? cleanVisibleText(source.act3.scene_description, fallback.act3.scene_description)
           : fallback.act3.scene_description,
       mirror_questions: dedupeMirrorQuestions((liveQuestions.length > 0 ? liveQuestions : fallback.act3.mirror_questions).map((question, index) => {
         const fallbackQuestion = fallback.act3.mirror_questions[index] ?? fallback.act3.mirror_questions[fallback.act3.mirror_questions.length - 1];
@@ -1202,12 +1276,12 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
         const options = Array.isArray(questionRecord.options) ? questionRecord.options : fallbackQuestion.options;
         return {
           question_id: index + 1,
-          dialogue: typeof questionRecord.dialogue === "string" ? questionRecord.dialogue : fallbackQuestion.dialogue,
-          question: typeof questionRecord.question === "string" ? questionRecord.question : fallbackQuestion.question,
+          dialogue: cleanVisibleText(typeof questionRecord.dialogue === "string" ? questionRecord.dialogue : undefined, fallbackQuestion.dialogue),
+          question: cleanVisibleText(typeof questionRecord.question === "string" ? questionRecord.question : undefined, fallbackQuestion.question),
           options: options.map((option, optionIndex) => {
             const fallbackOption = fallbackQuestion.options[optionIndex] ?? fallbackQuestion.options[fallbackQuestion.options.length - 1];
             if (!isRecord(option)) {
-              return { ...fallbackOption, id: `3${String.fromCharCode(65 + index)}-${optionIndex + 1}`, text: typeof option === "string" ? option : fallbackOption.text };
+              return { ...fallbackOption, id: `3${String.fromCharCode(65 + index)}-${optionIndex + 1}`, text: cleanVisibleText(typeof option === "string" ? option : undefined, fallbackOption.text) };
             }
             return {
               id:
@@ -1216,7 +1290,7 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
                   : typeof option.option_id === "string"
                     ? `3${String.fromCharCode(65 + index)}-${option.option_id}`
                     : fallbackOption.id,
-              text: typeof option.text === "string" ? option.text : fallbackOption.text,
+              text: cleanVisibleText(typeof option.text === "string" ? option.text : undefined, fallbackOption.text),
               trait_signal: typeof option.trait_signal === "string" ? option.trait_signal : fallbackOption.trait_signal,
             };
           }),
@@ -1224,25 +1298,25 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
       }), fallback.act3.mirror_questions),
       mirror_final_words:
         isRecord(source.act3) && typeof source.act3.mirror_final_words === "string"
-          ? source.act3.mirror_final_words
+          ? cleanVisibleText(source.act3.mirror_final_words, fallback.act3.mirror_final_words)
           : fallback.act3.mirror_final_words,
     },
     epilogue: {
       scene_description:
         isRecord(source.epilogue) && typeof source.epilogue.scene_description === "string"
-          ? source.epilogue.scene_description
+          ? cleanVisibleText(source.epilogue.scene_description, fallback.epilogue.scene_description)
           : isRecord(source.epilogue) && typeof source.epilogue.text === "string"
-            ? source.epilogue.text
+            ? cleanVisibleText(source.epilogue.text, fallback.epilogue.scene_description)
             : fallback.epilogue.scene_description,
       closing_text:
         isRecord(source.epilogue) && typeof source.epilogue.closing_text === "string"
-          ? source.epilogue.closing_text
+          ? cleanVisibleText(source.epilogue.closing_text, fallback.epilogue.closing_text)
           : isRecord(source.epilogue) && typeof source.epilogue.closing_image === "string"
-            ? source.epilogue.closing_image
+            ? cleanVisibleText(source.epilogue.closing_image, fallback.epilogue.closing_text)
             : fallback.epilogue.closing_text,
       transition_prompt:
         isRecord(source.epilogue) && typeof source.epilogue.transition_prompt === "string"
-          ? source.epilogue.transition_prompt
+          ? cleanVisibleText(source.epilogue.transition_prompt, fallback.epilogue.transition_prompt)
           : fallback.epilogue.transition_prompt,
       transition_animation:
         isRecord(source.epilogue) && typeof source.epilogue.transition_animation === "string"
@@ -1428,6 +1502,8 @@ function normalizeMusicRecommendations(source: unknown, fallback: PsycheConstell
 
 type FastConstellationSeed = {
   archetype_name?: string;
+  personalized_name?: string;
+  personalized_subtitle?: string;
   archetype_essence?: string;
   visual_prompt?: string;
   mirror_paragraphs: string[];
@@ -1445,6 +1521,20 @@ function cleanSeedText(value: unknown, maxLength = 180) {
   if (typeof value !== "string") return undefined;
   const cleaned = snippet(value, maxLength);
   return cleaned.length > 0 ? cleaned : undefined;
+}
+
+function isSuspiciousPersonalizedLabel(value: string | undefined) {
+  if (!value) return true;
+  if (value.length < 3 || value.length > 80) return true;
+  if (/[_<>]/u.test(value)) return true;
+  if (/\b(undetermined|no[_\s-]*visible|ocr|unknown|abandoned|post[_\s-]*rope|raw)\b/iu.test(value)) return true;
+  if (/^[a-z0-9_\-\s]+$/i.test(value)) return true;
+  return false;
+}
+
+function cleanPersonalizedLabel(value: unknown, maxLength = 44) {
+  const cleaned = cleanSeedText(value, maxLength);
+  return cleaned && !isSuspiciousPersonalizedLabel(cleaned) ? cleaned : undefined;
 }
 
 function cleanSeedStringArray(value: unknown, limit: number, maxLength = 140) {
@@ -1489,6 +1579,8 @@ function normalizeFastConstellationSeed(candidate: unknown): FastConstellationSe
 
   const seed: FastConstellationSeed = {
     archetype_name: cleanSeedText(source.archetype_name, 24),
+    personalized_name: cleanPersonalizedLabel(source.personalized_name ?? source.archetype_name, 24),
+    personalized_subtitle: cleanPersonalizedLabel(source.personalized_subtitle, 80),
     archetype_essence: cleanSeedText(source.archetype_essence, 100),
     visual_prompt: cleanSeedText(source.visual_prompt, 180),
     mirror_paragraphs: cleanSeedStringArray(source.mirror_paragraphs, 4, 180),
@@ -1503,7 +1595,7 @@ function normalizeFastConstellationSeed(candidate: unknown): FastConstellationSe
     seed.recommendation_lenses.films.length > 0 ||
     seed.recommendation_lenses.music.length > 0;
   const hasSeedSignal =
-    Boolean(seed.archetype_name || seed.archetype_essence || seed.visual_prompt) ||
+    Boolean(seed.personalized_name || seed.personalized_subtitle || seed.archetype_name || seed.archetype_essence || seed.visual_prompt) ||
     seed.mirror_paragraphs.length > 0 ||
     Object.keys(seed.dimension_interpretations).length > 0 ||
     seed.tension_lenses.length > 0 ||
@@ -1520,7 +1612,7 @@ function mergeNarrativeWithSeed(fallback: PsycheConstellation["narrative_overvie
   return merged.join("\n\n");
 }
 
-function mergeFastConstellationSeed(fallback: PsycheConstellation, seed: FastConstellationSeed): PsycheConstellation {
+export function mergeFastConstellationSeed(fallback: PsycheConstellation, seed: FastConstellationSeed): PsycheConstellation {
   const sevenDimensions = Object.fromEntries(
     Object.entries(fallback.seven_dimensions).map(([key, dimension]) => {
       const seedInterpretation = seed.dimension_interpretations[key as SevenDimensionKey];
@@ -1553,7 +1645,13 @@ function mergeFastConstellationSeed(fallback: PsycheConstellation, seed: FastCon
     ...fallback,
     archetype: {
       ...fallback.archetype,
-      name: seed.archetype_name && !isSuspiciousArchetypeName(seed.archetype_name) ? seed.archetype_name : fallback.archetype.name,
+      name: fallback.archetype.name,
+      english_name: fallback.archetype.english_name,
+      personalized_name:
+        seed.personalized_name ??
+        (seed.archetype_name && !isSuspiciousPersonalizedLabel(seed.archetype_name) ? seed.archetype_name : undefined) ??
+        fallback.archetype.personalized_name,
+      personalized_subtitle: seed.personalized_subtitle ?? fallback.archetype.personalized_subtitle,
       core_essence:
         seed.archetype_essence && seed.archetype_essence.length >= 12
           ? seed.archetype_essence
@@ -1576,22 +1674,30 @@ function mergeFastConstellationSeed(fallback: PsycheConstellation, seed: FastCon
   return refineConstellationWithFallback(merged, fallback);
 }
 
-function normalizeConstellation(candidate: unknown, fallback: PsycheConstellation): PsycheConstellation | null {
+export function normalizeConstellation(candidate: unknown, fallback: PsycheConstellation): PsycheConstellation | null {
   const source = isRecord(candidate) && isRecord(candidate.psyche_constellation) ? candidate.psyche_constellation : candidate;
   if (!isRecord(source)) return null;
 
   const sevenDimensions = isRecord(source.seven_dimensions) ? source.seven_dimensions : {};
   const recommendations = isRecord(source.recommendations) ? source.recommendations : {};
+  const sourceArchetype = isRecord(source.archetype) ? source.archetype : {};
+  const candidatePersonalizedName = cleanPersonalizedLabel(
+    sourceArchetype.personalized_name ?? sourceArchetype.archetype_name ?? sourceArchetype.name,
+    24,
+  );
+  const candidatePersonalizedSubtitle = cleanPersonalizedLabel(sourceArchetype.personalized_subtitle, 80);
 
   return normalizePsycheConstellation({
     user_id: typeof source.user_id === "string" ? source.user_id : fallback.user_id,
     generated_at: typeof source.generated_at === "string" ? source.generated_at : fallback.generated_at,
     archetype: isRecord(source.archetype)
       ? {
-          name: typeof source.archetype.name === "string" ? source.archetype.name : fallback.archetype.name,
-          english_name: typeof source.archetype.english_name === "string" ? source.archetype.english_name : fallback.archetype.english_name,
+          name: fallback.archetype.name,
+          english_name: fallback.archetype.english_name,
+          personalized_name: candidatePersonalizedName ?? fallback.archetype.personalized_name,
+          personalized_subtitle: candidatePersonalizedSubtitle ?? fallback.archetype.personalized_subtitle,
           core_essence: typeof source.archetype.core_essence === "string" ? source.archetype.core_essence : fallback.archetype.core_essence,
-          visual_prompt: typeof source.archetype.visual_prompt === "string" ? source.archetype.visual_prompt : fallback.archetype.visual_prompt,
+          visual_prompt: fallback.archetype.visual_prompt,
         }
       : fallback.archetype,
     seven_dimensions: {
@@ -1684,7 +1790,7 @@ function supplementGrowthSuggestions(preferred: PsycheConstellation["growth_sugg
 function refineConstellationWithFallback(constellation: PsycheConstellation, fallback: PsycheConstellation) {
   const narrativeParagraphs = constellation.narrative_overview.split(/\n\n+/).filter((item) => item.trim().length > 0);
   const needsFallbackNarrative = constellation.narrative_overview.trim().length < 420 || narrativeParagraphs.length < 4;
-  const needsFallbackArchetype = isSuspiciousArchetypeName(constellation.archetype.name) || constellation.archetype.core_essence.trim().length < 16;
+  const needsFallbackArchetypeEssence = constellation.archetype.core_essence.trim().length < 16;
   const needsFallbackTensions = constellation.core_tensions.length < 2;
   const needsFallbackGrowth = constellation.growth_suggestions.length < 3;
   const recommendations = supplementRecommendations(constellation.recommendations, fallback.recommendations);
@@ -1692,7 +1798,13 @@ function refineConstellationWithFallback(constellation: PsycheConstellation, fal
 
   return normalizePsycheConstellation({
     ...constellation,
-    archetype: needsFallbackArchetype ? fallback.archetype : constellation.archetype,
+    archetype: {
+      ...fallback.archetype,
+      personalized_name: constellation.archetype.personalized_name ?? fallback.archetype.personalized_name,
+      personalized_subtitle: constellation.archetype.personalized_subtitle ?? fallback.archetype.personalized_subtitle,
+      core_essence: needsFallbackArchetypeEssence ? fallback.archetype.core_essence : constellation.archetype.core_essence,
+      visual_prompt: fallback.archetype.visual_prompt,
+    },
     narrative_overview: needsFallbackNarrative ? fallback.narrative_overview : constellation.narrative_overview,
     core_tensions: needsFallbackTensions ? fallback.core_tensions : constellation.core_tensions,
     growth_suggestions: needsFallbackGrowth ? supplementGrowthSuggestions(constellation.growth_suggestions, fallback.growth_suggestions) : constellation.growth_suggestions,

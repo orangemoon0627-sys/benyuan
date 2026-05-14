@@ -208,6 +208,8 @@ assert.match(nativeAuthView, /TextField\("手机号"/, "native auth view should 
 assert.match(nativeAuthView, /TextField\("验证码"/, "native auth view should include a verification code input");
 assert.match(nativeAccountView, /档案设置/, "native account view must expose quiet account settings copy");
 assert.match(nativeAccountView, /管理恢复方式/, "native account view must describe account settings as recovery management");
+assert.match(nativeAccountView, /recoverySummaryLabel/, "native account settings entry must summarize recovery methods without expanding provider buttons on the home page");
+assert.match(nativeAccountView, /恢复 \\\(boundProviderCount\)\/4/, "native account settings entry should show compact recovery coverage");
 assert.doesNotMatch(nativeAccountView, /Apple、微信、手机号统一放在这里，不占用主页面。/, "native account home should not stack provider names in the main binding entry");
 assert.match(nativeAccountView, /探索历史/, "native account view must show exploration history");
 assert.match(nativeAccountView, /accountIdentityPanel/, "native account view must keep account identity as a dedicated visual panel");

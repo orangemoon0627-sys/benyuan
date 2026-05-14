@@ -1,6 +1,7 @@
 import Foundation
 
 enum BenyuanNativePreviewStage: String, Equatable {
+    case home
     case auth
     case account
     case accountFeedback = "account-feedback"
@@ -128,6 +129,46 @@ struct BenyuanShellConfig {
         nativePreviewStage(arguments: ProcessInfo.processInfo.arguments)
 #else
         nil
+#endif
+    }
+
+    static var nativePreviewStamp: String? {
+#if DEBUG
+        launchArgumentValue("--benyuan-native-preview-stamp")
+#else
+        nil
+#endif
+    }
+
+    static var nativePreviewRevision: String? {
+#if DEBUG
+        launchArgumentValue("--benyuan-native-preview-revision")
+#else
+        nil
+#endif
+    }
+
+    static var nativePreviewArchetypeVariant: String? {
+#if DEBUG
+        launchArgumentValue("--benyuan-native-preview-archetype")
+#else
+        nil
+#endif
+    }
+
+    static var nativePreviewShowsWatermark: Bool {
+#if DEBUG
+        nativePreviewStage != nil && !ProcessInfo.processInfo.arguments.contains("--benyuan-native-preview-no-watermark")
+#else
+        false
+#endif
+    }
+
+    static var nativePreviewSuppressesTransientChrome: Bool {
+#if DEBUG
+        nativePreviewStage != nil && ProcessInfo.processInfo.arguments.contains("--benyuan-native-preview-clean")
+#else
+        false
 #endif
     }
 

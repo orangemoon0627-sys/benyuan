@@ -70,6 +70,10 @@ struct BenyuanShellRootView: View {
             if showsDebugWebInspector {
                 debugWebInspector(context: routeContext)
             }
+
+            if let previewStage = BenyuanShellConfig.nativePreviewStage, BenyuanShellConfig.nativePreviewShowsWatermark {
+                nativePreviewWatermark(stage: previewStage)
+            }
 #endif
         }
         .environment(\.benyuanMotionActive, isMotionActive)
@@ -109,6 +113,8 @@ struct BenyuanShellRootView: View {
             switch nativeModel.stage {
             case .launching:
                 BenyuanNativeProcessingView(model: nativeModel)
+            case .home:
+                BenyuanNativeHomeView(model: nativeModel)
             case .auth:
                 BenyuanNativeAuthView(model: nativeModel)
             case .account:
@@ -157,7 +163,7 @@ struct BenyuanShellRootView: View {
             }
 #endif
 
-            if let toast = nativeModel.toast {
+            if let toast = nativeModel.toast, !BenyuanShellConfig.nativePreviewSuppressesTransientChrome {
                 BenyuanToastView(text: toast)
                     .padding(.top, BenyuanSpacing.x12)
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -166,6 +172,40 @@ struct BenyuanShellRootView: View {
     }
 
 #if DEBUG
+    private func nativePreviewWatermark(stage: BenyuanNativePreviewStage) -> some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Text("NATIVE PREVIEW")
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.accentGold.opacity(0.88))
+            Text("\(stage.rawValue) · \(BenyuanShellConfig.nativePreviewRevision ?? "nogit")")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundStyle(BenyuanColor.textPrimary.opacity(0.68))
+            if let variant = BenyuanShellConfig.nativePreviewArchetypeVariant {
+                Text(variant)
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundStyle(BenyuanColor.textSecondary.opacity(0.70))
+            }
+            Text(BenyuanShellConfig.nativePreviewStamp ?? "no-stamp")
+                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                .foregroundStyle(BenyuanColor.textTertiary.opacity(0.72))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(BenyuanColor.bgVoid.opacity(0.76))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(BenyuanColor.glassStroke.opacity(0.80), lineWidth: 1)
+                )
+        )
+        .padding(.top, BenyuanSpacing.x12)
+        .padding(.trailing, BenyuanSpacing.x4)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
     private func debugWebInspector(context: BenyuanShellRouteContext) -> some View {
         ZStack(alignment: .topTrailing) {
             BenyuanWebContainerView(isLoading: $state.isLoading, currentURL: $state.currentURL, errorMessage: $state.errorMessage, reloadToken: reloadToken, shellState: state)

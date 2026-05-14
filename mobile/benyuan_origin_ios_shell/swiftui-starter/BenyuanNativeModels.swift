@@ -355,8 +355,20 @@ struct PsycheDimension: Codable, Equatable {
 struct PsycheArchetype: Codable, Equatable {
     let name: String
     let englishName: String
+    let personalizedName: String?
+    let personalizedSubtitle: String?
     let coreEssence: String
     let visualPrompt: String
+
+    var displayName: String {
+        let value = personalizedName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? name : value
+    }
+
+    var displaySubtitle: String {
+        let value = personalizedSubtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? englishName : value
+    }
 }
 
 struct PsycheConstellation: Codable, Equatable {

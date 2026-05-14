@@ -81,6 +81,14 @@ function shortenText(value: string, maxLength: number) {
   return `${normalized.slice(0, maxLength).trim()}……`;
 }
 
+function constellationDisplayName(data: PsycheConstellation) {
+  return data.archetype.personalized_name?.trim() || data.archetype.name;
+}
+
+function constellationDisplaySubtitle(data: PsycheConstellation) {
+  return data.archetype.personalized_subtitle?.trim() || data.archetype.english_name;
+}
+
 function downloadFile(filename: string, content: BlobPart, type: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -175,8 +183,9 @@ function buildConstellationExportSvg(
   `);
 
   addLines(["本源 · 精神星图"], 22, "#D4AF37", 28, 500);
-  addLines([data.archetype.name], 58, "#FFFFFF", 64, 300);
-  addLines([data.archetype.english_name], 18, "rgba(212,175,55,0.88)", 24, 500);
+  addLines([constellationDisplayName(data)], 58, "#FFFFFF", 64, 300);
+  addLines([data.archetype.name], 18, "rgba(212,175,55,0.88)", 24, 500);
+  addLines([constellationDisplaySubtitle(data)], 22, "rgba(255,255,255,0.78)", 30, 400);
   y += 8;
   addParagraph(data.archetype.core_essence, { fontSize: 26, fill: "rgba(255,255,255,0.9)", lineHeight: 38, maxUnits: 28, weight: 300, gap: 28 });
 
@@ -273,7 +282,9 @@ export function BenyuanConstellationView() {
     const firstAction = data.growth_suggestions[0]?.actionable_steps[0] ?? data.growth_suggestions[0]?.title ?? "--";
 
     return [
-      `本源｜${data.archetype.name}`,
+      `本源｜${constellationDisplayName(data)}`,
+      `主星体：${data.archetype.name}`,
+      constellationDisplaySubtitle(data),
       data.archetype.core_essence,
       `主导维度：${topDimensions || "--"}`,
       `核心张力：${firstTension}`,
@@ -315,7 +326,7 @@ export function BenyuanConstellationView() {
 
     try {
       const channel = await shareWithBenyuanNativeShell({
-        title: `本源｜${data.archetype.name}`,
+        title: `本源｜${constellationDisplayName(data)}`,
         text: summaryPayload,
         url: window.location.href,
       });
@@ -340,7 +351,7 @@ export function BenyuanConstellationView() {
     if (!data || !exportSvg) return;
 
     try {
-      await exportSvgAsPng(exportSvg, `benyuan-${data.archetype.name}-summary.png`, 1080, 1680);
+      await exportSvgAsPng(exportSvg, `benyuan-${constellationDisplayName(data)}-summary.png`, 1080, 1680);
       setPngState("done");
       setActionHint("PNG 摘要已开始导出。你可以把它当作当前结果卡带走。 ");
       resetActionFeedback("png");
@@ -391,8 +402,9 @@ export function BenyuanConstellationView() {
             <ImmersiveSigil size="md" className="constellation-core-orb__sigil" />
           </div>
           <p className="constellation-kicker">精神星图</p>
-          <h2 className="constellation-archetype-title">{data.archetype.name}</h2>
-          <p className="constellation-archetype-subtitle">{data.archetype.english_name}</p>
+          <h2 className="constellation-archetype-title">{constellationDisplayName(data)}</h2>
+          <p className="constellation-archetype-subtitle">{data.archetype.name} · {data.archetype.english_name}</p>
+          <p className="constellation-personal-subtitle">{constellationDisplaySubtitle(data)}</p>
           <p className="constellation-essence-copy">{data.archetype.core_essence}</p>
           <a href="#constellation-map" className="constellation-scroll-cue" aria-label="继续查看星图">
             <ArrowDown className="h-4 w-4" strokeWidth={1.5} />

@@ -1,5 +1,6 @@
 import { benyuanQuestionsById, getQuestionOption, getQuestionOptionTags } from "@/lib/benyuan-v3-schema";
 import { getBenyuanArchetypeProfile } from "@/lib/benyuan-v3-report-profile";
+import { selectPsychoanalyticConceptsForPart1, summarizePsychoanalyticStarReading, type SelectedPsychoanalyticConcept } from "@/lib/benyuan-v3-psychoanalytic-concepts";
 import { getTheaterAct2ChoiceText, getTheaterMirrorChoiceText } from "@/lib/benyuan-v3-theater-labels";
 import type {
   AggregatedTraits,
@@ -116,6 +117,31 @@ const THEME_LABELS: Record<string, string> = {
   family: "warmth",
   surrealism: "dream_logic",
   dream_logic: "dream_logic",
+};
+
+const VISIBLE_THEME_LABELS: Record<string, string> = {
+  meaning_seeking: "意义追问",
+  solitude: "独处重力",
+  moon: "月光意象",
+  transcendence: "辽阔感",
+  romanticism: "浪漫底色",
+  aesthetic_sensitivity: "审美敏感",
+  emotional_resonance: "情绪共振",
+  connection: "深层连接",
+  warmth: "温度与归属",
+  nostalgia: "记忆回潮",
+  dream_logic: "梦境逻辑",
+  existentialism: "存在清醒",
+  self_exploration: "自我辨认",
+  philosophy: "哲学追问",
+  abstract_thinking: "抽象思辨",
+  change: "变化欲望",
+  reflection: "安静回望",
+  daily_life: "日常纹理",
+  nature: "自然感应",
+  time: "时间感",
+  love: "关系回声",
+  loneliness: "孤独感",
 };
 
 function clampScore(value: number) {
@@ -238,6 +264,8 @@ export function aggregateTraitsFromPart1(answers: Part1AnswerMap, part1Data: Par
   const decisionStyle = typeof answers.B2_decision_style === "string" ? answers.B2_decision_style : "";
   const emotionPattern = typeof answers.B3_emotion_pattern === "string" ? answers.B3_emotion_pattern : "";
   const relationshipPhilosophy = typeof answers.B5_relationship_philosophy === "string" ? answers.B5_relationship_philosophy : "";
+  const tagSet = new Set(tags);
+  const hasTag = (...values: string[]) => values.some((value) => tagSet.has(value));
 
   const archetypeScores = {
     lone_seeker:
@@ -274,6 +302,53 @@ export function aggregateTraitsFromPart1(answers: Part1AnswerMap, part1Data: Par
       (decisionStyle === "B2-3" ? 1 : 0) +
       (emotionPattern === "B3-7" ? 1 : 0) +
       (relationshipPhilosophy === "B5-2" ? 1.2 : 0),
+    black_hole_event_horizon:
+      (bigFive.neuroticism >= 66 ? 1.6 : 0) +
+      (bigFive.extraversion <= 42 ? 1 : 0) +
+      (hasTag("abyss", "alienation", "existential_anxiety", "resonance_difficulty") ? 1.6 : 0) +
+      (hasTag("low_mood", "persistent", "avoidant", "decision_anxiety") ? 1.2 : 0) +
+      (coreImage === "A1-6" ? 1.2 : 0) +
+      (inspirationScene === "A5-5" ? 0.8 : 0) +
+      (decisionStyle === "B2-4" ? 1 : 0) +
+      (emotionPattern === "B3-4" ? 1 : 0) +
+      (relationshipPhilosophy === "B5-5" ? 0.8 : 0),
+    nebula_weaver:
+      (bigFive.openness >= 76 ? 1.4 : 0) +
+      (hasTag("surrealism", "dream_logic", "imagination", "poetic", "creative_resonance") ? 1.8 : 0) +
+      (hasTag("aesthetic_resonance", "visual_sensitivity", "art_immersion", "aesthetic_absorption") ? 1.2 : 0) +
+      (["A1-7", "A1-4"].includes(coreImage) ? 0.9 : 0) +
+      (inspirationScene === "A5-7" ? 1 : 0) +
+      (decisionStyle === "B2-2" ? 0.6 : 0) +
+      (relationshipPhilosophy === "B5-6" ? 0.7 : 0),
+    solar_corona:
+      (bigFive.extraversion >= 58 ? 1.2 : 0) +
+      (bigFive.neuroticism <= 50 ? 1 : 0) +
+      (hasTag("positive_baseline", "action_oriented", "risk_taking", "cosmic", "nature") ? 1.7 : 0) +
+      (hasTag("extroverted", "group_oriented", "creative_resonance") ? 1 : 0) +
+      (coreImage === "A1-1" ? 0.9 : 0) +
+      (inspirationScene === "A5-3" ? 0.8 : 0) +
+      (decisionStyle === "B2-5" ? 1.1 : 0) +
+      (emotionPattern === "B3-7" ? 1.2 : 0) +
+      (relationshipPhilosophy === "B5-3" ? 0.9 : 0),
+    terrestrial_planet:
+      (bigFive.conscientiousness >= 58 ? 1.1 : 0) +
+      (bigFive.agreeableness >= 58 ? 1 : 0) +
+      (bigFive.neuroticism <= 52 ? 0.8 : 0) +
+      (hasTag("security_need", "warmth_seeking", "nature", "tranquility", "realism", "deep_connection") ? 1.8 : 0) +
+      (coreImage === "A1-5" ? 1 : 0) +
+      (inspirationScene === "A5-3" ? 0.8 : 0) +
+      (decisionStyle === "B2-1" ? 0.8 : 0) +
+      (emotionPattern === "B3-1" ? 1 : 0) +
+      (relationshipPhilosophy === "B5-2" ? 1 : 0),
+    deep_space_anchor:
+      (bigFive.extraversion <= 42 ? 1.2 : 0) +
+      (bigFive.conscientiousness >= 56 ? 0.8 : 0) +
+      (hasTag("independence", "boundary", "strong_boundary", "selective_social", "solitude", "knowledge") ? 1.8 : 0) +
+      (hasTag("perfectionism", "decision_paralysis", "emotional_restraint") ? 0.8 : 0) +
+      (["A1-2", "A1-3"].includes(coreImage) ? 1 : 0) +
+      (inspirationScene === "A5-1" ? 0.9 : 0) +
+      (["B2-1", "B2-6"].includes(decisionStyle) ? 0.7 : 0) +
+      (["B5-1", "B5-5"].includes(relationshipPhilosophy) ? 0.9 : 0),
   } satisfies Record<string, number>;
 
   const archetypeHints = Object.entries(archetypeScores)
@@ -411,14 +486,94 @@ function firstSocialPostText(record: Part1Record) {
 function photoMotif(record: Part1Record) {
   const photo = record.part1_data.narrative.precious_photo_analysis;
   if (!photo) return "一张尚未显影的照片";
-  const symbols = photo.symbolic_elements.join("、") || photo.visual_content;
-  return `${photo.visual_content}，里面有${symbols}`;
+  const visual = visiblePhotoTerm(photo.visual_content) ?? "一张带着远景与留白的照片";
+  const symbols = photo.symbolic_elements.map((item) => visiblePhotoTerm(item)).filter((item): item is string => Boolean(item));
+  return `${visual}，里面有${symbols.length > 0 ? symbols.join("、") : "光、距离与未说出口的时间"}`;
+}
+
+const MUSIC_GENRE_LABELS: Record<string, string> = {
+  "post-rock": "后摇般的低频回声",
+  postrock: "后摇般的低频回声",
+  ambient: "氛围声场",
+  indie: "独立旋律",
+  classical: "古典余韵",
+  electronic: "电子微光",
+  instrumental: "无词旋律",
+};
+
+const MUSIC_TONE_LABELS: Record<string, string> = {
+  melancholic_introspective: "带着安静内省的暗光",
+  reflective_open: "带着清醒而敞开的回声",
+  melancholic_nostalgic: "带着记忆回潮后的微微低光",
+  warm_hopeful: "带着温暖而仍愿意向前的亮度",
+  complex_reflective: "带着复杂又克制的沉思",
+  quiet: "带着安静的呼吸感",
+  medium: "带着平稳的底色",
+  high: "带着更深的情绪密度",
+};
+
+const PHOTO_TERM_LABELS: Record<string, string> = {
+  "moon over sea": "海面上方的月影",
+  lone_figure_seascape_sunset: "暮色海边的独行身影",
+  symbolic_landscape: "带有象征感的风景",
+  moon: "月光",
+  sea: "海面",
+  ocean: "海面",
+  shore: "岸线",
+  sunset: "日落",
+  horizon: "地平线",
+  solitude: "独处感",
+  vastness: "辽阔感",
+};
+
+function normalizeVisibleToken(value: string) {
+  return value.trim().toLocaleLowerCase("zh-CN").replace(/\s+/g, " ");
+}
+
+function isUnreadableVisibleToken(value: string) {
+  const normalized = normalizeVisibleToken(value);
+  return (
+    !normalized ||
+    normalized.includes("undetermined") ||
+    normalized.includes("no_visible") ||
+    normalized.includes("no visible") ||
+    normalized.includes("ocr") ||
+    normalized === "n/a" ||
+    normalized === "none" ||
+    normalized === "unknown"
+  );
+}
+
+function visiblePhotoTerm(value: string | null | undefined) {
+  const normalized = normalizeVisibleToken(value ?? "");
+  if (isUnreadableVisibleToken(normalized)) return null;
+  return PHOTO_TERM_LABELS[normalized] ?? (/[一-龥]/u.test(value ?? "") ? (value ?? "").trim() : null);
+}
+
+function visibleMusicGenre(value: string) {
+  const normalized = normalizeVisibleToken(value).replace(/\s+raw$/u, "");
+  if (isUnreadableVisibleToken(normalized)) return null;
+  if (normalized.includes("post-rock")) return MUSIC_GENRE_LABELS["post-rock"];
+  return MUSIC_GENRE_LABELS[normalized] ?? (/[一-龥]/u.test(value) ? value.trim() : null);
+}
+
+function visibleMusicTone(value: string | null | undefined) {
+  const normalized = normalizeVisibleToken(value ?? "");
+  if (isUnreadableVisibleToken(normalized)) return null;
+  return MUSIC_TONE_LABELS[normalized] ?? (/[一-龥]/u.test(value ?? "") ? (value ?? "").trim() : null);
 }
 
 function musicMotif(record: Part1Record) {
   const music = record.part1_data.aesthetics.music_analysis;
-  if (!music) return "一段低低的背景声";
-  return `${music.primary_genres.join(" / ")} 的声音，带着 ${music.emotional_tone} 的底色`;
+  if (!music) return "一段像从远处潮汐里浮起的低频回声";
+  const genres = [...new Set(music.primary_genres.map(visibleMusicGenre).filter((item): item is string => Boolean(item)))];
+  const tone = visibleMusicTone(music.emotional_tone) ?? "带着尚未完全显影的情绪底色";
+  if (genres.length === 0) return `一段辨认不清却仍有温度的声音线索，${tone}`;
+  return `${genres.slice(0, 3).join("、")}交织成一条声音线，${tone}`;
+}
+
+function visibleTheme(value: string) {
+  return VISIBLE_THEME_LABELS[value] ?? (/[一-龥]/u.test(value) ? value : "未命名的内在主题");
 }
 
 export function generateDeterministicTheaterScript(record: Part1Record): TheaterScript {
@@ -440,9 +595,9 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
     generated_at: new Date().toISOString(),
     personalization_summary: {
       core_archetype: visibleArchetype,
-      aesthetic_style: cinema.includes("林奇") ? "surrealist_melancholic" : cinema.includes("塔可夫斯基") ? "poetic_spiritual" : "introspective_cinematic",
-      emotional_tone: emotion.includes("深海") ? "introspective_poetic" : "reflective_symbolic",
-      key_themes: themes,
+      aesthetic_style: cinema.includes("林奇") ? "梦境化的幽暗诗意" : cinema.includes("塔可夫斯基") ? "诗性的精神影像" : "内省的电影感",
+      emotional_tone: emotion.includes("深海") ? "深海般的内省诗意" : "象征性的沉思底色",
+      key_themes: themes.map(visibleTheme),
     },
     act1: {
       scene_description: `你醒来时，站在一片很深的月场里。远处的黑色天体缓慢转动，边缘有一圈暗金色的光，像从“${coreImage}”里抽出的引力。脚下不是地面，而是一层半透明的潮水；潮水下压着一张照片的轮廓：${photo}。\n\n空气里有${music}。它不是背景乐，更像这座剧场的呼吸。某处传来一句低低的回声：“${socialText}” 这句话没有被解释，只是在你身边绕了一圈，落成一条通向前方的细线。\n\n你身后保留着“${scene}”的节律，前方则像被“${cinema}”的镜头慢慢推近。你意识到，自己不是来回答问题的。你只是沿着此前留下的画面、声音和句子，回到一个早就等在那里的入口。`,
@@ -685,6 +840,52 @@ function pickTopDimensionLabels(scores: Record<string, number>) {
     .join("、");
 }
 
+const personalizedNameByArchetype: Record<string, string[]> = {
+  lone_seeker: ["未寄之信的守夜人", "远潮边的回声体", "暗金潮汐的携信者"],
+  melancholic_poet: ["雨窗后的译梦者", "低光诗页的保存者", "旧潮声里的抄写人"],
+  existential_wanderer: ["无名路口的追问者", "漂移星路的问渡人", "远方裂隙的行旅者"],
+  rational_builder: ["冷星图上的筑序者", "银线结构的校准者", "长夜秩序的制图人"],
+  gentle_guardian: ["月港灯下的留守者", "柔光岸线的护灯人", "安静潮汐的容器"],
+  black_hole_event_horizon: ["事件视界的潜行者", "黑潮边缘的凝望者", "暗引力里的守界人"],
+  nebula_weaver: ["星云褶皱的织梦者", "碎光之间的造形者", "梦尘轨道的编织人"],
+  solar_corona: ["日冕边界的引燃者", "白金火环的唤醒者", "暗日光冠的行进者"],
+  terrestrial_planet: ["可栖地表的守望者", "暖窗行星的筑居者", "潮湿森林的安放者"],
+  deep_space_anchor: ["深空坐标的锚定者", "沉默星域的定向者", "银白边界的守航人"],
+};
+
+function pickPersonalizedName(archetypeHint: string, scores: Record<string, number>, themes: string[], part2?: Part2Record) {
+  const candidates = personalizedNameByArchetype[archetypeHint] ?? personalizedNameByArchetype.lone_seeker;
+  const longestPause = Math.max(
+    0,
+    ...(part2?.act2_choices.map((item) => item.hesitation_time ?? 0) ?? []),
+    ...(part2?.act3_responses.map((item) => item.hesitation_time ?? 0) ?? []),
+  );
+  const index =
+    (scores.meaning_seeking >= 76 ? 1 : 0) +
+    (scores.emotional_depth >= 72 ? 1 : 0) +
+    (themes.includes("aesthetic_sensitivity") ? 1 : 0) +
+    (longestPause >= 8 ? 1 : 0);
+  return candidates[index % candidates.length];
+}
+
+function buildPersonalizedSubtitle(params: {
+  scores: Record<string, number>;
+  themes: string[];
+  socialText: string;
+  photo: string;
+  music: string;
+  act2Path: string[];
+  mirrorPath: string[];
+}) {
+  const topDimension = pickTopDimensionLabels(params.scores).split("、")[0] ?? "意义追寻";
+  const actTrace = params.act2Path[0] ?? params.mirrorPath[0] ?? "那次慢下来的选择";
+  const socialFragment = params.socialText.length > 14 ? `${params.socialText.slice(0, 14)}...` : params.socialText;
+  const photoFragment = params.photo.split("，")[0] || "一张未显影的照片";
+  const actionFragment = actTrace.length > 10 ? `${actTrace.slice(0, 10)}...` : actTrace;
+
+  return `把“${socialFragment}”与${photoFragment}收进${actionFragment}的人，核心轨道落在${topDimension}。`;
+}
+
 function buildDeterministicNarrativeOverview(params: {
   profile: ReturnType<typeof getBenyuanArchetypeProfile>;
   scores: Record<string, number>;
@@ -700,12 +901,14 @@ function buildDeterministicNarrativeOverview(params: {
   act2Path: string[];
   mirrorPath: string[];
   longestPause: number;
+  psychoanalyticConcepts: SelectedPsychoanalyticConcept[];
 }) {
-  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music, act2Path, mirrorPath, longestPause } = params;
+  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music, act2Path, mirrorPath, longestPause, psychoanalyticConcepts } = params;
   const topDimensions = pickTopDimensionLabels(scores);
   const themeSummary = formatThemeSummary(themes);
   const act2PathText = formatJoined(act2Path, "靠近、停留与回望之间的路径");
   const mirrorPathText = formatJoined(mirrorPath, "把问题交还给自己");
+  const starReading = summarizePsychoanalyticStarReading(psychoanalyticConcepts);
   const pauseTexture = longestPause >= 10
     ? "那一次停留明显慢了下来，像你在让身体先确认轨道是否真的贴合自己。"
     : longestPause >= 6
@@ -719,6 +922,7 @@ function buildDeterministicNarrativeOverview(params: {
     `当你把“${selectedA1}”选为核心意象时，星图里最先亮起的是月相边缘：一半显露，一半保留。荣格会把这种反复辨认称作个体化的入口，不是变得特殊，而是把散落的自己慢慢收回同一条轨道。${profile.narrativeFocus}`,
     `你的证据并不抽象：那句“${socialText}”、${photo}，以及${music}，都像同一个黑色天体周围的碎光。它们说明你不是被宏大词语打动，而是会从一句话、一张图、一段声音里确认：这里有我的一部分。`,
     `在思维方式上，你更靠近“${selectedB1}”与“${selectedB2}”。这不是简单的直觉或犹豫，而像加缪式的清醒：先承认世界并不会自动给出意义，再用身体和时间去试探什么仍然值得靠近。`,
+    `如果把这些线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动，而不是一个固定标签。你在“${selectedB5}”里保留距离，在剧场里又先${act2PathText}，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。`,
     `剧场里，你先${act2PathText}；镜面前，又选择${mirrorPathText}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：你不是只想被理解，也在寻找一种不会过早占有你的理解。`,
     `当你在关系里选择“${selectedB5}”，一条很清楚的轨道浮现出来：${profile.relationshipLens} 温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己。当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
     `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学镜面。${profile.movementLens}`,
@@ -748,11 +952,26 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
     ...(part2?.act2_choices.map((item) => item.hesitation_time ?? 0) ?? []),
     ...(part2?.act3_responses.map((item) => item.hesitation_time ?? 0) ?? []),
   );
+  const personalizedName = pickPersonalizedName(primaryArchetypeHint, scores, themes, part2);
+  const personalizedSubtitle = buildPersonalizedSubtitle({
+    scores,
+    themes,
+    socialText,
+    photo,
+    music,
+    act2Path,
+    mirrorPath,
+  });
+  const psychoanalyticConcepts = selectPsychoanalyticConceptsForPart1(part1, part2);
 
   return {
     user_id: part1.user_id,
     generated_at: new Date().toISOString(),
-    archetype: profile.archetype,
+    archetype: {
+      ...profile.archetype,
+      personalized_name: personalizedName,
+      personalized_subtitle: personalizedSubtitle,
+    },
     seven_dimensions: {
       openness: {
         score: scores.openness,
@@ -798,6 +1017,7 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
       act2Path,
       mirrorPath,
       longestPause,
+      psychoanalyticConcepts,
     }),
     core_tensions: buildDeterministicCoreTensions(primaryArchetypeHint, selectedB5),
     growth_suggestions: profile.growthSuggestions,

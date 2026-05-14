@@ -4,6 +4,7 @@ import SwiftUI
 
 enum BenyuanNativeStage: Equatable {
     case launching
+    case home
     case auth
     case account
     case collect
@@ -102,6 +103,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var isFeedbackSubmitting = false
     @Published var questionMotionDirection: BenyuanQuestionMotionDirection = .reset
     @Published var questionMotionToken = UUID()
+    @Published var collectValidationPulse = 0
 
     let client: BenyuanAPIClient
     private let store: BenyuanFlowStore
@@ -121,6 +123,11 @@ final class BenyuanNativeFlowModel: ObservableObject {
         self.session = store.load()
         self.activeGenerationJobId = self.session.activeGenerationJobId
         self.client.setAuthSession(self.session.authSession)
+#if DEBUG
+        if let previewStage = BenyuanShellConfig.nativePreviewStage {
+            applyNativePreview(previewStage)
+        }
+#endif
     }
 
     var currentQuestion: BenyuanQuestion? {
@@ -141,6 +148,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
         switch stage {
         case .launching:
             return 0.05
+        case .home:
+            return 0.08
         case .auth:
             return 0.10
         case .account:
@@ -160,6 +169,11 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     var allQuestionsAnswered: Bool {
         !questions.isEmpty && questions.allSatisfy { isAnswered($0) }
+    }
+
+    var currentQuestionIsAnswered: Bool {
+        guard let currentQuestion else { return false }
+        return isAnswered(currentQuestion)
     }
 
     var currentTheaterChoice: TheaterChoice? {
@@ -204,11 +218,27 @@ final class BenyuanNativeFlowModel: ObservableObject {
             return
         }
 
+        if session.authSession != nil, session.activeGenerationJobId != nil {
+            client.setAuthSession(session.authSession)
+            if await restoreActiveGenerationJobIfNeeded() {
+                return
+            }
+        }
+
+        await refreshAuthProviders()
+        stage = .home
+    }
+
+    func enterHome() {
+        stage = .home
+    }
+
+    func beginNativeExploration() async {
         if session.authSession == nil {
-            await refreshAuthProviders()
-            stage = .auth
+            await continueAsGuest()
             return
         }
+
         client.setAuthSession(session.authSession)
         do {
             if await restoreActiveGenerationJobIfNeeded() {
@@ -343,6 +373,13 @@ final class BenyuanNativeFlowModel: ObservableObject {
             session.authSession = nil
             session.user = nil
             stage = .auth
+        case .home:
+            authProviders = Self.previewAuthProviders
+            session.authSession = Self.previewAuthSession
+            session.user = Self.previewUser
+            client.setAuthSession(session.authSession)
+            accountHistory = Self.previewAccountHistory
+            stage = .home
         case .account, .accountFeedback:
             authProviders = Self.previewAuthProviders
             session.authSession = Self.previewAuthSession
@@ -416,7 +453,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
             session.authSession = Self.previewAuthSession
             session.user = Self.previewUser
             client.setAuthSession(session.authSession)
-            constellation = Self.previewConstellation
+            constellation = Self.previewConstellation(archetypeVariant: BenyuanShellConfig.nativePreviewArchetypeVariant)
             processingProgress = 0.88
             prefersConstellationEndPreview = previewStage == .constellationEnd
             stage = .constellation
@@ -475,7 +512,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         resetTheaterState()
         flowStartedAt = Date()
         persist()
-        stage = authSession == nil ? .auth : .collect
+        stage = .home
     }
 
     func uploadedAssets(for questionId: String) -> [BenyuanUploadedAssetRef] {

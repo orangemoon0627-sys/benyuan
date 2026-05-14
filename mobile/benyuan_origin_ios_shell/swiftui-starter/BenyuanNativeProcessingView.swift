@@ -4,6 +4,12 @@ struct BenyuanNativeProcessingView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
     @State private var displayedProgress = 0.12
     private let processingCardCornerRadius: CGFloat = 42
+    private let generationPhases: [GenerationPhase] = [
+        GenerationPhase(threshold: 0.18, title: "接收线索", detail: "答案 / 图片"),
+        GenerationPhase(threshold: 0.42, title: "多模态读取", detail: "影像情绪"),
+        GenerationPhase(threshold: 0.68, title: "剧场折射", detail: "连续剧情"),
+        GenerationPhase(threshold: 0.88, title: "星图显影", detail: "精神报告")
+    ]
 
     var body: some View {
         VStack(spacing: BenyuanSpacing.x6) {
@@ -58,16 +64,23 @@ struct BenyuanNativeProcessingView: View {
                             .multilineTextAlignment(.center)
                             .foregroundStyle(BenyuanColor.textSecondary)
                             .padding(.horizontal, BenyuanSpacing.x4)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("可以切出 App，云端会继续分析；回来后会自动取回进度。")
                             .font(.system(size: 12, weight: .medium))
                             .lineSpacing(4)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(BenyuanColor.textTertiary)
                             .padding(.horizontal, BenyuanSpacing.x6)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                         if model.activeGenerationJobId != nil {
                             generationStatusBadge
                         }
                     }
+
+                    generationPhaseRail
+                        .padding(.horizontal, BenyuanSpacing.x6)
 
                     VStack(spacing: BenyuanSpacing.x4) {
                         progressTrack
@@ -136,6 +149,112 @@ struct BenyuanNativeProcessingView: View {
         )
     }
 
+    private var generationPhaseRail: some View {
+        VStack(alignment: .leading, spacing: BenyuanSpacing.x2) {
+            HStack(alignment: .center, spacing: BenyuanSpacing.x2) {
+                Text("云端阶段")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(BenyuanColor.textTertiary)
+                Spacer(minLength: BenyuanSpacing.x2)
+                Text(processingPhaseHint)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.accentGold.opacity(0.82))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+            }
+
+            HStack(spacing: BenyuanSpacing.x2) {
+                ForEach(generationPhases) { phase in
+                    generationPhaseCell(phase)
+                }
+            }
+        }
+        .padding(.horizontal, BenyuanSpacing.x3)
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(BenyuanColor.bgVoid.opacity(0.34))
+                .overlay(RoundedRectangle(cornerRadius: 24).stroke(BenyuanColor.glassStroke.opacity(0.66), lineWidth: 1))
+        )
+    }
+
+    private func generationPhaseCell(_ phase: GenerationPhase) -> some View {
+        let state = phaseState(phase)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(state.fill)
+                    .frame(width: state.dotSize, height: state.dotSize)
+                    .shadow(color: state.glow, radius: state.isActive ? 7 : 0)
+                Spacer(minLength: 0)
+            }
+
+            Text(phase.title)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(state.titleColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+            Text(phase.detail)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(BenyuanColor.textTertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(state.background)
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(state.stroke, lineWidth: 1))
+        )
+        .animation(.easeOut(duration: 0.28), value: displayedProgress)
+    }
+
+    private var processingPhaseHint: String {
+        if displayedProgress < 0.42 { return "可以离开，任务会继续" }
+        if displayedProgress < 0.68 { return "正在把影像变成叙事种子" }
+        if displayedProgress < 0.88 { return "剧场与星图正在接上" }
+        return "接近完成，等待最后回收"
+    }
+
+    private func phaseState(_ phase: GenerationPhase) -> GenerationPhaseState {
+        let activeWindowStart = phase.threshold - 0.22
+        let isDone = displayedProgress >= phase.threshold
+        let isActive = !isDone && displayedProgress >= activeWindowStart
+        if isDone {
+            return GenerationPhaseState(
+                isActive: false,
+                fill: BenyuanColor.accentGold,
+                dotSize: 7,
+                glow: BenyuanColor.accentGold.opacity(0.32),
+                titleColor: BenyuanColor.accentGold,
+                background: BenyuanColor.accentGold.opacity(0.08),
+                stroke: BenyuanColor.accentGold.opacity(0.22)
+            )
+        }
+        if isActive {
+            return GenerationPhaseState(
+                isActive: true,
+                fill: BenyuanColor.textPrimary.opacity(0.88),
+                dotSize: 8,
+                glow: BenyuanColor.textPrimary.opacity(0.22),
+                titleColor: BenyuanColor.textPrimary,
+                background: BenyuanColor.glassFillStrong.opacity(0.36),
+                stroke: BenyuanColor.textPrimary.opacity(0.16)
+            )
+        }
+        return GenerationPhaseState(
+            isActive: false,
+            fill: BenyuanColor.textPrimary.opacity(0.18),
+            dotSize: 6,
+            glow: .clear,
+            titleColor: BenyuanColor.textSecondary,
+            background: BenyuanColor.glassFill.opacity(0.18),
+            stroke: BenyuanColor.glassStroke.opacity(0.48)
+        )
+    }
+
     private var phaseDots: some View {
         HStack {
             ForEach(0..<4, id: \.self) { index in
@@ -153,4 +272,21 @@ struct BenyuanNativeProcessingView: View {
     private func dotIsActive(_ index: Int) -> Bool {
         displayedProgress >= Double(index) * 0.28 + 0.08
     }
+}
+
+private struct GenerationPhase: Identifiable {
+    let id = UUID()
+    let threshold: Double
+    let title: String
+    let detail: String
+}
+
+private struct GenerationPhaseState {
+    let isActive: Bool
+    let fill: Color
+    let dotSize: CGFloat
+    let glow: Color
+    let titleColor: Color
+    let background: Color
+    let stroke: Color
 }

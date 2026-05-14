@@ -487,8 +487,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
                     "user_id": "usr_timeout",
                     "generated_at": "2026-05-09T00:00:00.000Z",
                     "archetype": {
-                      "name": "深月观测者",
-                      "english_name": "Deep Lunar Witness",
+                      "name": "远潮观月者",
+                      "english_name": "The Moonlit Seeker",
                       "core_essence": "长请求需要被完整接住。",
                       "visual_prompt": "deep lunar field"
                     },
@@ -639,6 +639,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
             "archetype": {
               "name": "月下观察者",
               "english_name": "Lunar Witness",
+              "personalized_name": "海信守夜人",
+              "personalized_subtitle": "把退潮与未说出口的愿望收进一条轨道",
               "core_essence": "在退潮处辨认自己的真实愿望。",
               "visual_prompt": "deep moon field"
             },
@@ -685,6 +687,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(response.archetypeImageUrl, "/generated/test.png")
         XCTAssertEqual(generate.constellationId, "const_test")
         XCTAssertEqual(generate.psycheConstellation.archetype.name, "月下观察者")
+        XCTAssertEqual(generate.psycheConstellation.archetype.displayName, "海信守夜人")
+        XCTAssertEqual(generate.psycheConstellation.archetype.displaySubtitle, "把退潮与未说出口的愿望收进一条轨道")
     }
 
     func testPart1HistoryRecordDecodesSavedAnswersAndUploadedAssets() throws {
@@ -791,7 +795,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.session.authSession, authSession)
         XCTAssertEqual(model.session.user, user)
         XCTAssertNil(model.session.answers["A1_core_image"])
-        XCTAssertEqual(model.stage, .collect)
+        XCTAssertEqual(model.stage, .home)
     }
 
     @MainActor
@@ -828,7 +832,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertNil(model.session.authSession)
         XCTAssertNil(model.session.user)
-        XCTAssertEqual(model.stage, .auth)
+        XCTAssertEqual(model.stage, .home)
         XCTAssertNil(store.load().authSession)
     }
 
@@ -1079,9 +1083,9 @@ final class BenyuanCoreNativeTests: XCTestCase {
             part2Id: "part2_constellation",
             constellationId: "constellation_history",
             stage: .constellation,
-            title: "深月观测者的本源档案",
+            title: "远潮观月者的本源档案",
             subtitle: "影像线索 1 个 / 星图已生成",
-            archetypeName: "深月观测者",
+            archetypeName: "远潮观月者",
             createdAt: "2026-05-08T00:00:00.000Z",
             updatedAt: "2026-05-08T00:30:00.000Z",
             assetCount: 1
@@ -1120,7 +1124,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.choiceLogCount, 2)
         XCTAssertEqual(model.mirrorLogCount, 1)
         XCTAssertEqual(model.session.phaseDurations["act3"], 5)
-        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "远潮观月者")
         XCTAssertNil(model.restoringHistoryPart1Id)
     }
 
@@ -1176,7 +1180,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.session.part1Id, "part1_constellation")
         XCTAssertEqual(model.session.part2Id, "part2_constellation")
         XCTAssertEqual(model.session.constellationId, "constellation_history")
-        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "远潮观月者")
         XCTAssertNil(model.restoringHistoryPart1Id)
     }
 
@@ -1216,6 +1220,10 @@ final class BenyuanCoreNativeTests: XCTestCase {
     }
 
     func testNativePreviewStageParsesLaunchArgument() throws {
+        XCTAssertEqual(
+            BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "home"]),
+            .home
+        )
         XCTAssertEqual(
             BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "auth"]),
             .auth
@@ -1365,7 +1373,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
         model.applyNativePreview(.constellation)
 
         XCTAssertEqual(model.stage, .constellation)
-        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "远潮观月者")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.displayName, "远潮边的守信者")
         XCTAssertFalse(model.constellation?.psycheConstellation.sevenDimensions.isEmpty ?? true)
     }
 
@@ -1377,7 +1386,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertEqual(model.stage, .constellation)
         XCTAssertTrue(model.prefersConstellationEndPreview)
-        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "深月观测者")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "远潮观月者")
     }
 
     func testConstellationLayoutBudgetKeepsEndPreviewClearOfChrome() throws {
@@ -1676,7 +1685,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
             "user_id": "usr_replay",
             "generated_at": "2026-05-08T00:10:00.000Z",
             "personalization_summary": {
-              "core_archetype": "深月观测者",
+              "core_archetype": "远潮观月者",
               "aesthetic_style": "deep_lunar",
               "emotional_tone": "reflective",
               "key_themes": ["boundary", "memory"]
@@ -1772,8 +1781,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
             "user_id": "usr_test",
             "generated_at": "2026-05-08T00:30:00.000Z",
             "archetype": {
-              "name": "深月观测者",
-              "english_name": "Deep Moon Witness",
+              "name": "远潮观月者",
+              "english_name": "The Moonlit Seeker",
               "core_essence": "在暗场中保存自己的真实边界。",
               "visual_prompt": "deep moon field"
             },

@@ -393,6 +393,7 @@ final class BenyuanAPIClient {
 private extension BenyuanNativeStage {
     var feedbackStage: String {
         switch self {
+        case .home: return "home"
         case .auth: return "auth"
         case .account: return "account"
         case .collect: return "collect"

@@ -39,7 +39,7 @@
   "demoRoutes": [
     {
       "pack": "A",
-      "label": "暮海寻光者",
+      "label": "远潮观月者",
       "theater": "/theater?part1_id=part1_ebc4el2y&theater_script_id=theater_fcm6q0k8",
       "constellation": "/constellation?constellation_id=const_qaub8gcl"
     },
@@ -51,7 +51,7 @@
     },
     {
       "pack": "C",
-      "label": "月港持灯者",
+      "label": "月港栖岸者",
       "theater": "/theater?part1_id=part1_pydb5on7&theater_script_id=theater_di7oz5x2",
       "constellation": "/constellation?constellation_id=const_lufzlqfx"
     }

@@ -271,11 +271,12 @@ struct BenyuanFlowOrbitTrail: View {
     var progress: Double
     var intensity: Double = 1
     var tilt: Double = -12
+    var preferredFramesPerSecond: Double = 18
 
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
+        BenyuanMotionTimeline(preferredFramesPerSecond: preferredFramesPerSecond) { phase in
             let clamped = min(max(progress, 0.04), 1)
             let pulse = accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 0.52)
 
@@ -365,16 +366,27 @@ struct BenyuanSelectionPulseLayer: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
-            let pulse = isActive ? (accessibilityReduceMotion ? 0.45 : 0.5 + 0.5 * sin(phase * 3.2)) : 0
+        Group {
+            if isActive {
+                BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
+                    let pulse = accessibilityReduceMotion ? 0.45 : 0.5 + 0.5 * sin(phase * 3.2)
 
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(BenyuanColor.accentGold.opacity(isActive ? 0.18 + pulse * 0.18 : 0), lineWidth: 1)
-                .scaleEffect(isActive && !accessibilityReduceMotion ? 1.006 + pulse * 0.006 : 1)
-                .shadow(color: BenyuanColor.accentGold.opacity(isActive ? 0.08 + pulse * 0.08 : 0), radius: isActive ? 16 : 0)
+                    pulseShape(pulse: pulse)
+                }
+            } else {
+                pulseShape(pulse: 0)
+                    .opacity(0)
+            }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private func pulseShape(pulse: Double) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .stroke(BenyuanColor.accentGold.opacity(0.18 + pulse * 0.18), lineWidth: 1)
+            .scaleEffect(!accessibilityReduceMotion ? 1.006 + pulse * 0.006 : 1)
+            .shadow(color: BenyuanColor.accentGold.opacity(0.08 + pulse * 0.08), radius: 16)
     }
 }
 
@@ -385,12 +397,16 @@ struct BenyuanNovaSelectionBurst: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var visibleTrigger = 0
     @State private var startDate = Date()
+    private let selectionDotDiameter: CGFloat = 18
+    private let optionHorizontalPadding: CGFloat = BenyuanSpacing.x4
 
     var body: some View {
         GeometryReader { proxy in
-            let trailingInset: CGFloat = 37
-            let emitter = CGPoint(x: proxy.size.width - trailingInset, y: proxy.size.height * 0.5)
-            let duration = accessibilityReduceMotion ? 0.01 : 0.72
+            let emitter = CGPoint(
+                x: proxy.size.width - optionHorizontalPadding - selectionDotDiameter * 0.5,
+                y: proxy.size.height * 0.5
+            )
+            let duration = accessibilityReduceMotion ? 0.01 : 0.86
 
             ZStack {
                 if visibleTrigger > 0 {
@@ -400,19 +416,19 @@ struct BenyuanNovaSelectionBurst: View {
                         let eased = CGFloat(1 - pow(1 - progress, 3))
 
                         ZStack {
-                            ForEach(0..<14, id: \.self) { index in
+                            ForEach(0..<16, id: \.self) { index in
                                 particle(index: index, emitter: emitter, eased: eased)
                             }
 
                             Circle()
                                 .stroke(BenyuanColor.accentGold.opacity(Double(max(0, 0.38 - eased * 0.24))), lineWidth: 1)
-                                .frame(width: 34 + eased * 30, height: 34 + eased * 30)
+                                .frame(width: 28 + eased * 42, height: 28 + eased * 42)
                                 .position(emitter)
 
                             Circle()
                                 .fill(BenyuanColor.accentGold.opacity(Double(max(0, 0.80 - eased * 0.46))))
                                 .frame(width: 6 + eased * 3, height: 6 + eased * 3)
-                                .position(x: emitter.x, y: emitter.y + eased * 10)
+                                .position(x: emitter.x, y: emitter.y + eased * 14)
                                 .shadow(color: BenyuanColor.accentGold.opacity(0.45), radius: 12)
                         }
                         .transition(.opacity.combined(with: .scale(scale: 0.72)))
@@ -427,7 +443,7 @@ struct BenyuanNovaSelectionBurst: View {
             startDate = Date()
             visibleTrigger = value
             Task {
-                try? await Task.sleep(nanoseconds: UInt64(accessibilityReduceMotion ? 40_000_000 : 760_000_000))
+                try? await Task.sleep(nanoseconds: UInt64(accessibilityReduceMotion ? 40_000_000 : 920_000_000))
                 await MainActor.run {
                     if visibleTrigger == value {
                         visibleTrigger = 0
@@ -439,21 +455,30 @@ struct BenyuanNovaSelectionBurst: View {
     }
 
     private func particle(index: Int, emitter: CGPoint, eased: CGFloat) -> some View {
-        let angle = Double(index) * .pi * 2 / 14
-        let burst = eased * (18 + CGFloat(index % 3) * 7)
-        let fall = eased * (28 + CGFloat(index % 4) * 7)
-        let sidePull: CGFloat = index % 2 == 0 ? 4 : -3
-        let drift = CGFloat(cos(angle)) * burst - sidePull * eased
-        let lift = CGFloat(sin(angle)) * burst * 0.45
-        let opacity = Double(max(0, 0.70 - eased * 0.58))
-        let height = 7 + CGFloat(index % 3) * 3
+        let angle = Double(index) * .pi * 2 / 16
+        let burst = eased * (15 + CGFloat(index % 4) * 5)
+        let gravity = eased * eased * (44 + CGFloat(index % 5) * 8)
+        let sidePull: CGFloat = index % 2 == 0 ? -4 : 4
+        let drift = CGFloat(cos(angle)) * burst + sidePull * eased
+        let lift = CGFloat(sin(angle)) * burst * 0.42
+        let wobble = CGFloat(sin(Double(eased) * .pi * 2 + Double(index))) * 3 * eased
+        let opacity = Double(max(0, 0.76 - eased * 0.64))
+        let height = 6 + CGFloat(index % 3) * 2.5
         let blurRadius: CGFloat = index.isMultiple(of: 2) ? 0.1 : 0.7
 
-        return Capsule()
-            .fill(BenyuanColor.accentGold.opacity(opacity))
-            .frame(width: 2.2, height: height)
-            .rotationEffect(.radians(angle + Double(eased) * 1.8))
-            .position(x: emitter.x + drift, y: emitter.y + lift + fall)
+        return Group {
+            if index.isMultiple(of: 5) {
+                Image(systemName: "sparkle")
+                    .font(.system(size: 6.5 + CGFloat(index % 2) * 1.5, weight: .black))
+                    .foregroundStyle(BenyuanColor.accentGold.opacity(opacity))
+            } else {
+                Capsule()
+                    .fill(BenyuanColor.accentGold.opacity(opacity))
+                    .frame(width: 2.2, height: height)
+            }
+        }
+            .rotationEffect(.radians(angle + Double(eased) * 2.1))
+            .position(x: emitter.x + drift + wobble, y: emitter.y + lift + gravity)
             .blur(radius: blurRadius)
     }
 }
@@ -465,28 +490,36 @@ struct BenyuanMomentaryChoiceFeedback: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 30) { phase in
-            let pulse = isActive ? (accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 5.2)) : 0
-
-            VStack(spacing: BenyuanSpacing.x2) {
-                Circle()
-                    .stroke(BenyuanColor.accentGold.opacity(0.22 + pulse * 0.18), lineWidth: 1.2)
-                    .frame(width: 62 + pulse * 8, height: 62 + pulse * 8)
-                    .overlay(
-                        Circle()
-                            .fill(BenyuanColor.accentGold.opacity(0.14 + pulse * 0.10))
-                            .frame(width: 12 + pulse * 5, height: 12 + pulse * 5)
-                    )
-                Text(label)
-                    .font(.system(size: 11, weight: .black, design: .monospaced))
-                    .foregroundStyle(BenyuanColor.accentGold.opacity(0.82))
+        Group {
+            if isActive {
+                BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
+                    let pulse = accessibilityReduceMotion ? 0.5 : 0.5 + 0.5 * sin(phase * 5.2)
+                    content(pulse: pulse)
+                }
+            } else {
+                EmptyView()
             }
-            .opacity(isActive ? 1 : 0)
-            .scaleEffect(isActive && !accessibilityReduceMotion ? 1 + pulse * 0.015 : 1)
-            .animation(.easeOut(duration: accessibilityReduceMotion ? 0.08 : 0.18), value: isActive)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(!isActive)
+    }
+
+    private func content(pulse: Double) -> some View {
+        VStack(spacing: BenyuanSpacing.x2) {
+            Circle()
+                .stroke(BenyuanColor.accentGold.opacity(0.22 + pulse * 0.18), lineWidth: 1.2)
+                .frame(width: 62 + pulse * 8, height: 62 + pulse * 8)
+                .overlay(
+                    Circle()
+                        .fill(BenyuanColor.accentGold.opacity(0.14 + pulse * 0.10))
+                        .frame(width: 12 + pulse * 5, height: 12 + pulse * 5)
+                )
+            Text(label)
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.accentGold.opacity(0.82))
+        }
+        .scaleEffect(!accessibilityReduceMotion ? 1 + pulse * 0.015 : 1)
+        .animation(.easeOut(duration: accessibilityReduceMotion ? 0.08 : 0.18), value: isActive)
     }
 }
 
@@ -681,7 +714,7 @@ struct BenyuanQuestionSignalField: View {
     var module: BenyuanModuleKey
 
     var body: some View {
-        BenyuanMotionTimeline(preferredFramesPerSecond: 24) { phase in
+        BenyuanMotionTimeline(preferredFramesPerSecond: 18) { phase in
             let clamped = min(max(progress, 0.04), 1)
 
             GeometryReader { proxy in
@@ -700,21 +733,6 @@ struct BenyuanQuestionSignalField: View {
 
                     BenyuanClueOrbitField(module: module, size: bodySize, phase: phase, progress: clamped, intensity: 0.92)
                         .position(center)
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    BenyuanColor.accentGold.opacity(0.66),
-                                    BenyuanColor.textPrimary.opacity(0.82),
-                                    BenyuanColor.textPrimary.opacity(0.08)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(28, width * clamped), height: 3)
-                        .position(x: width * 0.5, y: height * 0.82)
 
                     ForEach(0..<5, id: \.self) { index in
                         let angle = phase * (0.32 + Double(index) * 0.04) + Double(index) * 1.34 + moduleOffset / 18
@@ -740,6 +758,39 @@ struct BenyuanQuestionSignalField: View {
         case .b: return 38
         case .c: return 76
         }
+    }
+}
+
+struct BenyuanQuestionSignalBridge: View {
+    var progress: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            let clamped = min(max(progress, 0.04), 1)
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(BenyuanColor.textPrimary.opacity(0.045))
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                BenyuanColor.accentGold.opacity(0.72),
+                                BenyuanColor.textPrimary.opacity(0.86),
+                                BenyuanColor.textPrimary.opacity(0.10)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(32, width * clamped))
+            }
+            .frame(height: 3)
+            .position(x: width * 0.5, y: proxy.size.height * 0.48)
+            .shadow(color: BenyuanColor.accentGold.opacity(0.10), radius: 8)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -1087,6 +1138,77 @@ struct BenyuanStageLens: View {
     }
 }
 
+struct BenyuanTheaterAtmosphereLayer: View {
+    var progress: Double
+
+    var body: some View {
+        BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
+            let clamped = min(max(progress, 0), 1)
+            let pulse = 0.5 + 0.5 * sin(phase * 0.28)
+
+            GeometryReader { proxy in
+                let width = max(proxy.size.width, 1)
+                let height = max(proxy.size.height, 1)
+                let center = CGPoint(x: width * (0.42 + clamped * 0.16), y: height * 0.40)
+
+                ZStack {
+                    RadialGradient(
+                        colors: [
+                            BenyuanColor.nebulaViolet.opacity(0.19 + pulse * 0.04),
+                            BenyuanColor.accentGold.opacity(0.08),
+                            .clear
+                        ],
+                        center: UnitPoint(x: center.x / width, y: center.y / height),
+                        startRadius: 8,
+                        endRadius: width * 0.72
+                    )
+
+                    ForEach(0..<4, id: \.self) { index in
+                        Ellipse()
+                            .stroke(
+                                AngularGradient(
+                                    colors: [
+                                        BenyuanColor.textPrimary.opacity(0.035),
+                                        BenyuanColor.accentGold.opacity(0.10 + Double(index) * 0.026),
+                                        BenyuanColor.textPrimary.opacity(0.070 + pulse * 0.026),
+                                        BenyuanColor.nebulaViolet.opacity(0.040)
+                                    ],
+                                    center: .center,
+                                    angle: .degrees(phase * (2.2 + Double(index) * 0.6))
+                                ),
+                                style: StrokeStyle(lineWidth: index == 0 ? 1.2 : 0.8, lineCap: .round, dash: index == 3 ? [4, 18] : [])
+                            )
+                            .frame(width: width * (0.60 + CGFloat(index) * 0.16), height: height * (0.18 + CGFloat(index) * 0.065))
+                            .rotationEffect(.degrees(-18 + phase * (1.1 + Double(index) * 0.36) + clamped * 16))
+                            .position(center)
+                            .blur(radius: index > 1 ? 0.5 : 0.1)
+                    }
+
+                    ForEach(0..<12, id: \.self) { index in
+                        let angle = phase * (0.10 + Double(index) * 0.008) + Double(index) * .pi * 2 / 12
+                        Circle()
+                            .fill(index.isMultiple(of: 4) ? BenyuanColor.accentGold.opacity(0.26) : BenyuanColor.textPrimary.opacity(0.10))
+                            .frame(width: index.isMultiple(of: 4) ? 3 : 1.8, height: index.isMultiple(of: 4) ? 3 : 1.8)
+                            .position(
+                                x: center.x + cos(angle) * width * (0.17 + CGFloat(index % 3) * 0.052),
+                                y: center.y + sin(angle) * height * (0.08 + CGFloat(index % 3) * 0.030)
+                            )
+                            .blur(radius: index.isMultiple(of: 4) ? 0.2 : 0.8)
+                    }
+
+                    Circle()
+                        .fill(BenyuanColor.bgVoid.opacity(0.62))
+                        .frame(width: 18 + clamped * 18, height: 18 + clamped * 18)
+                        .overlay(Circle().stroke(BenyuanColor.accentGold.opacity(0.20), lineWidth: 1))
+                        .position(center)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 struct BenyuanNebulaTheaterField: View {
     var progress: Double
 
@@ -1165,5 +1287,44 @@ extension String {
         }
         let value = String(String.UnicodeScalarView(scalars)).trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? self : value
+    }
+
+    func benyuanSanitizedVisibleText(fallback: String) -> String {
+        let replacements: [(String, String)] = [
+            ("undetermined_no_visible_music_playlist_or_music_screenshot", "未被截图清楚记录的歌单声纹"),
+            ("no_visible_music_playlist_or_music_screenshot", "未被截图清楚记录的歌单声纹"),
+            ("melancholic_introspective", "带着低回、内省的底色"),
+            ("reflective_open", "带着开放而沉静的反光"),
+            ("introspective_cinematic", "内省而有镜头感"),
+            ("surrealist_melancholic", "超现实、微带忧郁"),
+            ("poetic_spiritual", "诗性、近乎精神性的"),
+            ("introspective_poetic", "内省而诗性的"),
+            ("reflective_symbolic", "反思而带象征意味的"),
+            ("ocean_waves_distant", "远处潮声"),
+            ("rain_soft", "很轻的雨声"),
+            ("silence_deep", "深处的静默"),
+            ("indie / ambient / post-rock", "独立乐、氛围声和后摇交叠")
+        ]
+
+        var value = trimmingCharacters(in: .whitespacesAndNewlines)
+        for (source, target) in replacements {
+            value = value.replacingOccurrences(of: source, with: target, options: [.caseInsensitive])
+        }
+
+        [
+            ("post-rock", "后摇"),
+            ("ambient", "氛围声"),
+            ("indie", "独立乐"),
+            ("electronic", "电子声响"),
+            ("classical", "古典乐")
+        ].forEach { source, target in
+            value = value.replacingOccurrences(of: source, with: target, options: [.caseInsensitive])
+        }
+
+        let suspiciousPattern = #"(?i)[a-z]+(?:_[a-z0-9]+){2,}"#
+        value = value.replacingOccurrences(of: suspiciousPattern, with: "尚未命名的回声", options: .regularExpression)
+        value = value.replacingOccurrences(of: #" {2,}"#, with: " ", options: .regularExpression)
+        value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? fallback : value
     }
 }

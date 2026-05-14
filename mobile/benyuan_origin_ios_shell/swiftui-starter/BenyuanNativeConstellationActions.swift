@@ -7,6 +7,9 @@ extension BenyuanNativeFlowModel {
         let data = constellation.psycheConstellation
         let text = [
             "本源｜\(data.archetype.name)",
+            "主星体：\(data.archetype.name) · \(data.archetype.englishName)",
+            "本次显影：\(data.archetype.displayName)",
+            data.archetype.displaySubtitle,
             data.archetype.coreEssence,
             "核心张力：\(data.coreTensions.first?.name ?? "未命名张力")",
             "行动入口：\(data.growthSuggestions.first?.actionableSteps.first ?? data.growthSuggestions.first?.title ?? "慢慢靠近自己")"

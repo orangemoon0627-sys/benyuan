@@ -48,9 +48,9 @@ extension BenyuanNativeFlowModel {
                 part2Id: "part2_native_preview",
                 constellationId: "const_native_preview",
                 stage: .constellation,
-                title: "深月观测者的星图",
+                title: "远潮观月者的星图",
                 subtitle: "剧场已完成 / 星图可回看",
-                archetypeName: "深月观测者",
+                archetypeName: "远潮观月者",
                 createdAt: "2026-05-08T20:12:00.000Z",
                 updatedAt: "2026-05-08T20:18:00.000Z",
                 assetCount: 3
@@ -235,7 +235,7 @@ extension BenyuanNativeFlowModel {
                 userId: "usr_native_preview",
                 generatedAt: "2026-05-08T00:00:00.000Z",
                 personalizationSummary: TheaterScript.PersonalizationSummary(
-                    coreArchetype: "深月观测者",
+                    coreArchetype: "远潮观月者",
                     aestheticStyle: "低照度月面 / 黑潮 / 银白玻璃",
                     emotionalTone: "克制、敏感、缓慢靠近",
                     keyThemes: ["边界", "凝视", "未寄出的信"]
@@ -299,7 +299,12 @@ extension BenyuanNativeFlowModel {
     }
 
     static var previewConstellation: ConstellationGenerateResponse {
-        ConstellationGenerateResponse(
+        previewConstellation(archetypeVariant: nil)
+    }
+
+    static func previewConstellation(archetypeVariant: String?) -> ConstellationGenerateResponse {
+        let archetype = previewArchetype(variant: archetypeVariant)
+        return ConstellationGenerateResponse(
             constellationId: "const_native_preview",
             runtime: AgentRuntimeResult(
                 providerName: "preview",
@@ -312,12 +317,7 @@ extension BenyuanNativeFlowModel {
             psycheConstellation: PsycheConstellation(
                 userId: "usr_native_preview",
                 generatedAt: "2026-05-08T00:00:00.000Z",
-                archetype: PsycheArchetype(
-                    name: "深月观测者",
-                    englishName: "Deep Lunar Witness",
-                    coreEssence: "你习惯在喧闹之外保留一块暗面，用它校准真正的欲望与边界。",
-                    visualPrompt: "a realistic black moon crossing a deep gravitational field, restrained silver light, subtle aubergine space"
-                ),
+                archetype: archetype,
                 sevenDimensions: [
                     "openness": PsycheDimension(score: 86, interpretation: "你更容易被未命名的经验吸引，愿意把不确定当作入口，而不是噪声。"),
                     "meaning_seeking": PsycheDimension(score: 91, interpretation: "你会把关系、选择和作品放进更大的意义结构里反复观看。"),
@@ -365,5 +365,109 @@ extension BenyuanNativeFlowModel {
                 )
             )
         )
+    }
+
+    static func previewArchetype(variant: String?) -> PsycheArchetype {
+        switch variant?.lowercased() {
+        case "moonlit-seeker", "moonlit_seeker", "far-tide-moon", "far_tide_moon", "lone-seeker", "lone_seeker":
+            return PsycheArchetype(
+                name: "远潮观月者",
+                englishName: "The Moonlit Seeker",
+                personalizedName: "远潮边的守信者",
+                personalizedSubtitle: "把黑潮、月面与未寄出的信收成一条安静潮汐",
+                coreEssence: "你常在幽暗、审美与记忆的回声里辨认意义，也愿意为真实保留足够的精神纵深。",
+                visualPrompt: "moonlit far tide over deep sea, lunar mist, restrained gold light"
+            )
+        case "star-map-architect", "star_map_architect", "rational-builder", "rational_builder":
+            return PsycheArchetype(
+                name: "星图筑序者",
+                englishName: "The Star-Map Architect",
+                personalizedName: "银线结构的校准者",
+                personalizedSubtitle: "用几何星图替混乱搭出可以落脚的秩序",
+                coreEssence: "你用结构、秩序和可持续的节律把混沌折成可行的星图，也借此安放自己的复杂感受。",
+                visualPrompt: "geometric star-map architecture, measured silver gold nodes, clean midnight grid"
+            )
+        case "moon-harbor-keeper", "moon_harbor_keeper", "gentle-guardian", "gentle_guardian":
+            return PsycheArchetype(
+                name: "月港栖岸者",
+                englishName: "The Moon-Harbor Keeper",
+                personalizedName: "月港灯下的留守者",
+                personalizedSubtitle: "在岸线、灯影与潮声之间为重要之物保留温度",
+                coreEssence: "你用温度、稳定与连接感为重要的人点灯，也在学习把自己的容量放回中心。",
+                visualPrompt: "moon harbor shoreline, warm dock lamp, quiet tide, restrained black gold palette"
+            )
+        case "existential-nomad", "existential_nomad", "existential-wanderer", "existential_wanderer":
+            return PsycheArchetype(
+                name: "存在游牧者",
+                englishName: "The Existential Nomad",
+                personalizedName: "无名路口的追问者",
+                personalizedSubtitle: "沿着移动地平线，把未完成的问题带向下一处星路",
+                coreEssence: "你不断移动、不断追问，也在变化和不确定里寻找一种仍能认出自己的活法。",
+                visualPrompt: "moving horizon beneath stars, dusk road, existential nomad, floating time fragments"
+            )
+        case "rain-window-scribe", "rain_window_scribe", "melancholic-poet", "melancholic_poet":
+            return PsycheArchetype(
+                name: "雨窗抒写者",
+                englishName: "The Rain-Window Scribe",
+                personalizedName: "雨窗后的译梦者",
+                personalizedSubtitle: "把雨痕、纸页与旧光写成一封给自己的回信",
+                coreEssence: "你会把复杂情绪、审美回声与记忆细节留得很近，再慢慢把它们变成理解世界的语言。",
+                visualPrompt: "rain-lit window, blue black velvet night, soft gold reflection, tactile paper texture"
+            )
+        case "event-horizon-diver", "event_horizon_diver", "black-hole", "black_hole", "event-horizon", "event_horizon":
+            return PsycheArchetype(
+                name: "事件视界沉潜者",
+                englishName: "The Event Horizon Diver",
+                personalizedName: "黑潮边的守信者",
+                personalizedSubtitle: "把未寄出的海与剧场里的长停顿收成一条暗金轨道",
+                coreEssence: "你习惯在强引力前保持清醒，只把自己交给足够深的入口。",
+                visualPrompt: "black hole event horizon with antique gold accretion rim, restrained cosmic gravity"
+            )
+        case "nebula-weaver", "nebula_weaver", "nebula":
+            return PsycheArchetype(
+                name: "星云织梦者",
+                englishName: "The Nebula Weaver",
+                personalizedName: "雾光里的编织者",
+                personalizedSubtitle: "把梦、迟疑和回声织成一片柔软星云",
+                coreEssence: "你不急着把混乱变成答案，而是先让它浮现出纹理。",
+                visualPrompt: "luminous nebula threads, soft violet ink and silver dust, delicate cosmic studio"
+            )
+        case "solar", "solar-corona", "solar_corona":
+            return PsycheArchetype(
+                name: "日冕引燃者",
+                englishName: "The Solar Corona",
+                personalizedName: "暗日旁的燃心者",
+                personalizedSubtitle: "在克制外壳下保留一圈不肯熄灭的热量",
+                coreEssence: "你会压低声量，但生命力并没有退场，只是在等待正确的释放方式。",
+                visualPrompt: "dark sun with radiant solar corona, restrained gold and white fire"
+            )
+        case "terrestrial", "terrestrial-planet", "terrestrial_planet":
+            return PsycheArchetype(
+                name: "类地栖居者",
+                englishName: "The Terrestrial Planet",
+                personalizedName: "暗岸上的栖居者",
+                personalizedSubtitle: "在深空里寻找可以安放身体与记忆的岸",
+                coreEssence: "你需要真实、可触摸的秩序，让精神深处也能落地。",
+                visualPrompt: "dark earth-like terrestrial planet, quiet forests and shorelines, warm window lights"
+            )
+        case "deep-space-anchor", "deep_space_anchor", "deep-space", "deep_space", "anchor":
+            return PsycheArchetype(
+                name: "深空锚定者",
+                englishName: "The Deep Space Anchor",
+                personalizedName: "静默坐标的锚定者",
+                personalizedSubtitle: "在漫长黑场里守住一枚不会漂移的银白坐标",
+                coreEssence: "你不是拒绝远方，而是需要先确认自己不会在远方里失重。",
+                visualPrompt: "lone silver anchor in deep black space, calm geometry, restrained moonlight"
+            )
+        default:
+            return PsycheArchetype(
+                name: "远潮观月者",
+                englishName: "The Moonlit Seeker",
+                personalizedName: "远潮边的守信者",
+                personalizedSubtitle: "把黑潮、月面与未寄出的信收成一条安静潮汐",
+                coreEssence: "你常在幽暗、审美与记忆的回声里辨认意义，也愿意为真实保留足够的精神纵深。",
+                visualPrompt: "moonlit far tide over deep sea, lunar mist, restrained gold light"
+            )
+        }
     }
 }

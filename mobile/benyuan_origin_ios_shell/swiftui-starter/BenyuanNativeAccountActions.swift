@@ -48,8 +48,8 @@ extension BenyuanNativeFlowModel {
         stageBeforeAccount = nil
 
         switch previousStage {
-        case .some(.launching), .some(.auth), .some(.account), .none:
-            stage = .collect
+        case .some(.launching), .some(.auth), .some(.account), .some(.home), .none:
+            stage = .home
         case .some(.processing):
             stage = session.constellationId != nil ? .constellation : session.theaterScriptId != nil ? .theater : .collect
         case .some(.error):
@@ -150,7 +150,7 @@ extension BenyuanNativeFlowModel {
             session.user = auth.user
             client.setAuthSession(auth.session)
             persist()
-            await start()
+            await beginNativeExploration()
         } catch {
             stage = .error(error.localizedDescription)
         }
@@ -171,7 +171,7 @@ extension BenyuanNativeFlowModel {
             session.user = auth.user
             client.setAuthSession(auth.session)
             persist()
-            await start()
+            await beginNativeExploration()
         } catch {
             stage = .error(error.localizedDescription)
         }
@@ -198,7 +198,7 @@ extension BenyuanNativeFlowModel {
             session.user = auth.user
             client.setAuthSession(auth.session)
             persist()
-            await start()
+            await beginNativeExploration()
         } catch {
             stage = .auth
             toast = error.localizedDescription
@@ -229,7 +229,7 @@ extension BenyuanNativeFlowModel {
             session.user = auth.user
             client.setAuthSession(auth.session)
             persist()
-            await start()
+            await beginNativeExploration()
         } catch {
             stage = .auth
             toast = error.localizedDescription
@@ -254,6 +254,6 @@ extension BenyuanNativeFlowModel {
         accountHistory = []
         client.setAuthSession(nil)
         persist()
-        stage = .auth
+        stage = .home
     }
 }

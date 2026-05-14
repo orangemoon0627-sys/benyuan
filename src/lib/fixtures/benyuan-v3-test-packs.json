@@ -1,7 +1,7 @@
 [
   {
     "id": "A",
-    "name": "暮海寻光者",
+    "name": "远潮观月者",
     "archetype": "The Moonlit Seeker",
     "description": "偏存在追问、夜行、深海与微光，适合测试高开放性与高审美敏感路线。",
     "answers": {
@@ -63,7 +63,7 @@
   },
   {
     "id": "C",
-    "name": "月港持灯者",
+    "name": "月港栖岸者",
     "archetype": "The Moon-Harbor Keeper",
     "description": "偏关系、温度、安全感与柔软边界，适合测试暖暗调叙事、连接需求和现实承托。",
     "answers": {

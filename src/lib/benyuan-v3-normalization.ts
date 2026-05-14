@@ -22,6 +22,23 @@ function sanitizeArchetypeName(value: string | null | undefined) {
   return cleaned;
 }
 
+function isSuspiciousPersonalizedLabel(value: string | null | undefined) {
+  const cleaned = cleanText(value);
+  if (!cleaned) return true;
+  if (cleaned.length < 3 || cleaned.length > 80) return true;
+  if (/[_<>]/u.test(cleaned)) return true;
+  if (/\b(undetermined|no[_\s-]*visible|ocr|unknown|abandoned|post[_\s-]*rope|raw)\b/iu.test(cleaned)) return true;
+  if (/^[a-z0-9_\-\s]+$/i.test(cleaned)) return true;
+  return false;
+}
+
+function sanitizePersonalizedLabel(value: string | null | undefined, fallback?: string, maxLength = 96) {
+  const cleaned = cleanText(value);
+  if (cleaned.length > maxLength) return cleanText(fallback) || undefined;
+  if (isSuspiciousPersonalizedLabel(cleaned)) return cleanText(fallback) || undefined;
+  return cleaned;
+}
+
 function dedupeStrings(values: string[]) {
   const seen = new Set<string>();
   const next: string[] = [];
@@ -163,6 +180,8 @@ export function normalizePsycheConstellation(constellation: PsycheConstellation)
       ...constellation.archetype,
       name: sanitizeArchetypeName(constellation.archetype.name),
       english_name: cleanText(constellation.archetype.english_name),
+      personalized_name: sanitizePersonalizedLabel(constellation.archetype.personalized_name, undefined, 32),
+      personalized_subtitle: sanitizePersonalizedLabel(constellation.archetype.personalized_subtitle, undefined, 120),
       core_essence: cleanText(constellation.archetype.core_essence),
       visual_prompt: cleanText(constellation.archetype.visual_prompt),
     },
