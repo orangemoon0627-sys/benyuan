@@ -23,6 +23,7 @@
 		3E14B7F2822912910B3B792F /* BenyuanFlowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9327C7D6C6170B0073E1F2 /* BenyuanFlowStore.swift */; };
 		5810598AA6AEFA84FF370EF0 /* BenyuanNativeImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D48C07333F12CEC5C1B7996 /* BenyuanNativeImagePicker.swift */; };
 		599A4D4250519E1985078496 /* BenyuanShellApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F67A5C4A8895424FA9D84E6 /* BenyuanShellApp.swift */; };
+		5FD6D2C79383E13D478AB504 /* BenyuanAppleAuthCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94501745749F2E4D8F87D0D5 /* BenyuanAppleAuthCoordinator.swift */; };
 		7324A5F3938CE286E76A89B9 /* native-smoke-fixture.png in Resources */ = {isa = PBXBuildFile; fileRef = 0362B686F60505AF544324D8 /* native-smoke-fixture.png */; };
 		76FD0E0D00FDCB3326F22894 /* BenyuanDesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF8805C2203AB3A5FCAE87FD /* BenyuanDesignTokens.swift */; };
 		777218E9E67718DEF95D8787 /* BenyuanShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307DE9631DC4B6949F272C68 /* BenyuanShellRootView.swift */; };
@@ -85,6 +86,7 @@
 		88857AA31108DE2AA971635D /* BenyuanNativeHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeHomeView.swift; sourceTree = "<group>"; };
 		8C9327C7D6C6170B0073E1F2 /* BenyuanFlowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanFlowStore.swift; sourceTree = "<group>"; };
 		8C9AECEC8FE142671B128D32 /* BenyuanOriginShellTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BenyuanOriginShellTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		94501745749F2E4D8F87D0D5 /* BenyuanAppleAuthCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanAppleAuthCoordinator.swift; sourceTree = "<group>"; };
 		97333A0E01E7528CCF26115E /* BenyuanNativeTheaterActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeTheaterActions.swift; sourceTree = "<group>"; };
 		98470422A6C18548ABCEC4C0 /* BenyuanNativeDesignPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeDesignPrimitives.swift; sourceTree = "<group>"; };
 		9A77E2FE6B33A897C06E8D19 /* BenyuanNativeArchetypeRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeArchetypeRegistry.swift; sourceTree = "<group>"; };
@@ -129,6 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				CA23BE4CD0E36EEFE0A2E2CD /* BenyuanAPIClient.swift */,
+				94501745749F2E4D8F87D0D5 /* BenyuanAppleAuthCoordinator.swift */,
 				FEF3B3536FAE7D137531D3BD /* BenyuanConstellationImageRenderer.swift */,
 				8C9327C7D6C6170B0073E1F2 /* BenyuanFlowStore.swift */,
 				BDEAD6013E8939952640CFAF /* BenyuanImagePayload.swift */,
@@ -278,6 +281,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				33BDEE7FAF4D74A890B991EB /* BenyuanAPIClient.swift in Sources */,
+				5FD6D2C79383E13D478AB504 /* BenyuanAppleAuthCoordinator.swift in Sources */,
 				375B5C589F83091EE39EE62D /* BenyuanConstellationImageRenderer.swift in Sources */,
 				76FD0E0D00FDCB3326F22894 /* BenyuanDesignTokens.swift in Sources */,
 				3E14B7F2822912910B3B792F /* BenyuanFlowStore.swift in Sources */,
@@ -390,7 +394,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -483,7 +487,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -546,7 +550,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

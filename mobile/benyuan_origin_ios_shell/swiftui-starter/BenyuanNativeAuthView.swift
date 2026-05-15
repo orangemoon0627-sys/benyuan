@@ -4,6 +4,7 @@ import SwiftUI
 struct BenyuanNativeAuthView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
     @ObservedObject private var wechatAuth = BenyuanWechatAuthClient.shared
+    @StateObject private var appleAuth = BenyuanAppleAuthCoordinator()
     @State private var phone = ""
     @State private var code = ""
     @State private var showsPhonePanel = false
@@ -62,21 +63,15 @@ struct BenyuanNativeAuthView: View {
             Spacer(minLength: BenyuanSpacing.x6)
 
             BenyuanRevealedStack(spacing: BenyuanSpacing.x3, delay: 0.12) {
-                ZStack {
-                    appleLoginLabel
-
-                    SignInWithAppleButton(.continue) { request in
-                        request.requestedScopes = [.fullName]
-                        model.showToast(nil)
-                    } onCompletion: { result in
-                        handleAppleCompletion(result)
+                Button {
+                    Task {
+                        await startAppleLogin()
                     }
-                    .signInWithAppleButtonStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
-                    .clipShape(Capsule())
-                    .opacity(0.001)
-                    .accessibilityLabel("用 Apple 继续")
+                } label: {
+                    appleLoginLabel
                 }
+                .buttonStyle(BenyuanPressableMotionStyle(scale: 0.974, glow: 0.12))
+                .accessibilityLabel("用 Apple 继续")
                 .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
 
                 HStack(spacing: BenyuanSpacing.x2) {
@@ -132,8 +127,6 @@ struct BenyuanNativeAuthView: View {
         .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
         .background(Capsule().fill(BenyuanColor.textPrimary))
         .overlay(Capsule().stroke(BenyuanColor.textPrimary.opacity(0.16), lineWidth: 1))
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 
     private var phonePanel: some View {
@@ -200,6 +193,21 @@ struct BenyuanNativeAuthView: View {
         model.isWechatAuthReady && wechatAuth.authState == .ready
     }
 
+    private func startAppleLogin() async {
+        model.showToast("正在打开 Apple 登录…")
+        do {
+            let credential = try await appleAuth.requestSignIn()
+            model.showToast(nil)
+            await model.continueWithApple(
+                identityToken: credential.identityToken,
+                authorizationCode: credential.authorizationCode,
+                displayName: credential.displayName
+            )
+        } catch {
+            model.showToast(BenyuanAppleAuthorizationCopy.toastMessage(for: error))
+        }
+    }
+
     private func startWechatLogin() async {
         guard model.isWechatAuthReady else {
             model.showToast("微信登录还在接入开放平台，请先用 Apple 登录。")
@@ -211,32 +219,6 @@ struct BenyuanNativeAuthView: View {
             await model.continueWithWechat(code: code, displayName: "微信用户")
         } catch {
             model.showToast(error.localizedDescription)
-        }
-    }
-
-    private func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let identityTokenData = credential.identityToken,
-                  let identityToken = String(data: identityTokenData, encoding: .utf8) else {
-                model.showToast("Apple 凭证暂时没有返回。")
-                return
-            }
-
-            let authorizationCode = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
-            let displayName = [credential.fullName?.givenName, credential.fullName?.familyName]
-                .compactMap { $0 }
-                .joined()
-            Task {
-                await model.continueWithApple(
-                    identityToken: identityToken,
-                    authorizationCode: authorizationCode,
-                    displayName: displayName.isEmpty ? nil : displayName
-                )
-            }
-        case .failure(let error):
-            model.showToast(BenyuanAppleAuthorizationCopy.toastMessage(for: error))
         }
     }
 
@@ -264,18 +246,23 @@ struct BenyuanNativeAuthView: View {
 enum BenyuanAppleAuthorizationCopy {
     static func toastMessage(for error: Error) -> String? {
         let nsError = error as NSError
-        guard nsError.domain == ASAuthorizationError.errorDomain,
-              let code = ASAuthorizationError.Code(rawValue: nsError.code) else {
-            return "Apple 登录暂时没有连上，请稍后再试。"
+        if nsError.domain == ASAuthorizationError.errorDomain,
+           let code = ASAuthorizationError.Code(rawValue: nsError.code) {
+            switch code {
+            case .canceled:
+                return nil
+            case .notInteractive:
+                return "当前环境不能弹出 Apple 登录，请在真机或可交互环境中重试。"
+            default:
+                return "Apple 登录暂时没有连上，请稍后再试。"
+            }
         }
 
-        switch code {
-        case .canceled:
-            return nil
-        case .notInteractive:
-            return "当前环境不能弹出 Apple 登录，请在真机或可交互环境中重试。"
-        default:
-            return "Apple 登录暂时没有连上，请稍后再试。"
+        if let localizedError = error as? LocalizedError,
+           let description = localizedError.errorDescription {
+            return description
         }
+
+        return "Apple 登录暂时没有连上，请稍后再试。"
     }
 }

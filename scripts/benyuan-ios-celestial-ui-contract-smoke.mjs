@@ -86,6 +86,9 @@ assert.match(flowModel, /@Published var hasCompletedInitialHomeBoot = false/, "n
 assert.match(rootView, /shouldAnimateStageTransition \? \.easeInOut\(duration:\s*BenyuanMotion\.base\) : nil/, "native root must not animate a stale stage over the first home frame");
 assert.match(flowModel, /var canExploreFromHome:[\s\S]*?authSession\.provider != \.anonymous/, "native home must not let an anonymous guest session bypass the formal login gate");
 assert.match(home, /用 Apple 登录/, "native home must include an Apple login entry");
+assert.match(home, /BenyuanAppleAuthCoordinator/, "native home Apple login must use the explicit Apple authorization coordinator");
+assert.match(home, /startAppleLogin/, "native home Apple login must have a real tappable SwiftUI button action");
+assert.doesNotMatch(home, /SignInWithAppleButton[\s\S]*?\.opacity\(0\.001\)/, "native home Apple login must not rely on a nearly transparent system button that can miss taps on device");
 assert.match(home, /微信登录/, "native home must include a WeChat login entry");
 assert.match(home, /访客预览/, "native home must include a visitor preview entry");
 assert.doesNotMatch(home, /手机号码登录/, "native home should not show phone login on the first landing surface");
@@ -94,7 +97,9 @@ assert.doesNotMatch(home, /先选择身份|登录后再开始探索|选择身份
 assert.match(auth, /BenyuanRevealedStack/, "native auth view must use staged entrance motion");
 assert.match(auth, /BenyuanDeepCelestialBody/, "native auth view must use the shared dynamic moon field");
 assert.match(auth, /\.foregroundStyle\(BenyuanColor\.bgVoid\)/, "native Apple login label must use dark text on its light capsule");
-assert.match(auth, /\.opacity\(0\.001\)/, "native Apple system button overlay must be visually hidden enough to avoid duplicate white text");
+assert.match(auth, /BenyuanAppleAuthCoordinator/, "native Apple login must use an explicit authorization coordinator instead of a transparent system-button overlay");
+assert.match(auth, /startAppleLogin/, "native Apple login must have a real SwiftUI button action that opens Apple authorization");
+assert.doesNotMatch(auth, /\.opacity\(0\.001\)/, "native Apple login must not rely on a nearly transparent system button that can miss taps on device");
 assert.doesNotMatch(auth, /先以访客进入|可先以访客进入/, "native auth view must not expose guest exploration before login");
 
 assert.match(collect, /BenyuanQuestionSignalField/, "native collect view must include per-question signal motion");

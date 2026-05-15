@@ -4,6 +4,7 @@ import SwiftUI
 struct BenyuanNativeHomeView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
     @ObservedObject private var wechatAuth = BenyuanWechatAuthClient.shared
+    @StateObject private var appleAuth = BenyuanAppleAuthCoordinator()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -170,37 +171,33 @@ struct BenyuanNativeHomeView: View {
     }
 
     private var homeAppleLoginButton: some View {
-        ZStack {
-            HStack(spacing: BenyuanSpacing.x3) {
-                Image(systemName: "apple.logo")
-                    .font(.system(size: 17, weight: .semibold))
-                Text("用 Apple 登录")
-                    .font(.system(size: 15, weight: .semibold))
-                Spacer()
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 13, weight: .bold))
+        Button {
+            Task {
+                await startAppleLogin()
             }
-            .foregroundStyle(BenyuanColor.bgVoid)
-            .padding(.horizontal, BenyuanSpacing.x6)
-            .frame(maxWidth: .infinity, minHeight: 54, maxHeight: 54)
-            .background(Capsule().fill(BenyuanColor.textPrimary))
-            .overlay(Capsule().stroke(BenyuanColor.textPrimary.opacity(0.18), lineWidth: 1))
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-
-            SignInWithAppleButton(.continue) { request in
-                request.requestedScopes = [.fullName]
-                model.showToast(nil)
-            } onCompletion: { result in
-                handleAppleCompletion(result)
-            }
-            .signInWithAppleButtonStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 54, maxHeight: 54)
-            .clipShape(Capsule())
-            .opacity(0.001)
-            .accessibilityLabel("用 Apple 登录")
+        } label: {
+            homeAppleLoginLabel
         }
+        .buttonStyle(BenyuanPressableMotionStyle(scale: 0.974, glow: 0.12))
+        .accessibilityLabel("用 Apple 登录")
         .frame(maxWidth: .infinity, minHeight: 54, maxHeight: 54)
+    }
+
+    private var homeAppleLoginLabel: some View {
+        HStack(spacing: BenyuanSpacing.x3) {
+            Image(systemName: "apple.logo")
+                .font(.system(size: 17, weight: .semibold))
+            Text("用 Apple 登录")
+                .font(.system(size: 15, weight: .semibold))
+            Spacer()
+            Image(systemName: "arrow.right")
+                .font(.system(size: 13, weight: .bold))
+        }
+        .foregroundStyle(BenyuanColor.bgVoid)
+        .padding(.horizontal, BenyuanSpacing.x6)
+        .frame(maxWidth: .infinity, minHeight: 54, maxHeight: 54)
+        .background(Capsule().fill(BenyuanColor.textPrimary))
+        .overlay(Capsule().stroke(BenyuanColor.textPrimary.opacity(0.18), lineWidth: 1))
     }
 
     private var primaryActionTitle: String {
@@ -239,28 +236,17 @@ struct BenyuanNativeHomeView: View {
         .buttonStyle(BenyuanPressableMotionStyle(scale: 0.974, glow: 0.08, haptic: nil))
     }
 
-    private func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let identityTokenData = credential.identityToken,
-                  let identityToken = String(data: identityTokenData, encoding: .utf8) else {
-                model.showToast("Apple 凭证暂时没有返回。")
-                return
-            }
-
-            let authorizationCode = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
-            let displayName = [credential.fullName?.givenName, credential.fullName?.familyName]
-                .compactMap { $0 }
-                .joined()
-            Task {
-                await model.continueWithApple(
-                    identityToken: identityToken,
-                    authorizationCode: authorizationCode,
-                    displayName: displayName.isEmpty ? nil : displayName
-                )
-            }
-        case .failure(let error):
+    private func startAppleLogin() async {
+        model.showToast("正在打开 Apple 登录…")
+        do {
+            let credential = try await appleAuth.requestSignIn()
+            model.showToast(nil)
+            await model.continueWithApple(
+                identityToken: credential.identityToken,
+                authorizationCode: credential.authorizationCode,
+                displayName: credential.displayName
+            )
+        } catch {
             model.showToast(BenyuanAppleAuthorizationCopy.toastMessage(for: error))
         }
     }

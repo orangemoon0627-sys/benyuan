@@ -42,6 +42,7 @@ const nativeHistoryActions = readRequired("mobile/benyuan_origin_ios_shell/swift
 const nativeFlow = `${nativeFlowModel}\n${nativeAccountActions}\n${nativeHistoryActions}`;
 const nativeRoot = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellRootView.swift");
 const nativeAuthView = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeAuthView.swift");
+const nativeAppleAuth = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanAppleAuthCoordinator.swift");
 const nativeAccountView = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeAccountView.swift");
 const nativeShellApp = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellApp.swift");
 const nativeWechatAuth = readRequired("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanWechatAuthClient.swift");
@@ -198,7 +199,12 @@ assert.doesNotMatch(nativeFlow, /createAppleSession\(displayName:\s*"Apple 用�
 assert.match(nativeRoot, /BenyuanNativeAuthView/, "native root must show auth view");
 assert.match(nativeRoot, /BenyuanNativeAccountView/, "native root must show account view");
 assert.match(nativeAuthView, /AuthenticationServices/, "native auth view must use the iOS AuthenticationServices framework");
-assert.match(nativeAuthView, /SignInWithAppleButton/, "native auth view must use the system Sign in with Apple control");
+assert.match(nativeAuthView, /BenyuanAppleAuthCoordinator/, "native auth view must open Sign in with Apple through an explicit native coordinator");
+assert.match(nativeAuthView, /startAppleLogin/, "native auth view must attach Apple login to a real tappable SwiftUI button");
+assert.match(nativeAppleAuth, /ASAuthorizationController/, "native Apple auth coordinator must use Apple's native authorization controller");
+assert.match(nativeAppleAuth, /ASAuthorizationControllerDelegate/, "native Apple auth coordinator must receive native Apple completion callbacks");
+assert.match(nativeAppleAuth, /ASAuthorizationControllerPresentationContextProviding/, "native Apple auth coordinator must provide a presentation anchor on device");
+assert.doesNotMatch(nativeAuthView, /SignInWithAppleButton[\s\S]*?\.opacity\(0\.001\)/, "native Apple login must not hide the system button at near-zero opacity");
 assert.match(nativeAuthView, /authorizationCode/, "native auth view must forward Apple authorization code when available");
 assert.match(nativeAuthView, /用 Apple 继续/, "native auth view should include Apple login copy");
 assert.doesNotMatch(nativeAuthView, /先以访客进入/, "native auth view should not expose guest exploration before login");
