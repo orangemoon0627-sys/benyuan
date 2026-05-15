@@ -46,7 +46,8 @@ const previewConfigs = [
   { stage: "collect", screenshotPath: path.join(outputDir, "benyuan-ios-preview-collect.png"), waitMs: 3000 },
   { stage: "upload", screenshotPath: path.join(outputDir, "benyuan-ios-preview-upload.png"), waitMs: 3000 },
   { stage: "processing", screenshotPath: path.join(outputDir, "benyuan-ios-preview-processing.png"), waitMs: 2800 },
-  { stage: "theater", screenshotPath: path.join(outputDir, "benyuan-ios-preview-theater.png"), waitMs: 3000 },
+  { stage: "theater", screenshotPath: path.join(outputDir, "benyuan-ios-preview-theater.png"), waitMs: 9000 },
+  { stage: "theater-act2", screenshotPath: path.join(outputDir, "benyuan-ios-preview-theater-act2.png"), waitMs: 10000 },
   { stage: "constellation", screenshotPath: path.join(outputDir, "benyuan-ios-preview-constellation.png"), waitMs: 3200 },
   { stage: "constellation-end", screenshotPath: path.join(outputDir, "benyuan-ios-preview-constellation-end.png"), waitMs: 4600 },
 ];

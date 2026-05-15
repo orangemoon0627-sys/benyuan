@@ -23,6 +23,7 @@ const {
   DIRECTOR_SYSTEM_PROMPT,
   buildAnalystUserPrompt,
   buildDirectorUserPrompt,
+  buildFastDirectorUserPrompt,
 } = await import("../src/lib/benyuan-v3-prompts.ts");
 const {
   generateDeterministicConstellation,
@@ -127,11 +128,9 @@ function createPart2Record() {
       { choice_id: 1, selected: "1C", hesitation_time: 4.2, timestamp: "2026-05-09T00:01:00.000Z" },
       { choice_id: 2, selected: "2A", hesitation_time: 8.6, timestamp: "2026-05-09T00:02:00.000Z" },
       { choice_id: 3, selected: "3D", hesitation_time: 12.1, timestamp: "2026-05-09T00:03:00.000Z" },
+      { choice_id: 4, selected: "4C", hesitation_time: 10.4, timestamp: "2026-05-09T00:04:00.000Z" },
     ],
-    act3_responses: [
-      { question_id: 1, selected: "3A-2", hesitation_time: 9.4, timestamp: "2026-05-09T00:04:00.000Z" },
-      { question_id: 2, selected: "3B-5", hesitation_time: 7.3, timestamp: "2026-05-09T00:05:00.000Z" },
-    ],
+    act3_responses: [],
     metadata: {
       total_time: 420,
       device: "ios-native",
@@ -172,16 +171,39 @@ test("literature options pair philosophical works with everyday self-recognition
 
 test("director prompt v4 requires continuous destiny-like theater generated from collected traces", () => {
   assert.match(DIRECTOR_SYSTEM_PROMPT, /剧场导演 Agent Prompt v4/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /用户的回答、审美素材与精神倾向/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /一条镜头连续推进/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /宿命感不是预言/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /物件、声音、颜色或距离/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /反复母题/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /私人小说感/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /小说片段、心理寓言和象征性处境/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /第四轮问题应帮助区分|心性辨认|动机辨认/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /二阶追问|心理补问|动机辨认|边界辨认|关系姿态/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /长度 500-800 字/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /\\n\\n 分隔/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /禁止把“月下剧场”字面化成售票、检票、座位、观众、演员、幕布、舞台、引座员/);
 
   const prompt = buildDirectorUserPrompt(createPart1Record());
-  assert.match(prompt, /连续行动链/);
+  assert.match(prompt, /Act2 是四轮连续剧场题/);
+  assert.match(prompt, /第四轮把前三轮选择补成动机、边界、时间感或行动确认/);
   assert.match(prompt, /上传素材不是素材库/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);
   assert.match(prompt, /lone_figure_seascape_sunset/);
+});
+
+test("fast director prompt preserves multimodal evidence and psychoanalytic sampling intent", () => {
+  const record = createPart1Record();
+  const fallback = generateDeterministicTheaterScript(record);
+  const prompt = buildFastDirectorUserPrompt(record, fallback);
+
+  assert.match(prompt, /多模态线索/);
+  assert.match(prompt, /音乐: ambient \/ post-rock；melancholic_introspective/);
+  assert.match(prompt, /社交: 深夜的海像一封没有寄出的信/);
+  assert.match(prompt, /照片: lone_figure_seascape_sunset/);
+  assert.match(prompt, /act2_lenses 四条分别写进入、改变距离、触碰或放下、动机\/边界\/时间感\/行动确认的补采样/);
+  assert.match(prompt, /精神分析概念卡只用于强化叙事种子/);
+  assert.match(prompt, /关系距离、边界、暗面、轨道、回声或核心物件/);
 });
 
 test("fallback theater is a continuous role-play scene rather than a questionnaire", () => {
@@ -190,13 +212,20 @@ test("fallback theater is a continuous role-play scene rather than a questionnai
   const actionStart = /^(靠近|停下|沿着|伸手|绕开|留在|回望|推开|等待|把|走向)/;
 
   assert.match(theater.act1.scene_description, /深夜的海像一封没有寄出的信|lone_figure_seascape_sunset|海/);
+  assert.match(theater.act1.scene_description, /一段只能由你继续往下走的小说|前面那些画面、声音、句子和停顿|第一条细线/);
+  assert.match(theater.act1.scene_description, /\n\n/);
+  assert.equal(theater.act2.choices.length, 4);
+  assert(theater.act2.choices.every((choice) => choice.options.length === 4), "fallback theater must expose four options for each of the four rounds");
   assert.match(theater.act2.choices[1].scene, /第一幕|那封没有寄出的信|潮声|照片/);
+  assert.match(theater.act2.choices[3].scene, /最后一道门|先看见哪一层|星图/);
   assert(theater.act2.choices.every((choice) => choice.options.every((option) => actionStart.test(option.text))), "act2 options must start with embodied actions");
   assert.doesNotMatch(visibleText, /镜像测试|选择最接近|你已经知道答案了|正确的答案/);
-  assert.match(theater.act3.mirror_questions[0].dialogue, /剧场|镜面|声音|物件|海/);
+  assert.doesNotMatch(visibleText, /售票|检票|座位|观众|演员|幕布|引座员/);
+  assert.match(theater.act3.mirror_questions[0].dialogue, /剧场|追问|补问|声音|物件|海|动机|边界|关系/);
+  assert.doesNotMatch(visibleText, /让镜面停在一个方向上/);
 });
 
-test("analyst prompt and fallback constellation bind star language to psychoanalytic and philosophical mirrors", () => {
+test("analyst prompt and fallback constellation bind star language to psychoanalytic and philosophical discernment", () => {
   assert.match(ANALYST_SYSTEM_PROMPT, /精神分析师 Agent Prompt v4/);
   assert.match(ANALYST_SYSTEM_PROMPT, /短引或转述/);
   assert.match(ANALYST_SYSTEM_PROMPT, /荣格|温尼科特|克尔凯郭尔|尼采|海德格尔|加缪/);
@@ -212,11 +241,13 @@ test("analyst prompt and fallback constellation bind star language to psychoanal
   assert.match(prompt, /精神分析、哲学与文艺旁证/);
   assert.match(prompt, /沿着回声回应一句话/);
   assert.match(prompt, /寻找没有标出的出口/);
+  assert.match(prompt, /把保护自己的边界放到暗金轨道上/);
   assert.match(reportText, /荣格|温尼科特|加缪|尼采|海德格尔|卡夫卡|博尔赫斯|卡尔维诺/);
   assert.match(overview, /沿着回声回应一句话|回声回应/);
   assert.match(overview, /没有标出的出口|第三条细线/);
+  assert.match(overview, /把保护自己的边界放到暗金轨道上|四轮|补足/);
   assert.match(overview, /停顿|停留|迟疑|慢/);
   assert.doesNotMatch(reportText, /孤独求索者|敏感而复杂的人|关系哲学“/);
   assert.doesNotMatch(overview, /你给人的核心印象|你给人的第一印象/);
-  assert(fallback.recommendations.books.some((item) => /精神旁证|镜面|存在主义|个体化|时间/.test(item.reason)));
+  assert(fallback.recommendations.books.some((item) => /精神旁证|存在主义|个体化|时间|动机|边界|辨认/.test(item.reason)));
 });

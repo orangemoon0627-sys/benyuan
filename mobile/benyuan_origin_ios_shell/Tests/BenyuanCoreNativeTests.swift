@@ -177,6 +177,52 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(client.authorizationHeaderValue, "Bearer bya_anonymous_test")
     }
 
+    @MainActor
+    func testHomeExplorationRequiresFormalLogin() throws {
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
+
+        XCTAssertFalse(model.canExploreFromHome)
+
+        model.session.authSession = BenyuanAuthSession(
+            sessionId: "auth_guest",
+            userId: "usr_test",
+            token: "bya_anonymous_test",
+            provider: .anonymous,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        )
+        XCTAssertFalse(model.canExploreFromHome)
+
+        model.session.authSession = BenyuanAuthSession(
+            sessionId: "auth_apple",
+            userId: "usr_test",
+            token: "bya_apple_test",
+            provider: .apple,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        )
+        XCTAssertTrue(model.canExploreFromHome)
+    }
+
+    func testArchetypeCanonicalizationRemovesRetiredDisplayLabels() throws {
+        let archetype = PsycheArchetype(
+            name: "月背寻光者",
+            englishName: "The Moonlit Seeker",
+            personalizedName: "月背寻光者",
+            personalizedSubtitle: "The Moonlit Seeker",
+            coreEssence: "在暗处寻找不会打断完整性的入口。",
+            visualPrompt: "black hole event horizon with antique gold ring"
+        )
+
+        let canonical = archetype.canonicalizedForNativeDisplay
+
+        XCTAssertEqual(canonical.name, "事件视界沉潜者")
+        XCTAssertEqual(canonical.englishName, "The Event Horizon Diver")
+        XCTAssertNil(canonical.personalizedName)
+        XCTAssertNil(canonical.personalizedSubtitle)
+        XCTAssertEqual(canonical.visualPrompt, "black hole event horizon, antique gold accretion rim, gravitational lens")
+    }
+
     func testNativeGenerationJobDecodesStageProgressMetadata() throws {
         let json = """
         {
@@ -488,7 +534,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
                     "generated_at": "2026-05-09T00:00:00.000Z",
                     "archetype": {
                       "name": "远潮观月者",
-                      "english_name": "The Moonlit Seeker",
+                      "english_name": "The Far-Tide Moon Watcher",
                       "core_essence": "长请求需要被完整接住。",
                       "visual_prompt": "deep lunar field"
                     },
@@ -551,7 +597,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
     func testAPIErrorMapsSmsProviderNotConfiguredToProductCopy() throws {
         let error = BenyuanAPIError.server(status: 503, message: "sms_provider_not_configured")
 
-        XCTAssertEqual(error.errorDescription, "手机号登录还在接入短信网关，请先用 Apple 或访客进入。")
+        XCTAssertEqual(error.errorDescription, "手机号登录还在接入短信网关，请先用 Apple 登录。")
     }
 
     func testAppleAuthorizationCancelDoesNotExposeSystemError() throws {
@@ -563,7 +609,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
     func testAppleAuthorizationFailureUsesProductCopy() throws {
         let error = NSError(domain: ASAuthorizationError.errorDomain, code: ASAuthorizationError.Code.failed.rawValue)
 
-        XCTAssertEqual(BenyuanAppleAuthorizationCopy.toastMessage(for: error), "Apple 登录暂时没有连上，可以先以访客进入。")
+        XCTAssertEqual(BenyuanAppleAuthorizationCopy.toastMessage(for: error), "Apple 登录暂时没有连上，请稍后再试。")
     }
 
     func testAccountResponseDecodesBindingStatus() throws {
@@ -1053,9 +1099,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertEqual(model.stage, .theater)
         XCTAssertEqual(model.session.part2Id, "part2_replay")
-        XCTAssertEqual(model.theaterPhase, .epilogue)
-        XCTAssertEqual(model.theaterChoiceIndex, 1)
-        XCTAssertEqual(model.theaterMirrorIndex, 0)
+        XCTAssertEqual(model.theaterPhase, .act2)
+        XCTAssertEqual(model.theaterChoiceIndex, 0)
         XCTAssertEqual(model.choiceLogCount, 2)
         XCTAssertEqual(model.mirrorLogCount, 1)
         XCTAssertEqual(model.session.phaseDurations["act2"], 8)
@@ -1120,7 +1165,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.session.part2Id, "part2_constellation")
         XCTAssertEqual(model.session.theaterScriptId, "theater_constellation")
         XCTAssertEqual(model.session.constellationId, "constellation_history")
-        XCTAssertEqual(model.theaterPhase, .epilogue)
+        XCTAssertEqual(model.theaterPhase, .act2)
         XCTAssertEqual(model.choiceLogCount, 2)
         XCTAssertEqual(model.mirrorLogCount, 1)
         XCTAssertEqual(model.session.phaseDurations["act3"], 5)
@@ -1253,6 +1298,12 @@ final class BenyuanCoreNativeTests: XCTestCase {
             .theater
         )
         XCTAssertEqual(
+            BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "theater-act2"]),
+            .theaterAct2
+        )
+        XCTAssertNil(BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "theater-act3"]))
+        XCTAssertNil(BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "theater-epilogue"]))
+        XCTAssertEqual(
             BenyuanShellConfig.nativePreviewStage(arguments: ["Benyuan", "--benyuan-native-preview", "constellation"]),
             .constellation
         )
@@ -1362,8 +1413,59 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.session.part1Id, "part1_native_preview")
         XCTAssertEqual(model.session.theaterScriptId, "theater_native_preview")
         XCTAssertEqual(model.theaterPhase, .act1)
-        XCTAssertEqual(model.theater?.theaterScript.act2.choices.count, 2)
-        XCTAssertEqual(model.theater?.theaterScript.act3.mirrorQuestions.count, 2)
+        XCTAssertEqual(model.theater?.theaterScript.act2.choices.count, 4)
+        XCTAssertTrue(model.theater?.theaterScript.act2.choices.allSatisfy { $0.options.count == 4 } ?? false)
+        XCTAssertEqual(model.currentTheaterChoice?.options.count, 4)
+    }
+
+    @MainActor
+    func testNativeTheaterRequiresFourRoundsBeforeConstellationEntry() async throws {
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
+        model.applyNativePreview(.theaterAct2)
+
+        XCTAssertEqual(model.requiredTheaterChoiceCount, 4)
+        XCTAssertFalse(model.canEnterConstellationGenerationFromTheater)
+
+        for round in 0..<4 {
+            XCTAssertEqual(model.theaterChoiceIndex, round)
+            XCTAssertEqual(model.choiceLogCount, round)
+            let option = try XCTUnwrap(model.currentTheaterChoice?.options.first)
+
+            model.chooseAct2(option)
+            try await Task.sleep(nanoseconds: 640_000_000)
+
+            XCTAssertEqual(model.stage, .theater)
+            XCTAssertEqual(model.theaterPhase, .act2)
+            XCTAssertEqual(model.choiceLogCount, round + 1)
+            XCTAssertEqual(model.canEnterConstellationGenerationFromTheater, round == 3)
+            if round < 3 {
+                XCTAssertEqual(model.theaterChoiceIndex, round + 1)
+            } else {
+                XCTAssertEqual(model.theaterChoiceIndex, 3)
+            }
+        }
+
+        XCTAssertTrue(model.canEnterConstellationGenerationFromTheater)
+        XCTAssertNil(model.constellation)
+    }
+
+    @MainActor
+    func testNativePreviewTheaterEntryButtonOpensLocalConstellation() async throws {
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
+        model.applyNativePreview(.theaterAct2)
+
+        for _ in 0..<4 {
+            let option = try XCTUnwrap(model.currentTheaterChoice?.options.first)
+            model.chooseAct2(option)
+            try await Task.sleep(nanoseconds: 640_000_000)
+        }
+
+        await model.enterConstellationGenerationFromTheater()
+
+        XCTAssertEqual(model.stage, .constellation)
+        XCTAssertEqual(model.constellation?.constellationId, "const_native_preview")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "远潮观月者")
+        XCTAssertNil(model.session.activeGenerationJobId)
     }
 
     @MainActor
@@ -1725,11 +1827,11 @@ final class BenyuanCoreNativeTests: XCTestCase {
               ]
             },
             "act3": {
-              "scene_description": "镜面把海和月亮折成同一个圆。",
+              "scene_description": "追问把海和月亮放回同一条暗金轨道。",
               "mirror_questions": [
                 {
                   "question_id": 1,
-                  "dialogue": "镜中的人把问题还给你。",
+                  "dialogue": "潮声把问题还给你。",
                   "question": "你愿意给自己的边界起什么名字？",
                   "options": [
                     {
@@ -1782,7 +1884,7 @@ final class BenyuanCoreNativeTests: XCTestCase {
             "generated_at": "2026-05-08T00:30:00.000Z",
             "archetype": {
               "name": "远潮观月者",
-              "english_name": "The Moonlit Seeker",
+              "english_name": "The Far-Tide Moon Watcher",
               "core_essence": "在暗场中保存自己的真实边界。",
               "visual_prompt": "deep moon field"
             },
@@ -1895,11 +1997,11 @@ final class BenyuanCoreNativeTests: XCTestCase {
               ]
             },
             "act3": {
-              "scene_description": "门后是一面巨大的镜子。",
+              "scene_description": "门后的光把刚才的选择推近一步。",
               "mirror_questions": [
                 {
                   "question_id": 1,
-                  "dialogue": "镜中的你开口。",
+                  "dialogue": "那束光把问题还给你。",
                   "question": "你最想承认什么？",
                   "options": [
                     {
@@ -1910,10 +2012,10 @@ final class BenyuanCoreNativeTests: XCTestCase {
                   ]
                 }
               ],
-              "mirror_final_words": "你已经知道答案了。"
+              "mirror_final_words": "你已经把这个问题靠近了一点。"
             },
             "epilogue": {
-              "scene_description": "镜子慢慢沉入水面。",
+              "scene_description": "那束光慢慢沉入水面。",
               "closing_text": "你的旅程结束了，但理解才刚刚开始。",
               "transition_prompt": "正在绘制你的精神星图...",
               "transition_animation": "stars_converging"

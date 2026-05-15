@@ -8,10 +8,17 @@ const shellConfig = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftu
 const rootView = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellRootView.swift`, "utf8");
 const fixtures = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativePreviewFixtures.swift`, "utf8");
 const flowModel = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeFlowModel.swift`, "utf8");
+const theater = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeTheaterView.swift`, "utf8");
+const actions = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeTheaterActions.swift`, "utf8");
 
-for (const stage of ["auth", "account", "collect", "upload", "processing", "theater", "constellation", "constellation-end"]) {
+for (const stage of ["auth", "account", "collect", "upload", "processing", "theater", "theater-act2", "constellation", "constellation-end"]) {
   assert.match(script, new RegExp(`stage:\\s*['"]${stage}['"]`), `native preview screenshot script must include ${stage}`);
   assert.match(script, new RegExp(`benyuan-ios-preview-${stage}\\.png`), `native preview screenshot script must write ${stage} screenshot`);
+}
+for (const removedStage of ["theater-act3", "theater-epilogue"]) {
+  assert.doesNotMatch(script, new RegExp(`stage:\\s*['"]${removedStage}['"]`), `native preview screenshot script must not capture removed ${removedStage}`);
+  assert.doesNotMatch(script, new RegExp(`benyuan-ios-preview-${removedStage}\\.png`), `native preview screenshot script must not write removed ${removedStage} screenshot`);
+  assert.doesNotMatch(shellConfig, new RegExp(removedStage), `native shell config must not expose removed ${removedStage} preview route`);
 }
 
 assert.match(script, /debugPreviewDir/, "native preview screenshots must create cache-safe presentation copies");
@@ -74,6 +81,23 @@ assert.match(rootView, /BenyuanShellConfig\.nativePreviewArchetypeVariant/, "nat
 assert.match(rootView, /nativePreviewSuppressesTransientChrome/, "native root must hide transient toast chrome for clean presentation captures");
 assert.match(fixtures, /static func previewConstellation\(archetypeVariant:\s*String\?\)/, "native preview fixtures must be able to render constellation variants");
 assert.match(fixtures, /static func previewArchetype\(variant:\s*String\?\)/, "native preview fixtures must define archetype-specific fixtures");
+assert.match(fixtures, /TheaterChoice\([\s\S]*?choiceId:\s*1[\s\S]*?TheaterChoiceOption\(id:\s*"letter_open"[\s\S]*?TheaterChoiceOption\(id:\s*"letter_hold"[\s\S]*?TheaterChoiceOption\(id:\s*"letter_reflect"[\s\S]*?TheaterChoiceOption\(id:\s*"letter_avoid"/, "native preview Act2 first round must expose four embodied direction options");
+for (const choiceId of [1, 2, 3, 4]) {
+  assert.match(fixtures, new RegExp(`TheaterChoice\\([\\s\\S]*?choiceId:\\s*${choiceId}[\\s\\S]*?options:\\s*\\[[\\s\\S]*?TheaterChoiceOption\\([\\s\\S]*?TheaterChoiceOption\\([\\s\\S]*?TheaterChoiceOption\\([\\s\\S]*?TheaterChoiceOption\\(`), `native preview Act2 round ${choiceId} must expose four options`);
+}
+assert.match(theater, /choice\.options\.prefix\(4\)/, "native theater must render exactly the first four options from the visible test node");
+assert.match(theater, /进入生成星图/, "native theater act2 must reveal an explicit constellation generation entry after selection");
+assert.match(actions, /activeNativePreviewStage != nil[\s\S]*?previewConstellation\(archetypeVariant:\s*BenyuanShellConfig\.nativePreviewArchetypeVariant\)/, "native theater preview must resolve final entry locally without requiring a live server");
+const chooseAct2Body = actions.match(/func chooseAct2\(_ option: TheaterChoiceOption\) \{[\s\S]*?\n    \}/)?.[0] ?? "";
+assert.ok(chooseAct2Body, "native theater actions must keep chooseAct2");
+assert.doesNotMatch(chooseAct2Body, /finishTheaterAndGenerateConstellation\(\)|enterConstellationGenerationFromTheater\(\)/, "native theater preview option tap must not auto-submit into generation");
+assert.match(flowModel, /case \.theaterAct2:[\s\S]*?theaterChoiceIndex = 0/, "native preview act2 must open the first visible theater test node");
+assert.match(flowModel, /var requiredTheaterChoiceCount:\s*Int[\s\S]*?min\(4,\s*theater\?\.theaterScript\.act2\.choices\.count \?\? 0\)/, "native preview act2 must require four theater rounds when available");
+assert.match(actions, /if choiceLogs\.count < requiredTheaterChoiceCount[\s\S]*?theaterChoiceIndex = choiceLogs\.count/, "native theater must advance through the first three Act2 rounds and stop after the fourth");
+assert.doesNotMatch(fixtures, /question:\s*"让镜面停在一个方向上："/, "native preview Act3 visible question must not use the old mirror-direction wording");
+for (const motif of ["没有寄出的信", "旧音乐", "照片轮廓", "暗金轨道"]) {
+  assert.match(fixtures, new RegExp(motif), `native preview theater must carry motif ${motif} through the continuous theater route`);
+}
 for (const expected of [
   "远潮观月者",
   "星图筑序者",
@@ -91,7 +115,13 @@ for (const expected of [
 for (const removed of ["事件视界潜行者", "日冕燃心者", "气态巨行星", "深月观测者"]) {
   assert.doesNotMatch(fixtures, new RegExp(removed), `native preview fixtures must not include removed temporary label ${removed}`);
 }
+assert.doesNotMatch(fixtures, /The Moonlit Seeker/, "native preview fixtures must not expose the retired Moonlit Seeker subtitle");
 assert.match(flowModel, /previewConstellation\(archetypeVariant:\s*BenyuanShellConfig\.nativePreviewArchetypeVariant\)/, "native preview flow must apply the requested archetype variant only in debug preview");
+assert.match(flowModel, /case \.theaterAct2:[\s\S]*?theaterPhase = \.act2/, "native preview flow must be able to capture theater act2 directly");
+assert.doesNotMatch(flowModel, /case \.theaterAct3|case \.theaterEpilogue|theaterPhase = \.epilogue/, "native preview flow must not expose removed theater act3 or epilogue captures");
+assert.match(fixtures, /sceneDescription:\s*"[\s\S]*?很深的月场边缘[\s\S]*?\\n\\n[\s\S]*?那段旧音乐[\s\S]*?\\n\\n[\s\S]*?一段只能由你继续往下走的小说/, "native preview Act1 must use a longer private-story scene with paragraph breaks");
+assert.doesNotMatch(fixtures, /售票|检票|座位|观众|演员|幕布|引座员/, "native preview Act1 should not literalize the theater as a physical venue");
+assert.match(script, /stage:\s*"theater-act2"[\s\S]*?waitMs:\s*10000/, "native preview screenshots should wait for theater act2 to settle before capture");
 
 assert.equal(
   packageJson.scripts["ios:shell:native-preview"],

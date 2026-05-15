@@ -50,7 +50,7 @@ struct BenyuanNativeAuthView: View {
                         .minimumScaleFactor(0.78)
                         .foregroundStyle(BenyuanColor.textPrimary)
 
-                    Text("答案、影像线索、剧场选择与精神星图会归入同一个身份。现在可先以访客进入，之后绑定微信或手机号。")
+                    Text("答案、影像线索、剧场选择与精神星图会归入同一个身份。先完成登录，再开始探索。")
                         .font(.system(size: 15, weight: .regular))
                         .lineSpacing(6)
                         .foregroundStyle(BenyuanColor.textSecondary)
@@ -79,23 +79,6 @@ struct BenyuanNativeAuthView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
 
-                Button {
-                    Task { await model.continueAsGuest() }
-                } label: {
-                    HStack {
-                        Text("先以访客进入")
-                            .font(.system(size: 15, weight: .semibold))
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .semibold))
-                    }
-                    .foregroundStyle(BenyuanColor.textPrimary)
-                    .padding(.horizontal, BenyuanSpacing.x6)
-                    .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(Capsule().fill(BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
-                }
-                .buttonStyle(.plain)
-
                 HStack(spacing: BenyuanSpacing.x2) {
                     Button {
                         Task {
@@ -110,7 +93,7 @@ struct BenyuanNativeAuthView: View {
                             showsPhonePanel = true
                         }
                     } label: {
-                        Text(model.isPhoneAuthReady ? "手机号绑定" : "手机号绑定")
+                        Text(model.isPhoneAuthReady ? "手机号码登录" : "手机号码登录")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(model.isPhoneAuthReady ? BenyuanColor.textPrimary : BenyuanColor.textTertiary)
                             .frame(maxWidth: .infinity, minHeight: 34)
@@ -219,7 +202,7 @@ struct BenyuanNativeAuthView: View {
 
     private func startWechatLogin() async {
         guard model.isWechatAuthReady else {
-            model.toast = "微信登录还在接入开放平台，请先用 Apple 或访客进入。"
+            model.toast = "微信登录还在接入开放平台，请先用 Apple 登录。"
             return
         }
 
@@ -283,16 +266,16 @@ enum BenyuanAppleAuthorizationCopy {
         let nsError = error as NSError
         guard nsError.domain == ASAuthorizationError.errorDomain,
               let code = ASAuthorizationError.Code(rawValue: nsError.code) else {
-            return "Apple 登录暂时没有连上，可以先以访客进入。"
+            return "Apple 登录暂时没有连上，请稍后再试。"
         }
 
         switch code {
         case .canceled:
             return nil
         case .notInteractive:
-            return "当前环境不能弹出 Apple 登录，可以先以访客进入。"
+            return "当前环境不能弹出 Apple 登录，请在真机或可交互环境中重试。"
         default:
-            return "Apple 登录暂时没有连上，可以先以访客进入。"
+            return "Apple 登录暂时没有连上，请稍后再试。"
         }
     }
 }

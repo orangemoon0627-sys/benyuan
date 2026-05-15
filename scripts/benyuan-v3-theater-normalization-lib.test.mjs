@@ -17,49 +17,49 @@ function question(question_id, dialogue) {
 
 test("dedupeMirrorQuestions replaces repeated live dialogue with fallback dialogue", () => {
   const live = [
-    question(1, "镜中的你沉默片刻，目光落向更深处。"),
-    question(2, "镜中的你沉默片刻，目光落向更深处。"),
+    question(1, "追问中的你沉默片刻，目光落向更深处。"),
+    question(2, "追问中的你沉默片刻，目光落向更深处。"),
   ];
   const fallback = [
-    question(1, "第一道镜面轻声发问。"),
-    question(2, "第二道镜面把光移向你的掌心。"),
+    question(1, "第一道追问轻声补上。"),
+    question(2, "第二道补问把动机移向你的掌心。"),
   ];
 
   const normalized = dedupeMirrorQuestions(live, fallback);
 
   assert.deepEqual(normalized.map((item) => item.dialogue), [
-    "镜中的你沉默片刻，目光落向更深处。",
-    "第二道镜面把光移向你的掌心。",
+    "追问中的你沉默片刻，目光落向更深处。",
+    "第二道补问把动机移向你的掌心。",
   ]);
 });
 
 test("dedupeMirrorQuestions uses a poetic fallback when live and fallback dialogue both repeat", () => {
-  const repeated = "同一道镜面重复发问。";
+  const repeated = "同一道追问重复发问。";
   const normalized = dedupeMirrorQuestions([question(1, repeated), question(2, repeated), question(3, repeated)], [question(1, repeated), question(2, repeated), question(3, repeated)]);
 
-  assert.equal(normalized[2].dialogue, "第三道镜面把一线月光移到你的掌心，等待那个尚未命名的答案浮出水面。");
+  assert.equal(normalized[2].dialogue, "第三道追问把一线月光移到你的掌心，等待那个更接近你的答案浮出水面。");
   assert.equal(new Set(normalized.map((item) => item.dialogue)).size, 3);
 });
 
 test("dedupeMirrorQuestions replaces repeated visible question text with fallback question text", () => {
-  const repeatedQuestion = "你愿意先移动哪一半光？";
+  const repeatedQuestion = "如果要更准确地理解你，应该先看哪一部分？";
   const live = [
-    { ...question(1, "第一道镜面发问。"), question: "让镜面停在一个方向上：" },
-    { ...question(2, "第二道镜面发问。"), question: repeatedQuestion },
-    { ...question(3, "第三道镜面发问。"), question: repeatedQuestion },
+    { ...question(1, "第一道追问发问。"), question: "你更想先辨认哪一种动机？" },
+    { ...question(2, "第二道补问发问。"), question: repeatedQuestion },
+    { ...question(3, "第三道心性辨认发问。"), question: repeatedQuestion },
   ];
   const fallback = [
-    { ...question(1, "第一道 fallback。"), question: "让镜面停在一个方向上：" },
-    { ...question(2, "第二道 fallback。"), question: "你愿意先移动哪一半光？" },
-    { ...question(3, "第三道 fallback。"), question: "哪一种回声最接近你想带走的答案？" },
+    { ...question(1, "第一道 fallback。"), question: "你更想先辨认哪一种动机？" },
+    { ...question(2, "第二道 fallback。"), question: "如果要更准确地理解你，应该先看哪一部分？" },
+    { ...question(3, "第三道 fallback。"), question: "哪一种原因最接近你想带走的答案？" },
   ];
 
   const normalized = dedupeMirrorQuestions(live, fallback);
 
   assert.deepEqual(normalized.map((item) => item.question), [
-    "让镜面停在一个方向上：",
+    "你更想先辨认哪一种动机？",
     repeatedQuestion,
-    "哪一种回声最接近你想带走的答案？",
+    "哪一种原因最接近你想带走的答案？",
   ]);
   assert.equal(new Set(normalized.map((item) => item.question)).size, 3);
 });

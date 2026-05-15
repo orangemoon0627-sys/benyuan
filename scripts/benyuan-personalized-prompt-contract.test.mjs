@@ -121,11 +121,9 @@ function createPart2Record() {
       { choice_id: 1, selected: "1C", hesitation_time: 4.2, timestamp: "2026-05-08T00:01:00.000Z" },
       { choice_id: 2, selected: "2A", hesitation_time: 8.6, timestamp: "2026-05-08T00:02:00.000Z" },
       { choice_id: 3, selected: "3D", hesitation_time: 12.1, timestamp: "2026-05-08T00:03:00.000Z" },
+      { choice_id: 4, selected: "4B", hesitation_time: 7.8, timestamp: "2026-05-08T00:04:00.000Z" },
     ],
-    act3_responses: [
-      { question_id: 1, selected: "3A-2", hesitation_time: 9.4, timestamp: "2026-05-08T00:04:00.000Z" },
-      { question_id: 2, selected: "3B-5", hesitation_time: 7.3, timestamp: "2026-05-08T00:05:00.000Z" },
-    ],
+    act3_responses: [],
     metadata: {
       total_time: 420,
       device: "ios-native",
@@ -152,13 +150,13 @@ test("director prompt requires continuous theater motifs instead of generic isol
   const prompt = buildDirectorUserPrompt(createPart1Record());
 
   assert.match(prompt, /上传素材不是素材库，而是反复母题/);
-  assert.match(prompt, /同一段声音、同一句话、同一张照片里的构图，必须在 Act1\/Act2\/Act3 中改变形态后再次出现/);
-  assert.match(prompt, /Act2 要形成连续行动链：第一步进入，第二步改变距离，第三步触碰或放下某个物件/);
-  assert.match(prompt, /Act3 的镜面问题必须从 Act2 变形而来，不要突然跳成问卷/);
+  assert.match(prompt, /同一段声音、同一句话、同一张照片里的构图，必须在 Act1 与 Act2 四轮中改变形态后再次出现/);
+  assert.match(prompt, /Act2 是四轮连续剧场题：第一轮进入，第二轮改变距离，第三轮触碰或放下，第四轮把前三轮选择补成动机、边界、时间感或行动确认/);
+  assert.match(prompt, /不要把关键补问放进 Act3，必须放在 Act2 第四轮/);
   assert.match(prompt, /motif ledger/i);
-  assert.match(prompt, /每个 choice 的 scene 都必须延续上一幕至少一个母题/);
-  assert.match(prompt, /禁止让 Act2 三组 choice 互相独立/);
-  assert.match(prompt, /Act3 的每个 mirror question 必须问不同的心理动作/);
+  assert.match(prompt, /每个 choice 的 scene 都必须延续上一轮至少一个母题/);
+  assert.match(prompt, /禁止让 Act2 四轮 choice 互相独立/);
+  assert.match(prompt, /第四轮必须问不同的心理动作/);
   assert.match(prompt, /禁止重复使用同一句可见问题/);
 });
 
@@ -170,8 +168,9 @@ test("analyst prompt includes theater choices as readable trajectory evidence", 
 
   assert.match(prompt, /剧场选择轨迹/);
   assert.match(prompt, /第 1 次选择：1C/);
+  assert.match(prompt, /第 4 次选择：4B/);
   assert.match(prompt, /停顿 4\.2 秒/);
-  assert.match(prompt, /镜面回答 1：3A-2/);
+  assert.match(prompt, /新版流程无 Act3 追问/);
   assert.match(prompt, /ios-native/);
   assert.match(prompt, /精神分析、哲学与文艺旁证/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);

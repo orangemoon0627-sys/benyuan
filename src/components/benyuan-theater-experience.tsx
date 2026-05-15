@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { GlassPanel, ImmersivePassiveState, ImmersiveSigil, ImmersiveTopBar, PrimaryButton } from "@/components/framework-primitives";
+import { GlassPanel, ImmersivePassiveState, ImmersiveSigil, PrimaryButton } from "@/components/framework-primitives";
 import { benyuanUiRecipes, cx } from "@/config/benyuan-ui-recipes";
 import {
   BENYUAN_PENDING_PART2_KEY,
@@ -11,23 +11,12 @@ import {
   type BenyuanPendingPart2,
   type BenyuanSessionState,
 } from "@/lib/benyuan-v3-client-session";
-import type { AgentRuntimeOverride, Part2ChoiceRecord, Part2MirrorRecord, TheaterScriptRecord } from "@/lib/benyuan-v3-types";
+import type { AgentRuntimeOverride, Part2ChoiceRecord, TheaterScriptRecord } from "@/lib/benyuan-v3-types";
 
-const phaseMeta = [
-  { id: "act1", label: "开场", title: "场景" },
-  { id: "act2", label: "选择", title: "方向" },
-  { id: "act3", label: "镜像", title: "回望" },
-  { id: "epilogue", label: "显形", title: "星图" },
-] as const;
-
-type PhaseId = (typeof phaseMeta)[number]["id"];
+type PhaseId = "act1" | "act2";
 
 function currentTimestamp() {
   return Date.now();
-}
-
-function getPhaseIndex(phase: PhaseId) {
-  return phaseMeta.findIndex((item) => item.id === phase);
 }
 
 function visualUnits(text: string) {
@@ -105,17 +94,17 @@ export function BenyuanTheaterExperience() {
   const [record, setRecord] = useState<TheaterScriptRecord | null>(null);
   const [phase, setPhase] = useState<PhaseId>("act1");
   const [choiceIndex, setChoiceIndex] = useState(0);
-  const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
   const [hoverSequence, setHoverSequence] = useState<string[]>([]);
   const [choiceLogs, setChoiceLogs] = useState<Part2ChoiceRecord[]>([]);
-  const [mirrorLogs, setMirrorLogs] = useState<Part2MirrorRecord[]>([]);
+  const [completedChoiceLogs, setCompletedChoiceLogs] = useState<Part2ChoiceRecord[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState("");
   const [act1Expanded, setAct1Expanded] = useState(false);
   const interactionStartedAtRef = useRef(0);
   const phaseStartedAtRef = useRef(0);
   const phaseDurationsRef = useRef<Record<string, number>>({});
+  const advanceChoiceTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,6 +144,10 @@ export function BenyuanTheaterExperience() {
 
       setRecord(data);
       setAct1Expanded(false);
+      setChoiceIndex(0);
+      setSelectedChoiceId(null);
+      setChoiceLogs([]);
+      setCompletedChoiceLogs(null);
       interactionStartedAtRef.current = now;
       phaseStartedAtRef.current = now;
       setLoading(false);
@@ -163,47 +156,35 @@ export function BenyuanTheaterExperience() {
     void loadTheater();
     return () => {
       cancelled = true;
+      if (advanceChoiceTimerRef.current) {
+        window.clearTimeout(advanceChoiceTimerRef.current);
+      }
     };
   }, [searchParams]);
 
-  const currentChoice = useMemo(() => record?.theater_script.act2.choices[choiceIndex] ?? null, [choiceIndex, record]);
-  const currentQuestion = useMemo(() => record?.theater_script.act3.mirror_questions[questionIndex] ?? null, [questionIndex, record]);
+  const visibleChoices = useMemo(() => record?.theater_script.act2.choices.slice(0, 4) ?? [], [record]);
+  const requiredChoiceCount = visibleChoices.length;
+  const currentChoice = useMemo(() => visibleChoices[choiceIndex] ?? null, [visibleChoices, choiceIndex]);
   const act1Scene = useMemo(() => splitAct1Scene(record?.theater_script.act1.scene_description ?? ""), [record]);
   const act2SceneLine = useMemo(() => shortSceneLine(currentChoice?.scene ?? "", 30), [currentChoice]);
-  const mirrorHint = useMemo(() => shortSceneLine(record?.theater_script.act3.mirror_final_words ?? "", 28), [record]);
-  const epilogueLead = useMemo(() => shortSceneLine(record?.theater_script.epilogue.scene_description ?? "", 46), [record]);
-  const epilogueClose = useMemo(() => shortSceneLine(record?.theater_script.epilogue.closing_text ?? "", 40), [record]);
-  const phaseIndex = getPhaseIndex(phase);
-  const phaseTitle = phaseMeta[phaseIndex]?.title ?? "剧场";
-
-  const phaseProgressPercent = useMemo(() => {
-    if (!record) return 0;
-    switch (phase) {
-      case "act1":
-        return 18;
-      case "act2":
-        return 25 + (choiceLogs.length / Math.max(record.theater_script.act2.choices.length, 1)) * 28;
-      case "act3":
-        return 58 + (mirrorLogs.length / Math.max(record.theater_script.act3.mirror_questions.length, 1)) * 22;
-      case "epilogue":
-        return 100;
-      default:
-        return 0;
-    }
-  }, [choiceLogs.length, mirrorLogs.length, phase, record]);
 
   function resetInteractionTimer() {
     interactionStartedAtRef.current = currentTimestamp();
     setHoverSequence([]);
   }
 
-  function transitionTo(nextPhase: Exclude<PhaseId, "act1">) {
+  function transitionTo(nextPhase: "act2") {
     const now = currentTimestamp();
     phaseDurationsRef.current[phase] = Number(((now - phaseStartedAtRef.current) / 1000).toFixed(1));
     phaseStartedAtRef.current = now;
     interactionStartedAtRef.current = now;
     setHoverSequence([]);
     setPhase(nextPhase);
+    setChoiceIndex(0);
+    setSelectedChoiceId(null);
+    setChoiceLogs([]);
+    setCompletedChoiceLogs(null);
+    setStatus("");
   }
 
   function advanceFromAct1() {
@@ -211,11 +192,12 @@ export function BenyuanTheaterExperience() {
   }
 
   function chooseAct2(optionId: string) {
-    if (!currentChoice || selectedChoiceId) return;
+    if (!currentChoice || selectedChoiceId || submitting || choiceLogs.length !== choiceIndex) return;
     setSelectedChoiceId(optionId);
+    setStatus("");
     const hesitation = (currentTimestamp() - interactionStartedAtRef.current) / 1000;
-    setChoiceLogs((current) => [
-      ...current,
+    const nextChoiceLogs = [
+      ...choiceLogs,
       {
         choice_id: currentChoice.choice_id,
         selected: optionId,
@@ -223,48 +205,33 @@ export function BenyuanTheaterExperience() {
         hover_sequence: hoverSequence,
         timestamp: new Date().toISOString(),
       },
-    ]);
+    ];
+    setChoiceLogs(nextChoiceLogs);
 
-    window.setTimeout(() => {
-      setSelectedChoiceId(null);
-      if (record && choiceIndex < record.theater_script.act2.choices.length - 1) {
-        setChoiceIndex((current) => current + 1);
-        resetInteractionTimer();
-        return;
-      }
-      transitionTo("act3");
-    }, 1200);
-  }
-
-  function chooseAct3(optionId: string) {
-    if (!currentQuestion) return;
-    const hesitation = (currentTimestamp() - interactionStartedAtRef.current) / 1000;
-    setMirrorLogs((current) => [
-      ...current,
-      {
-        question_id: currentQuestion.question_id,
-        selected: optionId,
-        hesitation_time: Number(hesitation.toFixed(1)),
-        timestamp: new Date().toISOString(),
-      },
-    ]);
-
-    if (record && questionIndex < record.theater_script.act3.mirror_questions.length - 1) {
-      setQuestionIndex((current) => current + 1);
-      resetInteractionTimer();
+    if (nextChoiceLogs.length >= requiredChoiceCount) {
+      setCompletedChoiceLogs(nextChoiceLogs);
       return;
     }
 
-    transitionTo("epilogue");
+    advanceChoiceTimerRef.current = window.setTimeout(() => {
+      setChoiceIndex(nextChoiceLogs.length);
+      setSelectedChoiceId(null);
+      resetInteractionTimer();
+      advanceChoiceTimerRef.current = null;
+    }, 520);
   }
 
-  async function finishJourney() {
+  async function finishJourney(finalChoiceLogs: Part2ChoiceRecord[] = choiceLogs) {
     if (!record) return;
+    if (finalChoiceLogs.length < requiredChoiceCount) {
+      setStatus("还有一轮剧场选择没有完成。");
+      return;
+    }
     setSubmitting(true);
     setStatus("正在让星图显形。");
     try {
       const now = currentTimestamp();
-      phaseDurationsRef.current.epilogue = Number(((now - phaseStartedAtRef.current) / 1000).toFixed(1));
+      phaseDurationsRef.current[phase] = Number(((now - phaseStartedAtRef.current) / 1000).toFixed(1));
 
       const sessionRaw = window.localStorage.getItem(BENYUAN_SESSION_STORAGE_KEY);
       const runtimeRaw = window.localStorage.getItem(BENYUAN_RUNTIME_STORAGE_KEY);
@@ -281,32 +248,24 @@ export function BenyuanTheaterExperience() {
         device: window.innerWidth < 768 ? "mobile" : "web",
         phase_durations: phaseDurationsRef.current,
         hover_totals: {
-          act2: choiceLogs.reduce((total, item) => total + (item.hover_sequence?.length ?? 0), 0),
-          act3: 0,
+          act2: finalChoiceLogs.reduce((total, item) => total + (item.hover_sequence?.length ?? 0), 0),
         },
-        hesitation_patterns: [
-          ...choiceLogs.map((item) => ({
-            phase: "act2",
-            node_id: item.choice_id,
-            hesitation_time: item.hesitation_time,
-            hover_count: item.hover_sequence?.length ?? 0,
-            selected: item.selected,
-          })),
-          ...mirrorLogs.map((item) => ({
-            phase: "act3",
-            node_id: item.question_id,
-            hesitation_time: item.hesitation_time,
-            selected: item.selected,
-          })),
-        ],
+        hesitation_patterns: finalChoiceLogs.map((item, index) => ({
+          phase: "act2",
+          node_id: item.choice_id,
+          round_index: index,
+          hesitation_time: item.hesitation_time,
+          hover_count: item.hover_sequence?.length ?? 0,
+          selected: item.selected,
+        })),
       };
 
       const pending: BenyuanPendingPart2 = {
         part1_id: session.part1_id ?? record.part1_id,
         theater_script_id: session.theater_script_id ?? record.theater_script_id,
         runtime_override: runtime,
-        choice_logs: choiceLogs,
-        mirror_logs: mirrorLogs,
+        choice_logs: finalChoiceLogs,
+        mirror_logs: [],
         metadata,
       };
 
@@ -315,6 +274,7 @@ export function BenyuanTheaterExperience() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "这一页暂时没有抵达。");
       setSubmitting(false);
+      setSelectedChoiceId(null);
     }
   }
 
@@ -349,8 +309,6 @@ export function BenyuanTheaterExperience() {
 
   return (
     <div className={benyuanUiRecipes.immersiveFlowNarrow}>
-      <ImmersiveTopBar backHref="/collect" progressValue={phaseProgressPercent} progressText={phaseTitle} />
-
       {phase === "act1" ? (
         <GlassPanel
           data-theater-phase="act1"
@@ -401,7 +359,7 @@ export function BenyuanTheaterExperience() {
               <h3 className={cx("text-[var(--text-primary)]", theaterHeadingClass(act2SceneLine || "你要走向哪一条轨道？"))}>{act2SceneLine || "你要走向哪一条轨道？"}</h3>
             </div>
             <div className="theater-choice-stack mt-8 grid gap-2.5">
-              {currentChoice.options.map((option, index) => {
+              {currentChoice.options.slice(0, 4).map((option, index) => {
                 const active = selectedChoiceId === option.id;
                 return (
                   <button
@@ -409,7 +367,7 @@ export function BenyuanTheaterExperience() {
                     type="button"
                     onMouseEnter={() => setHoverSequence((current) => [...current, option.id])}
                     onClick={() => chooseAct2(option.id)}
-                    disabled={Boolean(selectedChoiceId)}
+                    disabled={Boolean(selectedChoiceId) || submitting}
                     data-active={active ? "true" : "false"}
                     className={cx(benyuanUiRecipes.interactiveCard(active, "accent"), "group min-h-[4.35rem] overflow-hidden px-4 py-3.5 text-left disabled:opacity-70")}
                   >
@@ -422,61 +380,20 @@ export function BenyuanTheaterExperience() {
                 );
               })}
             </div>
-          </div>
-        </GlassPanel>
-      ) : null}
-
-      {phase === "act3" && currentQuestion ? (
-        <GlassPanel
-          data-theater-phase="act3"
-          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--mirror mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel, "px-0 py-7 md:px-4 md:py-9")}
-        >
-          <div className="cosmic-editorial-stage theater-scene-copy mx-auto max-w-[25rem] pl-5 text-left md:max-w-[28rem]">
-            <p className="theater-phase-whisper">镜像回声</p>
-            <h3 className={cx("text-[var(--text-primary)]", theaterHeadingClass(currentQuestion.question))}>{currentQuestion.question}</h3>
-            {mirrorHint ? <p className="theater-mirror-hint mt-4 max-w-[18rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[22rem]">{mirrorHint}</p> : null}
-          </div>
-          <div className="theater-choice-stack mx-auto mt-8 grid max-w-[25rem] gap-2.5 md:max-w-[28rem]">
-            {currentQuestion.options.map((option, index) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => chooseAct3(option.id)}
-                className={cx(benyuanUiRecipes.interactiveCard(false, "accent"), "min-h-[4.35rem] px-4 py-3.5 text-left")}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
-                  <p className="theater-option-copy min-w-0 flex-1 text-[1rem] font-semibold leading-6 text-[var(--text-primary)]">{option.text}</p>
-                  <span className="cosmic-option-select" aria-hidden />
-                </div>
-              </button>
-            ))}
-          </div>
-        </GlassPanel>
-      ) : null}
-
-      {phase === "epilogue" ? (
-        <GlassPanel
-          data-theater-phase="epilogue"
-          className={cx("cosmic-open-stage theater-lens-stage theater-epilogue-lens mx-auto min-h-[65vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel)}
-        >
-          <div className="theater-lens-stage__inner mx-auto flex max-w-3xl flex-col items-center justify-center py-8 text-center">
-            <ImmersiveSigil size="md" className="theater-stage-sigil" />
-            <p className="theater-phase-whisper mt-7">最后一镜</p>
-            <h3 className="mt-4 text-[2.55rem] font-black leading-[0.96] tracking-[0em] text-[var(--text-primary)] md:text-[4rem]">星图正在靠近。</h3>
-            {epilogueLead ? <p className="mt-7 max-w-[20rem] text-lg leading-9 text-[var(--text-primary)] md:max-w-[24rem]">{epilogueLead}</p> : null}
-            {epilogueClose ? <p className="mt-4 max-w-[20rem] text-base leading-8 text-[var(--text-secondary)] md:max-w-[24rem]">{epilogueClose}</p> : null}
-            <div className="theater-bottom-intent mt-12 w-full max-w-sm">
-              <PrimaryButton
-                type="button"
-                onClick={finishJourney}
-                disabled={submitting}
-                className="w-full px-6 py-4 disabled:opacity-60"
-              >
-                {submitting ? "星图显影中" : "生成我的星图"}
-              </PrimaryButton>
-            </div>
-            {status ? <p className="mt-4 text-sm text-[var(--text-secondary)]">{status}</p> : null}
+            {selectedChoiceId && completedChoiceLogs ? (
+              <div className="theater-bottom-intent mt-7 space-y-3 px-1">
+                <p className="px-4 text-sm leading-6 text-[var(--text-secondary)]">四轮选择已经收束。</p>
+                <PrimaryButton
+                  type="button"
+                  onClick={() => void finishJourney(completedChoiceLogs)}
+                  disabled={submitting}
+                  className="w-full md:px-8 md:py-4"
+                >
+                  {submitting ? "正在进入星图" : "进入生成星图"}
+                </PrimaryButton>
+              </div>
+            ) : null}
+            {status ? <p className="mt-5 px-5 text-sm leading-6 text-[var(--text-secondary)]">{status}</p> : null}
           </div>
         </GlassPanel>
       ) : null}

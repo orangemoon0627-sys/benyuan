@@ -241,7 +241,7 @@ extension BenyuanNativeFlowModel {
                     keyThemes: ["边界", "凝视", "未寄出的信"]
                 ),
                 act1: TheaterScript.Act1(
-                    sceneDescription: "你站在一座没有门牌的月下剧场前，墙面像黑色海水，里面传来一段只属于你的旧音乐。",
+                    sceneDescription: "你醒来时，站在一片很深的月场边缘。远处的黑色天体缓慢转动，边缘有一圈暗金色的光。脚下不是地面，而是一层半透明的潮水；潮水下压着一张被银光擦亮的照片轮廓，像有人把你交出的某个画面折进了这里。\n\n空气里有那段旧音乐，低得像从月背传来。它不是背景乐，更像这个空间自己的呼吸。某处传来一句很轻的话：那封没有寄出的信，还没有离开你。这句话没有被解释，只是在你身边绕了一圈，落成一条通向前方的细线。\n\n一封没有署名的信浮在潮水上，信封背面有照片里的光。旁边几颗暗金粒子沿着同一个位置反复靠近，像在复现你刚才某一次停顿。更远处有一条窄桥，桥另一端的银白光线忽明忽暗，像在等你决定要不要把这段距离继续往前推。\n\n你意识到，这不是为了让你回答问题而临时搭出来的场景。它更像前面那些画面、声音、句子和停顿，被折成了一段只能由你继续往下走的小说。你只需要沿着第一条细线靠近，看看它会把你带到哪里。",
                     visualPrompt: "deep lunar theater entrance, realistic black moon, restrained silver light",
                     ambientSound: "低频潮声与远处钢琴",
                     duration: 35
@@ -249,48 +249,80 @@ extension BenyuanNativeFlowModel {
                 act2: TheaterScript.Act2(choices: [
                     TheaterChoice(
                         choiceId: 1,
-                        scene: "第一幕里，一位戴银色面具的人递给你一封没有署名的信。他说：你可以现在拆开，也可以带着它穿过走廊。",
+                        scene: "入口打开后，那封没有寄出的信浮在黑潮上。信封没有署名，背面却压着照片里的银白光线。旧音乐在剧场深处重复同一个小节，像在问你：要不要先承认自己已经听见了它？",
                         options: [
-                            TheaterChoiceOption(id: "open_now", text: "立刻拆开，承认自己想知道真相。", traitSignal: "direct_truth", response: "纸面像月光一样发冷。"),
-                            TheaterChoiceOption(id: "carry_forward", text: "先收起来，等到更深处再读。", traitSignal: "deferred_intimacy", response: "信封在掌心变得很重。")
+                            TheaterChoiceOption(id: "letter_open", text: "靠近信封，让第一行字自己浮出来。", traitSignal: "direct_truth", response: "纸面没有完全展开，只露出一句很轻的话，像真相先试探了你一下。"),
+                            TheaterChoiceOption(id: "letter_hold", text: "先把信收进掌心，等潮声变慢。", traitSignal: "deferred_intimacy", response: "信封变得很重，但重量并不压迫你，反而像给了你一个可以停留的位置。"),
+                            TheaterChoiceOption(id: "letter_reflect", text: "把信举向银光，看背面的照片轮廓。", traitSignal: "observational_boundary", response: "银光沿着纸背游动，你发现自己不是不想知道，只是不愿被太快命名。"),
+                            TheaterChoiceOption(id: "letter_avoid", text: "绕过信封，先听清那段旧音乐。", traitSignal: "aesthetic_deferral", response: "音乐替你保留了答案。它没有催促，只把你带向剧场更深处。")
                         ]
                     ),
                     TheaterChoice(
                         choiceId: 2,
-                        scene: "走廊尽头有两扇门：一扇传来熟悉的声音，一扇完全安静，却透出微弱银光。",
+                        scene: "你带着信往里走，走廊变成一条窄桥。桥的一侧是熟悉的声音，另一侧是完全安静的银光。桥中央摆着那张照片，画面里被保存下来的距离，正在变成你和某个人之间的距离。",
                         options: [
-                            TheaterChoiceOption(id: "familiar_voice", text: "推开有声音的门，面对旧关系的回声。", traitSignal: "relationship_return", response: "声音停顿了一下，像等你命名它。"),
-                            TheaterChoiceOption(id: "silent_light", text: "走向安静的银光，选择暂时不解释。", traitSignal: "inner_boundary", response: "银光落在你的肩上，像一层新的边界。")
+                            TheaterChoiceOption(id: "voice_door", text: "推开有声音的门，确认那是谁的回声。", traitSignal: "relationship_return", response: "声音停顿了一下，像终于被你认出，但还没有要求你回答。"),
+                            TheaterChoiceOption(id: "silver_door", text: "走向安静的银光，先保留解释。", traitSignal: "inner_boundary", response: "银光落在你的肩上，像一层新的边界，让靠近不必立刻变成暴露。"),
+                            TheaterChoiceOption(id: "photo_bridge", text: "停在桥中央，看照片如何被两边照亮。", traitSignal: "tension_tolerance", response: "照片没有选边。它把声音和银光同时留住，像承认你也可以暂时不二选一。"),
+                            TheaterChoiceOption(id: "step_back", text: "后退半步，让对方的声音先靠近。", traitSignal: "relational_caution", response: "桥没有因为你的后退而断开。你只是想确认，靠近的人是否懂得放轻脚步。")
+                        ]
+                    ),
+                    TheaterChoice(
+                        choiceId: 3,
+                        scene: "桥尽头出现一枚小小的黑色星体。它没有吞没信、照片或声音，只把它们拉进同一圈暗金轨道。你终于看见：剧场一直不是在逼你选择答案，而是在显影你保存自己的方式。",
+                        options: [
+                            TheaterChoiceOption(id: "orbit_stabilize", text: "把信贴近胸口，先让轨道稳定下来。", traitSignal: "security_need", response: "星体的转速慢了一点。你把稳定当成容器，而不是退路。"),
+                            TheaterChoiceOption(id: "edge_touch", text: "伸手触碰星体边缘，允许未知靠近。", traitSignal: "exploration_desire", response: "你的指尖没有被吞没，只沾上一层冷银色的光。未知没有回答你，却承认你已经抵达。"),
+                            TheaterChoiceOption(id: "dual_gravity", text: "留在两股引力之间，听它们同时说话。", traitSignal: "ambiguity_capacity", response: "两股引力没有互相抵消。它们像两条潮线，让你知道矛盾也可以形成轨道。"),
+                            TheaterChoiceOption(id: "hidden_exit", text: "沿着暗金轨道，寻找没有标出的出口。", traitSignal: "creative_reframing", response: "轨道在脚下分出第三条细线，很窄，却贴合你的步子，像给不愿二选一的人留下的路。")
+                        ]
+                    ),
+                    TheaterChoice(
+                        choiceId: 4,
+                        scene: "黑色星体把信、照片、旧音乐和桥上的回声压成一枚很小的月。星图还没有开始命名你，它先停在最后一道门前：如果要把这些线索交给它，你更愿意让它先看见哪一层？",
+                        options: [
+                            TheaterChoiceOption(id: "final_origin", text: "把那些总会回来的旧画面交给星图。", traitSignal: "self_narrative_time", response: "旧画面没有把你困住，它只是把你反复回望的方向照亮。"),
+                            TheaterChoiceOption(id: "final_desire", text: "把迟迟没有说出口的靠近放进月光里。", traitSignal: "desire_structure", response: "那件事没有立刻变亮，却在暗处多了一圈清晰的边。"),
+                            TheaterChoiceOption(id: "final_boundary", text: "把保护自己的边界放到暗金轨道上。", traitSignal: "object_distance_boundary", response: "暗金轨道贴近了一点，像承认边界也是一种靠近的方式。"),
+                            TheaterChoiceOption(id: "final_action", text: "把犹豫之后仍会前行的那一步交给桥。", traitSignal: "action_after_hesitation", response: "桥的尽头出现了下一步台阶，不宽，但足够让你带着迟疑继续前行。")
                         ]
                     )
                 ]),
                 act3: TheaterScript.Act3(
-                    sceneDescription: "镜厅中央出现一口黑色水井，水面映出的不是脸，而是你还没有说出口的愿望。",
+                    sceneDescription: "黑色星体慢慢展开，信、照片、旧音乐和桥上的回声都停在同一圈暗金轨道里。接下来不是继续猜谜，而是把刚才的选择往里问一点：你为什么靠近、为什么停下，又在保护什么。",
                     mirrorQuestions: [
                         TheaterMirrorQuestion(
                             questionId: 1,
-                            dialogue: "水井问：你最常用什么方式保护自己？",
-                            question: "当别人靠近你的核心时，你更像哪一种反应？",
+                            dialogue: "旧音乐被潮声重新送回来。它不要求你解释，只帮你辨认：刚才你保留或靠近时，最接近哪一种原因？",
+                            question: "刚才的选择，更像是因为什么？",
                             options: [
-                                TheaterMirrorQuestionOption(id: "name_boundary", text: "说清界限，但仍留在现场。", traitSignal: "secure_boundary"),
-                                TheaterMirrorQuestionOption(id: "vanish", text: "先消失，让对方猜不到入口。", traitSignal: "withdrawal")
+                                TheaterMirrorQuestionOption(id: "mirror_understood", text: "我想被真正听懂，但不想被急着解释。", traitSignal: "being_understood_desire"),
+                                TheaterMirrorQuestionOption(id: "mirror_self", text: "我需要先确认自己的感受，再决定怎么说。", traitSignal: "self_exploration"),
+                                TheaterMirrorQuestionOption(id: "mirror_lamp", text: "我想先确认这件事不会打乱我的边界。", traitSignal: "security_need"),
+                                TheaterMirrorQuestionOption(id: "mirror_tide", text: "我更想保留一点自由，不被任何答案固定住。", traitSignal: "freedom_desire"),
+                                TheaterMirrorQuestionOption(id: "mirror_core", text: "我在意它是否真的有意义，而不只是情绪。", traitSignal: "meaning_seeking"),
+                                TheaterMirrorQuestionOption(id: "mirror_breathe", text: "我需要先把心里的波动放稳，再继续靠近。", traitSignal: "emotional_regulation")
                             ]
                         ),
                         TheaterMirrorQuestion(
                             questionId: 2,
-                            dialogue: "面具人把信还给你：现在你可以决定它要不要被寄出。",
-                            question: "你想把哪一部分自己交给世界？",
+                            dialogue: "照片翻到背面，细小裂纹把时间分成几层。过去、现在、未来，还有别人看你的方式，都在轻轻拉住你。",
+                            question: "如果要更准确地理解你，星图应该先看哪一部分？",
                             options: [
-                                TheaterMirrorQuestionOption(id: "unfinished_desire", text: "还没完成、但真实的愿望。", traitSignal: "emergent_desire"),
-                                TheaterMirrorQuestionOption(id: "precise_silence", text: "不解释的沉默和选择。", traitSignal: "aesthetic_silence")
+                                TheaterMirrorQuestionOption(id: "past_light", text: "先看我总会回头想起的那部分过去。", traitSignal: "past_oriented"),
+                                TheaterMirrorQuestionOption(id: "present_light", text: "先看我现在真正想改变的现实处境。", traitSignal: "action_willingness"),
+                                TheaterMirrorQuestionOption(id: "future_light", text: "先看我对未来最放不下的不确定感。", traitSignal: "future_oriented"),
+                                TheaterMirrorQuestionOption(id: "external_light", text: "先看我为什么会在意别人怎么看我。", traitSignal: "external_validation_need"),
+                                TheaterMirrorQuestionOption(id: "inner_light", text: "先看我对自己最难放松的那一面。", traitSignal: "self_acceptance"),
+                                TheaterMirrorQuestionOption(id: "still_light", text: "先看我怎样在矛盾里仍然保持平静。", traitSignal: "acceptance_tendency")
                             ]
                         )
                     ],
-                    mirrorFinalWords: "你不是没有答案，你只是不愿把答案交给不够深的场合。"
+                    mirrorFinalWords: "追问没有替你下结论，只把刚才的选择收成一枚很小的月。它落进你掌心，像在说：你带走的不是标准答案，而是一条更接近自己的轨道。"
                 ),
                 epilogue: TheaterScript.Epilogue(
-                    sceneDescription: "剧场天顶缓慢打开，一枚黑月从银白轨道后方升起。",
-                    closingText: "最后一镜没有替你总结，它只是把你的停顿、选择和回望压成一枚精神星核。",
+                    sceneDescription: "剧场天顶缓慢打开，黑色星体退到更远处，暗金轨道却留在你脚下。",
+                    closingText: "这一幕没有结束，它只是换成了星体的语言。现在，星图开始显影。",
                     transitionPrompt: "从剧场过渡到星图生成",
                     transitionAnimation: "deep-moon-continuous-shot"
                 )
@@ -372,7 +404,7 @@ extension BenyuanNativeFlowModel {
         case "moonlit-seeker", "moonlit_seeker", "far-tide-moon", "far_tide_moon", "lone-seeker", "lone_seeker":
             return PsycheArchetype(
                 name: "远潮观月者",
-                englishName: "The Moonlit Seeker",
+                englishName: "The Far-Tide Moon Watcher",
                 personalizedName: "远潮边的守信者",
                 personalizedSubtitle: "把黑潮、月面与未寄出的信收成一条安静潮汐",
                 coreEssence: "你常在幽暗、审美与记忆的回声里辨认意义，也愿意为真实保留足够的精神纵深。",
@@ -435,7 +467,7 @@ extension BenyuanNativeFlowModel {
         case "solar", "solar-corona", "solar_corona":
             return PsycheArchetype(
                 name: "日冕引燃者",
-                englishName: "The Solar Corona",
+                englishName: "The Solar Corona Igniter",
                 personalizedName: "暗日旁的燃心者",
                 personalizedSubtitle: "在克制外壳下保留一圈不肯熄灭的热量",
                 coreEssence: "你会压低声量，但生命力并没有退场，只是在等待正确的释放方式。",
@@ -444,7 +476,7 @@ extension BenyuanNativeFlowModel {
         case "terrestrial", "terrestrial-planet", "terrestrial_planet":
             return PsycheArchetype(
                 name: "类地栖居者",
-                englishName: "The Terrestrial Planet",
+                englishName: "The Terrestrial Dweller",
                 personalizedName: "暗岸上的栖居者",
                 personalizedSubtitle: "在深空里寻找可以安放身体与记忆的岸",
                 coreEssence: "你需要真实、可触摸的秩序，让精神深处也能落地。",
@@ -453,7 +485,7 @@ extension BenyuanNativeFlowModel {
         case "deep-space-anchor", "deep_space_anchor", "deep-space", "deep_space", "anchor":
             return PsycheArchetype(
                 name: "深空锚定者",
-                englishName: "The Deep Space Anchor",
+                englishName: "The Deep-Space Anchor",
                 personalizedName: "静默坐标的锚定者",
                 personalizedSubtitle: "在漫长黑场里守住一枚不会漂移的银白坐标",
                 coreEssence: "你不是拒绝远方，而是需要先确认自己不会在远方里失重。",
@@ -462,7 +494,7 @@ extension BenyuanNativeFlowModel {
         default:
             return PsycheArchetype(
                 name: "远潮观月者",
-                englishName: "The Moonlit Seeker",
+                englishName: "The Far-Tide Moon Watcher",
                 personalizedName: "远潮边的守信者",
                 personalizedSubtitle: "把黑潮、月面与未寄出的信收成一条安静潮汐",
                 coreEssence: "你常在幽暗、审美与记忆的回声里辨认意义，也愿意为真实保留足够的精神纵深。",

@@ -8,9 +8,22 @@ extension BenyuanNativeFlowModel {
         resetInteractionTimer()
     }
 
+    func revisitTheaterPhase(_ phase: BenyuanNativeTheaterPhase) {
+        guard phase != theaterPhase else { return }
+        selectedTheaterOptionId = nil
+        isTheaterChoiceFeedbackVisible = false
+        isTheaterConstellationEntrySubmitting = false
+        theaterPhase = phase
+        resetInteractionTimer()
+    }
+
     func chooseAct2(_ option: TheaterChoiceOption) {
-        guard let choice = currentTheaterChoice else { return }
+        guard let choice = currentTheaterChoice,
+              choiceLogs.count == theaterChoiceIndex,
+              choiceLogs.count < requiredTheaterChoiceCount,
+              !isTheaterConstellationEntrySubmitting else { return }
         selectedTheaterOptionId = option.id
+        isTheaterChoiceFeedbackVisible = true
         let hesitation = Date().timeIntervalSince(interactionStartedAt)
         choiceLogs.append(Part2ChoiceRecord(
             choiceId: choice.choiceId,
@@ -23,44 +36,35 @@ extension BenyuanNativeFlowModel {
         Task {
             try? await Task.sleep(nanoseconds: 520_000_000)
             await MainActor.run {
-                selectedTheaterOptionId = nil
-                if let theater, theaterChoiceIndex < theater.theaterScript.act2.choices.count - 1 {
-                    theaterChoiceIndex += 1
-                    resetInteractionTimer()
-                } else {
-                    markPhaseDuration("act2")
-                    theaterPhase = .act3
-                    resetInteractionTimer()
+                markPhaseDuration("act2")
+                resetInteractionTimer()
+                isTheaterChoiceFeedbackVisible = false
+                if choiceLogs.count < requiredTheaterChoiceCount {
+                    selectedTheaterOptionId = nil
+                    theaterChoiceIndex = choiceLogs.count
                 }
             }
         }
     }
 
-    func chooseAct3(_ option: TheaterMirrorQuestionOption) {
-        guard let question = currentMirrorQuestion else { return }
-        selectedMirrorOptionId = option.id
-        let hesitation = Date().timeIntervalSince(interactionStartedAt)
-        mirrorLogs.append(Part2MirrorRecord(
-            questionId: question.questionId,
-            selected: option.id,
-            hesitationTime: rounded(hesitation),
-            timestamp: Date().benyuanISOString
-        ))
+    func enterConstellationGenerationFromTheater() async {
+        guard canEnterConstellationGenerationFromTheater else { return }
+        isTheaterConstellationEntrySubmitting = true
 
-        Task {
-            try? await Task.sleep(nanoseconds: 460_000_000)
-            await MainActor.run {
-                selectedMirrorOptionId = nil
-                if let theater, theaterMirrorIndex < theater.theaterScript.act3.mirrorQuestions.count - 1 {
-                    theaterMirrorIndex += 1
-                    resetInteractionTimer()
-                } else {
-                    markPhaseDuration("act3")
-                    theaterPhase = .epilogue
-                    resetInteractionTimer()
-                }
-            }
+        if activeNativePreviewStage != nil {
+            markPhaseDuration("act2")
+            processingProgress = 0.88
+            constellation = Self.previewConstellation(archetypeVariant: BenyuanShellConfig.nativePreviewArchetypeVariant).canonicalizedForNativeDisplay
+            session.constellationId = constellation?.constellationId
+            session.activeGenerationJobId = nil
+            activeGenerationJobId = nil
+            persist()
+            stage = .constellation
+            isTheaterConstellationEntrySubmitting = false
+            return
         }
+
+        await finishTheaterAndGenerateConstellation()
     }
 
     func finishTheaterAndGenerateConstellation() async {
@@ -68,6 +72,7 @@ extension BenyuanNativeFlowModel {
             try await finishTheaterAndGenerateConstellationPipeline()
         } catch {
             stage = .error(error.localizedDescription)
+            isTheaterConstellationEntrySubmitting = false
         }
     }
 
@@ -76,10 +81,10 @@ extension BenyuanNativeFlowModel {
             throw BenyuanNativeFlowError.missingTheaterContext
         }
 
+        isTheaterConstellationEntrySubmitting = true
         stage = .processing
-        markPhaseDuration("epilogue")
-        processingTitle = "最后一镜正在封存"
-        processingDetail = "把选择、停顿和回望写入第二层记录。"
+        processingTitle = "剧场选择正在封存"
+        processingDetail = "把刚才的选择和停顿写入第二层记录，随后直接显影星图。"
         processingProgress = 0.68
         let metadata: [String: BenyuanJSONValue] = [
             "device": .string("ios-native"),
@@ -107,5 +112,6 @@ extension BenyuanNativeFlowModel {
         applyNativeGenerationJob(job, source: .live)
         logNativeE2E("native_job_started kind=constellation job_id=\(job.jobId)")
         try await pollNativeGenerationJob(jobId: job.jobId)
+        isTheaterConstellationEntrySubmitting = false
     }
 }

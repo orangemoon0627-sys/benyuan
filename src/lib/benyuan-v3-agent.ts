@@ -1233,10 +1233,10 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
         isRecord(source.act1) && typeof source.act1.duration === "number" ? source.act1.duration : fallback.act1.duration,
     },
     act2: {
-      choices: (liveChoices.length > 0 ? liveChoices : fallback.act2.choices).map((choice, index) => {
-        const fallbackChoice = fallback.act2.choices[index] ?? fallback.act2.choices[fallback.act2.choices.length - 1];
+      choices: fallback.act2.choices.slice(0, 4).map((fallbackChoice, index) => {
+        const choice = liveChoices[index] ?? fallbackChoice;
         const choiceRecord = isRecord(choice) ? choice : {};
-        const options = Array.isArray(choiceRecord.options) ? choiceRecord.options : fallbackChoice.options;
+        const liveOptions = Array.isArray(choiceRecord.options) ? choiceRecord.options : [];
         return {
           choice_id: index + 1,
           scene:
@@ -1245,8 +1245,8 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
               : typeof choiceRecord.prompt === "string"
                 ? cleanVisibleText(choiceRecord.prompt, fallbackChoice.scene)
                 : fallbackChoice.scene,
-          options: options.map((option, optionIndex) => {
-            const fallbackOption = fallbackChoice.options[optionIndex] ?? fallbackChoice.options[fallbackChoice.options.length - 1];
+          options: fallbackChoice.options.slice(0, 4).map((fallbackOption, optionIndex) => {
+            const option = liveOptions[optionIndex] ?? fallbackOption;
             if (!isRecord(option)) {
               return { ...fallbackOption, id: `${index + 1}${String.fromCharCode(65 + optionIndex)}`, text: cleanVisibleText(typeof option === "string" ? option : undefined, fallbackOption.text) };
             }
@@ -1343,7 +1343,7 @@ function normalizeFastTheaterSeed(candidate: unknown): FastTheaterSeed | null {
     ? source.motifs.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 3)
     : [];
   const act2Lenses = Array.isArray(source.act2_lenses)
-    ? source.act2_lenses.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 3)
+    ? source.act2_lenses.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 4)
     : [];
   const mirrorQuestions = Array.isArray(source.mirror_questions)
     ? source.mirror_questions

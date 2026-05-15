@@ -600,7 +600,7 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
       key_themes: themes.map(visibleTheme),
     },
     act1: {
-      scene_description: `你醒来时，站在一片很深的月场里。远处的黑色天体缓慢转动，边缘有一圈暗金色的光，像从“${coreImage}”里抽出的引力。脚下不是地面，而是一层半透明的潮水；潮水下压着一张照片的轮廓：${photo}。\n\n空气里有${music}。它不是背景乐，更像这座剧场的呼吸。某处传来一句低低的回声：“${socialText}” 这句话没有被解释，只是在你身边绕了一圈，落成一条通向前方的细线。\n\n你身后保留着“${scene}”的节律，前方则像被“${cinema}”的镜头慢慢推近。你意识到，自己不是来回答问题的。你只是沿着此前留下的画面、声音和句子，回到一个早就等在那里的入口。`,
+      scene_description: `你醒来时，站在一片很深的月场边缘。远处的黑色天体缓慢转动，边缘有一圈暗金色的光，像从“${coreImage}”里抽出的引力。脚下不是地面，而是一层半透明的潮水；潮水下压着一张照片的轮廓：${photo}。\n\n空气里有${music}。它不是背景乐，更像这个空间自己的呼吸。某处传来一句低低的回声：“${socialText}” 这句话没有被解释，只是在你身边绕了一圈，落成一条通向前方的细线。\n\n你身后保留着“${scene}”的节律，前方则像被“${cinema}”的镜头慢慢推近。一封没有寄出的信浮在潮水上，信封背面有照片里的光，旁边还有几颗暗金粒子沿着同一个位置反复靠近。\n\n你意识到，这不是为了让你回答问题而临时搭出来的场景。它更像前面那些画面、声音、句子和停顿，被折成了一段只能由你继续往下走的小说。你只需要沿着第一条细线靠近，看看它会把你带到哪里。`,
       visual_prompt: `deep black moon field, dark celestial body with antique gold rim light, translucent tidal floor, photo trace motif ${photo}, cinematic atmosphere inspired by ${cinema}, quiet immersive iPhone app scene, low saturation, silver glow, 16:9`,
       ambient_sound: coreImage.includes("海") ? "ocean_waves_distant" : coreImage.includes("雨") ? "rain_soft" : "silence_deep",
       duration: 30,
@@ -637,43 +637,53 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
             { id: "3D", text: "沿着暗金轨道，寻找没有标出的出口", trait_signal: "creative_reframing + independence + non_linear_thinking", response: "轨道在你脚下分出第三条细线。它很窄，却贴合你的步子，像专门为不愿二选一的人留下。" },
           ],
         },
+        {
+          choice_id: 4,
+          scene: `黑色星体把信、照片、声音和那个人影压成一枚很小的月。星图还没有开始命名你，它先停在最后一道门前：如果要把这些线索交给它，你更愿意让它先看见哪一层？`,
+          options: [
+            { id: "4A", text: "把那些总会回来的旧画面交给星图", trait_signal: "self_narrative + time_orientation + past_integration", response: "旧画面没有把你困住，它只是把你反复回望的方向照亮，让星图知道从哪里开始读你。" },
+            { id: "4B", text: "把迟迟没有说出口的靠近放进月光里", trait_signal: "desire_structure + indirect_expression + vulnerable_wish", response: "那件事没有立刻变亮，却在暗处多了一圈清晰的边，像终于被允许拥有一个位置。" },
+            { id: "4C", text: "把保护自己的边界放到暗金轨道上", trait_signal: "object_distance + boundary + self_preservation", response: "暗金轨道贴近了一点，像承认边界不是拒绝，而是让靠近可以持续的一种方式。" },
+            { id: "4D", text: "把犹豫之后仍会前行的那一步交给桥", trait_signal: "action_after_hesitation + agency + meaning_to_action", response: "桥的尽头出现了下一步台阶，不宽，但足够让你带着迟疑继续前行。" },
+          ],
+        },
       ],
     },
     act3: {
-      scene_description: "黑色星体慢慢展开，里面不是深渊，而是一面被潮水擦亮的镜面。信、照片、那段声音和桥上的人影都浮在镜面里，像同一场剧终于露出它的底片。",
+      scene_description: "黑色星体慢慢展开，信、照片、那段声音和桥上的人影都停在同一圈暗金轨道里。接下来不是继续猜谜，而是把刚才的选择往里问一点：你为什么靠近、为什么停下，又在保护什么。",
       mirror_questions: [
         {
           question_id: 1,
-          dialogue: `镜面把“${socialText}”重新念了一遍，声音很轻，像从海水下面传来。它没有问你对不对，只问：这句话最想被谁听见？`,
-          question: "让镜面停在一个方向上：",
+          dialogue: `那句“${socialText}”被潮声重新送回来。它不要求你解释，只帮你辨认：刚才你保留或靠近时，最接近哪一种原因？`,
+          question: "刚才的选择，更像是因为什么？",
           options: [
-            { id: "3A-1", text: "交给一个真正听得懂沉默的人", trait_signal: "relationship_need + being_understood_desire" },
-            { id: "3A-2", text: "先交还给自己，还不急着解释", trait_signal: "self_exploration + existential_anxiety" },
-            { id: "3A-3", text: "放进一盏稳定的灯下，等它安静", trait_signal: "security_need + anxiety_tendency" },
-            { id: "3A-4", text: "让它随潮水漂远，换一片空气", trait_signal: "freedom_desire + rebelliousness" },
-            { id: "3A-5", text: "留在星体中心，继续追问它的意义", trait_signal: "meaning_seeking + philosophical" },
-            { id: "3A-6", text: "贴近胸口，先让呼吸慢下来", trait_signal: "peace_need + emotional_regulation" },
-            { id: "3A-7", text: "暂时不处理，只承认它曾经存在", trait_signal: "uncertainty_tolerance + confusion" },
+            { id: "3A-1", text: "我想被真正听懂，但不想被急着解释", trait_signal: "relationship_need + being_understood_desire" },
+            { id: "3A-2", text: "我需要先确认自己的感受，再决定怎么说", trait_signal: "self_exploration + existential_anxiety" },
+            { id: "3A-3", text: "我想先确认这件事不会打乱我的边界", trait_signal: "security_need + anxiety_tendency" },
+            { id: "3A-4", text: "我更想保留一点自由，不被任何答案固定住", trait_signal: "freedom_desire + rebelliousness" },
+            { id: "3A-5", text: "我在意它是否真的有意义，而不只是情绪", trait_signal: "meaning_seeking + philosophical" },
+            { id: "3A-6", text: "我需要先把心里的波动放稳，再继续靠近", trait_signal: "peace_need + emotional_regulation" },
+            { id: "3A-7", text: "我还不确定，只能先承认它确实影响了我", trait_signal: "uncertainty_tolerance + confusion" },
           ],
         },
         {
           question_id: 2,
-          dialogue: "镜面里的照片翻到背面，那里有一条细小裂纹。裂纹没有破坏画面，只把光分成两半。",
-          question: "你愿意先移动哪一半光？",
+          dialogue: "照片翻到背面，细小裂纹把时间分成几层。过去、现在、未来，还有别人看你的方式，都在轻轻拉住你。",
+          question: "如果要更准确地理解你，星图应该先看哪一部分？",
           options: [
-            { id: "3B-1", text: "把过去那一半轻轻转向现在", trait_signal: "regret_tendency + past_oriented" },
-            { id: "3B-2", text: "把现在这一半推近一点现实", trait_signal: "present_dissatisfaction + action_willingness" },
-            { id: "3B-3", text: "把未来那一半留给尚未发生的路", trait_signal: "anxiety_tendency + future_oriented" },
-            { id: "3B-4", text: "把别人眼中的光调暗一些", trait_signal: "external_validation_need + social_anxiety" },
-            { id: "3B-5", text: "把看向自己的光调得柔和一点", trait_signal: "self_acceptance_difficulty + inner_conflict" },
-            { id: "3B-6", text: "不移动它，只看裂纹如何继续发亮", trait_signal: "acceptance_tendency + present_satisfaction" },
+            { id: "3B-1", text: "先看我总会回头想起的那部分过去", trait_signal: "regret_tendency + past_oriented" },
+            { id: "3B-2", text: "先看我现在真正想改变的现实处境", trait_signal: "present_dissatisfaction + action_willingness" },
+            { id: "3B-3", text: "先看我对未来最放不下的不确定感", trait_signal: "anxiety_tendency + future_oriented" },
+            { id: "3B-4", text: "先看我为什么会在意别人怎么看我", trait_signal: "external_validation_need + social_anxiety" },
+            { id: "3B-5", text: "先看我对自己最难放松的那一面", trait_signal: "self_acceptance_difficulty + inner_conflict" },
+            { id: "3B-6", text: "先看我怎样在矛盾里仍然保持平静", trait_signal: "acceptance_tendency + present_satisfaction" },
           ],
         },
       ],
-      mirror_final_words: "镜面没有给出结论，只把所有光收成一枚很小的月。它落进你掌心，像在说：你带走的不是答案，是一条能继续辨认自己的轨道。",
+      mirror_final_words: "追问没有替你下结论，只把刚才的选择收成一枚很小的月。它落进你掌心，像在说：你带走的不是标准答案，而是一条更接近自己的轨道。",
     },
     epilogue: {
-      scene_description: "镜面退回黑色星体，桥、信、照片和声音一层层淡下去，只剩暗金轨道还在。你沿着它回到最初的月场，发现入口没有关闭，只是变成了一张正在生成的精神星图。",
+      scene_description: "黑色星体退到更深处，桥、信、照片和声音一层层淡下去，只剩暗金轨道还在。你沿着它回到最初的月场，发现入口没有关闭，只是变成了一张正在生成的精神星图。",
       closing_text: "这一幕没有结束，它只是换成了星体的语言。现在，星图开始显影。",
       transition_prompt: "正在绘制你的精神星图...",
       transition_animation: "stars_converging",
@@ -696,10 +706,10 @@ function buildSevenDimensionScores(record: Part1Record, part2?: Part2Record) {
     openness: clampScore(bigFive.openness + (selectedChoices.includes("3D") ? 5 : 0)),
     independence: clampScore(100 - bigFive.extraversion + (selectedChoices.includes("2D") ? 6 : 0)),
     emotional_depth: clampScore(bigFive.neuroticism + (record.part1_data.narrative.social_posts_analysis ? 6 : 0)),
-    meaning_seeking: clampScore((bigFive.openness + bigFive.neuroticism) / 2 + (selectedMirror.includes("3A-5") ? 10 : selectedMirror.includes("3A-2") ? 8 : 0)),
+    meaning_seeking: clampScore((bigFive.openness + bigFive.neuroticism) / 2 + (selectedChoices.includes("4A") ? 8 : 0) + (selectedChoices.includes("4D") ? 6 : 0) + (selectedMirror.includes("3A-5") ? 6 : selectedMirror.includes("3A-2") ? 4 : 0)),
     aesthetic_sensitivity: clampScore(bigFive.openness + (record.part1_data.narrative.precious_photo_analysis ? 8 : 0)),
     action_tendency: clampScore(42 + selectedChoices.reduce((sum, current) => sum + choiceWeight(current), 0) - (record.part1_data.philosophy.decision_style === "B2-4" ? 6 : 0)),
-    relationship_need: clampScore(bigFive.agreeableness + (selectedChoices.includes("2B") ? 9 : 0) + (selectedMirror.includes("3A-1") ? 8 : 0)),
+    relationship_need: clampScore(bigFive.agreeableness + (selectedChoices.includes("2B") ? 9 : 0) + (selectedChoices.includes("4B") ? 6 : 0) + (selectedChoices.includes("4C") ? 4 : 0) + (selectedMirror.includes("3A-1") ? 4 : 0)),
   };
 }
 
@@ -878,7 +888,7 @@ function buildPersonalizedSubtitle(params: {
   mirrorPath: string[];
 }) {
   const topDimension = pickTopDimensionLabels(params.scores).split("、")[0] ?? "意义追寻";
-  const actTrace = params.act2Path[0] ?? params.mirrorPath[0] ?? "那次慢下来的选择";
+  const actTrace = params.act2Path[params.act2Path.length - 1] ?? params.act2Path[0] ?? params.mirrorPath[0] ?? "那次慢下来的选择";
   const socialFragment = params.socialText.length > 14 ? `${params.socialText.slice(0, 14)}...` : params.socialText;
   const photoFragment = params.photo.split("，")[0] || "一张未显影的照片";
   const actionFragment = actTrace.length > 10 ? `${actTrace.slice(0, 10)}...` : actTrace;
@@ -907,6 +917,7 @@ function buildDeterministicNarrativeOverview(params: {
   const topDimensions = pickTopDimensionLabels(scores);
   const themeSummary = formatThemeSummary(themes);
   const act2PathText = formatJoined(act2Path, "靠近、停留与回望之间的路径");
+  const finalAct2Choice = act2Path[3] ?? act2Path[act2Path.length - 1] ?? "";
   const mirrorPathText = formatJoined(mirrorPath, "把问题交还给自己");
   const starReading = summarizePsychoanalyticStarReading(psychoanalyticConcepts);
   const pauseTexture = longestPause >= 10
@@ -923,9 +934,11 @@ function buildDeterministicNarrativeOverview(params: {
     `你的证据并不抽象：那句“${socialText}”、${photo}，以及${music}，都像同一个黑色天体周围的碎光。它们说明你不是被宏大词语打动，而是会从一句话、一张图、一段声音里确认：这里有我的一部分。`,
     `在思维方式上，你更靠近“${selectedB1}”与“${selectedB2}”。这不是简单的直觉或犹豫，而像加缪式的清醒：先承认世界并不会自动给出意义，再用身体和时间去试探什么仍然值得靠近。`,
     `如果把这些线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动，而不是一个固定标签。你在“${selectedB5}”里保留距离，在剧场里又先${act2PathText}，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。`,
-    `剧场里，你先${act2PathText}；镜面前，又选择${mirrorPathText}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：你不是只想被理解，也在寻找一种不会过早占有你的理解。`,
+    mirrorPath.length > 0
+      ? `剧场里，你先${act2PathText}；历史追问里，又选择${mirrorPathText}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：你不是只想被理解，也在寻找一种不会过早占有你的理解。`
+      : `剧场四轮里，你先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：它不是额外剧情，而是在补足你如何靠近、如何保留、又如何把迟疑折成下一步。`,
     `当你在关系里选择“${selectedB5}”，一条很清楚的轨道浮现出来：${profile.relationshipLens} 温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己。当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
-    `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学镜面。${profile.movementLens}`,
+    `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学参照。${profile.movementLens}`,
     `${profile.closingLens}${supportLine ? ` ${supportLine}` : ""}`,
   ].join("\n\n");
 }

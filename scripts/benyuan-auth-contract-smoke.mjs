@@ -200,10 +200,10 @@ assert.match(nativeAuthView, /AuthenticationServices/, "native auth view must us
 assert.match(nativeAuthView, /SignInWithAppleButton/, "native auth view must use the system Sign in with Apple control");
 assert.match(nativeAuthView, /authorizationCode/, "native auth view must forward Apple authorization code when available");
 assert.match(nativeAuthView, /用 Apple 继续/, "native auth view should include Apple login copy");
-assert.match(nativeAuthView, /先以访客进入/, "native auth view should include guest login copy");
+assert.doesNotMatch(nativeAuthView, /先以访客进入/, "native auth view should not expose guest exploration before login");
 assert.match(nativeAuthView, /微信登录/, "native auth view should reserve the WeChat login entry");
 assert.match(nativeAuthView, /BenyuanWechatAuthClient/, "native auth view must invoke the WeChat native auth client");
-assert.match(nativeAuthView, /手机号绑定/, "native auth view should reserve the phone binding entry");
+assert.match(nativeAuthView, /手机号码登录/, "native auth view should reserve the phone login entry");
 assert.match(nativeAuthView, /TextField\("手机号"/, "native auth view should include a phone input");
 assert.match(nativeAuthView, /TextField\("验证码"/, "native auth view should include a verification code input");
 assert.match(nativeAccountView, /档案设置/, "native account view must expose quiet account settings copy");

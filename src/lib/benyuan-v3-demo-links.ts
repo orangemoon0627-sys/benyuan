@@ -10,7 +10,7 @@ export const benyuanDemoLinks: BenyuanDemoLink[] = [
   {
     pack: "A",
     name: "远潮观月者",
-    archetype: "The Moonlit Seeker",
+    archetype: "The Far-Tide Moon Watcher",
     theaterHref: "/theater?part1_id=part1_ebc4el2y&theater_script_id=theater_fcm6q0k8",
     constellationHref: "/constellation?constellation_id=const_qaub8gcl",
   },

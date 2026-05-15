@@ -85,7 +85,7 @@ struct BenyuanShellRootView: View {
         .animation(.easeInOut(duration: BenyuanMotion.base), value: state.errorMessage)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: networkMonitor.isOnline)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: state.nativeActivity)
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: nativeModel.stage)
+        .animation(nativeModel.shouldAnimateStageTransition ? .easeInOut(duration: BenyuanMotion.base) : nil, value: nativeModel.stage)
         .onChange(of: scenePhase) { _, phase in
             isMotionActive = phase == .active
             guard phase == .active else { return }
@@ -135,7 +135,7 @@ struct BenyuanShellRootView: View {
                 ) {
                     VStack(spacing: BenyuanSpacing.x3) {
                         Button("再试一次") {
-                            nativeModel.stage = .launching
+                            nativeModel.stage = .home
                             Task { await nativeModel.start() }
                         }
                         .buttonStyle(BenyuanPrimaryPillButtonStyle())

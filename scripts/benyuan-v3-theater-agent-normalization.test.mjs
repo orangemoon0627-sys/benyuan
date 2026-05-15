@@ -155,8 +155,44 @@ test("normalizeTheaterScript fills missing live act2 and act3 from fallback inst
   assert.ok(normalized);
   assert.equal(normalized.act1.scene_description, "模型只返回了第一幕。");
   assert.equal(normalized.act2.choices.length, fallback.act2.choices.length);
+  assert.equal(normalized.act2.choices.length, 4);
+  assert(normalized.act2.choices.every((choice) => choice.options.length === 4), "normalized theater must expose four options in each of four Act2 rounds");
   assert.equal(normalized.act3.mirror_questions.length, fallback.act3.mirror_questions.length);
   assert.equal(normalized.epilogue.closing_text, "仍然应该被接住。");
+});
+
+test("normalizeTheaterScript pads short live act2 into the required four-round theater test", () => {
+  const fallback = generateDeterministicTheaterScript(createPart1Record());
+  const normalized = normalizeTheaterScript(
+    {
+      theater_script: {
+        act2: {
+          choices: [
+            {
+              scene: "第一轮来自模型。",
+              options: [
+                { id: "1A", text: "靠近第一束光", trait_signal: "approach", response: "第一束光回应你。" },
+              ],
+            },
+            {
+              scene: "第二轮来自模型。",
+              options: [
+                { id: "2A", text: "停下看清距离", trait_signal: "boundary", response: "距离慢慢清楚。" },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    fallback,
+  );
+
+  assert.ok(normalized);
+  assert.equal(normalized.act2.choices.length, 4);
+  assert.equal(normalized.act2.choices[0].scene, "第一轮来自模型。");
+  assert.equal(normalized.act2.choices[1].scene, "第二轮来自模型。");
+  assert.match(normalized.act2.choices[3].scene, /星图|最后一道门|先看见哪一层/);
+  assert(normalized.act2.choices.every((choice) => choice.options.length === 4), "short live choices must be padded to four options per round");
 });
 
 test("normalizeTheaterScript cleans visible slug and OCR noise without rewriting internal signals", () => {

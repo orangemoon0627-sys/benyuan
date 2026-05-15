@@ -759,23 +759,10 @@ select:focus-visible {
   opacity: 0.56;
 }
 
-.theater-lens-stage--choice::after,
-.theater-lens-stage--mirror::after {
+.theater-lens-stage--choice::after {
   top: 7%;
   opacity: 0.42;
   transform: translateX(-50%) rotate(-18deg) scaleX(1.42);
-}
-
-.theater-epilogue-lens::before {
-  background:
-    radial-gradient(ellipse at 50% 21%, rgba(248,249,255,0.11), transparent 37%),
-    radial-gradient(ellipse at 50% 62%, rgba(184,168,121,0.08), transparent 38%),
-    linear-gradient(180deg, rgba(246,248,255,0.058), rgba(32,35,76,0.045) 44%, rgba(2,3,10,0.2));
-}
-
-.theater-epilogue-lens::after {
-  top: 12%;
-  opacity: 0.7;
 }
 
 .theater-stage-sigil {

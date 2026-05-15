@@ -369,6 +369,18 @@ struct PsycheArchetype: Codable, Equatable {
         let value = personalizedSubtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return value.isEmpty ? englishName : value
     }
+
+    var canonicalizedForNativeDisplay: PsycheArchetype {
+        let profile = BenyuanNativeArchetypeRegistry.profile(for: self)
+        return PsycheArchetype(
+            name: profile.name,
+            englishName: profile.englishName,
+            personalizedName: BenyuanNativeArchetypeRegistry.sanitizedPersonalizedName(personalizedName, for: profile),
+            personalizedSubtitle: BenyuanNativeArchetypeRegistry.sanitizedPersonalizedSubtitle(personalizedSubtitle, for: profile),
+            coreEssence: coreEssence,
+            visualPrompt: profile.visualPrompt
+        )
+    }
 }
 
 struct PsycheConstellation: Codable, Equatable {
@@ -427,12 +439,33 @@ struct PsycheConstellation: Codable, Equatable {
     let coreTensions: [CoreTension]
     let growthSuggestions: [GrowthSuggestion]
     let recommendations: Recommendations
+
+    var canonicalizedForNativeDisplay: PsycheConstellation {
+        PsycheConstellation(
+            userId: userId,
+            generatedAt: generatedAt,
+            archetype: archetype.canonicalizedForNativeDisplay,
+            sevenDimensions: sevenDimensions,
+            narrativeOverview: narrativeOverview,
+            coreTensions: coreTensions,
+            growthSuggestions: growthSuggestions,
+            recommendations: recommendations
+        )
+    }
 }
 
 struct ConstellationGenerateResponse: Codable, Equatable {
     let constellationId: String
     let runtime: AgentRuntimeResult
     let psycheConstellation: PsycheConstellation
+
+    var canonicalizedForNativeDisplay: ConstellationGenerateResponse {
+        ConstellationGenerateResponse(
+            constellationId: constellationId,
+            runtime: runtime,
+            psycheConstellation: psycheConstellation.canonicalizedForNativeDisplay
+        )
+    }
 }
 
 struct BenyuanNativeGenerationJobResponse: Codable, Equatable {

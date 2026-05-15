@@ -3,24 +3,29 @@ import SwiftUI
 
 struct BenyuanNativeHomeView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @ObservedObject private var wechatAuth = BenyuanWechatAuthClient.shared
 
     var body: some View {
         VStack(spacing: 0) {
             header
 
-            ScrollView(showsIndicators: false) {
-                BenyuanRevealedStack(spacing: BenyuanSpacing.x6) {
-                    Spacer(minLength: BenyuanSpacing.x4)
+            GeometryReader { geometry in
+                ScrollView(showsIndicators: false) {
+                    BenyuanRevealedStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: BenyuanSpacing.x2)
 
-                    celestialHero
+                        celestialHero
 
-                    homeCopyBlock
+                        Spacer(minLength: BenyuanSpacing.x8)
 
-                    actionPanel
+                        homeEntryGroup
+                    }
+                    .frame(minHeight: geometry.size.height - BenyuanSpacing.x2, alignment: .top)
+                    .padding(.horizontal, BenyuanSpacing.x4)
+                    .padding(.top, BenyuanSpacing.x2)
+                    .padding(.bottom, BenyuanSpacing.x2)
                 }
-                .padding(.horizontal, BenyuanSpacing.x4)
-                .padding(.top, BenyuanSpacing.x4)
-                .padding(.bottom, BenyuanSpacing.x16)
             }
         }
     }
@@ -31,7 +36,7 @@ struct BenyuanNativeHomeView: View {
                 Text("本源")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(BenyuanColor.textPrimary)
-                Text(model.session.authSession == nil ? "未登录 · 可先访客探索" : "私人月相档案")
+                Text("私人月相档案")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(BenyuanColor.textTertiary)
             }
@@ -62,7 +67,7 @@ struct BenyuanNativeHomeView: View {
     private var actionPanel: some View {
         VStack(spacing: BenyuanSpacing.x3) {
             Button {
-                Task { await model.beginNativeExploration() }
+                Task { await model.beginNativeExplorationFromHome() }
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
@@ -82,10 +87,8 @@ struct BenyuanNativeHomeView: View {
                 .background(Capsule().fill(BenyuanColor.primaryCTA).overlay(Capsule().stroke(BenyuanColor.accentGold.opacity(0.32))))
             }
             .buttonStyle(BenyuanPressableMotionStyle(scale: 0.974, glow: 0.14))
-
-            if shouldShowAppleLogin {
-                homeAppleLoginButton
-            }
+            .disabled(!model.canExploreFromHome)
+            .opacity(model.canExploreFromHome ? 1 : 0.52)
 
             HStack(spacing: BenyuanSpacing.x3) {
                 secondaryButton(title: "我的本源", systemImage: "clock.arrow.circlepath") {
@@ -93,6 +96,53 @@ struct BenyuanNativeHomeView: View {
                 }
             }
         }
+    }
+
+    private var homeEntryGroup: some View {
+        VStack(spacing: BenyuanSpacing.x4) {
+            homeCopyBlock
+
+            if shouldShowIdentityGate {
+                identityGatePanel
+            } else {
+                actionPanel
+            }
+        }
+        .padding(.bottom, BenyuanSpacing.x2)
+    }
+
+    private var identityGatePanel: some View {
+        VStack(spacing: BenyuanSpacing.x3) {
+            if shouldShowAppleLogin {
+                homeAppleLoginButton
+            }
+
+            HStack(spacing: BenyuanSpacing.x2) {
+                Button {
+                    Task { await startWechatLogin() }
+                } label: {
+                    homeAuthPill(title: "微信登录", systemImage: "message.fill")
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Task { await model.continueAsGuest() }
+                } label: {
+                    homeAuthPill(title: "访客预览", systemImage: "moonphase.waxing.crescent")
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, BenyuanSpacing.x4)
+        .padding(.vertical, BenyuanSpacing.x4)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(BenyuanColor.glassFill.opacity(0.76))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(BenyuanColor.glassStroke.opacity(0.78), lineWidth: 1)
+                )
+        )
     }
 
     private var homeCopyBlock: some View {
@@ -113,28 +163,6 @@ struct BenyuanNativeHomeView: View {
                 .minimumScaleFactor(0.78)
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .frame(maxWidth: 352, alignment: .leading)
-
-            HStack(alignment: .top, spacing: BenyuanSpacing.x3) {
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                BenyuanColor.accentGold.opacity(0.58),
-                                BenyuanColor.textPrimary.opacity(0.14),
-                                .clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: 1, height: 48)
-
-                Text("不急着给自己下结论。先让那些反复出现的选择、画面和停顿，慢慢聚成一个可以被辨认的入口。")
-                    .font(.system(size: 14, weight: .regular))
-                    .lineSpacing(6)
-                    .foregroundStyle(BenyuanColor.textSecondary)
-                    .frame(maxWidth: 318, alignment: .leading)
-            }
         }
         .padding(.leading, BenyuanSpacing.x1)
         .padding(.trailing, BenyuanSpacing.x6)
@@ -176,11 +204,22 @@ struct BenyuanNativeHomeView: View {
     }
 
     private var primaryActionTitle: String {
-        model.session.part1Id == nil ? "开始新的探索" : "继续上次探索"
+        if !model.canExploreFromHome {
+            return "登录后开始探索"
+        }
+        return model.session.part1Id == nil ? "开始新的探索" : "继续上次探索"
+    }
+
+    private var shouldShowIdentityGate: Bool {
+        !model.canExploreFromHome
     }
 
     private var shouldShowAppleLogin: Bool {
         model.session.authSession?.provider != .apple
+    }
+
+    private var isWechatEntryReady: Bool {
+        model.isWechatAuthReady && wechatAuth.authState == .ready
     }
 
     private func secondaryButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
@@ -224,6 +263,36 @@ struct BenyuanNativeHomeView: View {
         case .failure(let error):
             model.toast = BenyuanAppleAuthorizationCopy.toastMessage(for: error)
         }
+    }
+
+    private func startWechatLogin() async {
+        guard model.isWechatAuthReady else {
+            model.toast = "微信登录还在接入开放平台，请先用 Apple 登录。"
+            return
+        }
+
+        do {
+            let code = try await wechatAuth.requestCode()
+            await model.continueWithWechat(code: code, displayName: "微信用户")
+        } catch {
+            model.toast = error.localizedDescription
+        }
+    }
+
+    private func homeAuthPill(title: String, systemImage: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: systemImage)
+                .font(.system(size: 12, weight: .semibold))
+            Text(title)
+                .font(.system(size: 12, weight: .black))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(BenyuanColor.textPrimary)
+        .padding(.horizontal, BenyuanSpacing.x3)
+        .frame(maxWidth: .infinity, minHeight: 38)
+        .background(Capsule().fill(BenyuanColor.glassFill.opacity(0.88)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.92))))
     }
 }
 

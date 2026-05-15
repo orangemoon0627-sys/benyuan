@@ -613,11 +613,12 @@ struct BenyuanNativeOptionButton: View {
     let index: Int
     let title: String
     let active: Bool
+    var pressScale: CGFloat = 0.982
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: BenyuanSpacing.x4) {
+            HStack(alignment: .center, spacing: BenyuanSpacing.x4) {
                 ZStack {
                     Circle()
                         .fill(active ? BenyuanColor.bgVoid.opacity(0.90) : BenyuanColor.glassFill)
@@ -632,12 +633,13 @@ struct BenyuanNativeOptionButton: View {
                 }
                     .frame(width: 34, height: 34)
 
-                Text(title.removingLeadingEmoji())
-                    .font(.system(size: 15, weight: .semibold))
-                    .lineSpacing(4)
-                    .foregroundStyle(active ? BenyuanColor.bgVoid : BenyuanColor.textPrimary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            Text(title.removingLeadingEmoji())
+                .font(.system(size: 15, weight: .semibold))
+                .lineSpacing(4)
+                .foregroundStyle(active ? BenyuanColor.bgVoid : BenyuanColor.textPrimary)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
 
                 Circle()
                     .stroke(active ? BenyuanColor.bgVoid.opacity(0.72) : BenyuanColor.glassStroke, lineWidth: 1.5)
@@ -645,7 +647,7 @@ struct BenyuanNativeOptionButton: View {
                     .overlay(Circle().fill(active ? BenyuanColor.bgVoid.opacity(0.84) : .clear).frame(width: 8, height: 8))
             }
             .padding(.horizontal, BenyuanSpacing.x4)
-            .padding(.vertical, BenyuanSpacing.x3)
+            .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(active ? BenyuanColor.textPrimary.opacity(0.96) : BenyuanColor.glassFill)
@@ -656,8 +658,8 @@ struct BenyuanNativeOptionButton: View {
                     .shadow(color: BenyuanColor.accentGold.opacity(active ? 0.18 : 0), radius: 18, y: 6)
                 )
         }
-        .buttonStyle(BenyuanPressableMotionStyle(scale: 0.982, glow: active ? 0.14 : 0.08))
-        .animation(.easeOut(duration: 0.18), value: active)
+        .buttonStyle(BenyuanPressableMotionStyle(scale: pressScale, glow: active ? 0.14 : 0.08))
+        .animation(pressScale == 1 ? nil : .easeOut(duration: 0.18), value: active)
     }
 }
 
@@ -691,10 +693,9 @@ struct BenyuanRevealedStack<Content: View>: View {
                 HStack(spacing: spacing, content: content)
             }
         }
-        .opacity(isRevealed ? 1 : 0)
-        .offset(y: isRevealed ? 0 : 18)
-        .blur(radius: isRevealed ? 0 : 8)
-        .scaleEffect(isRevealed ? 1 : 0.985)
+        .opacity(isRevealed ? 1 : 0.98)
+        .offset(y: isRevealed ? 0 : 8)
+        .scaleEffect(isRevealed ? 1 : 0.992)
         .task {
             guard !isRevealed else { return }
             if delay > 0 {

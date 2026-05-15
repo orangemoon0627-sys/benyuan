@@ -16,7 +16,7 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
                 return "这份历史档案还没有同步到当前服务器，请先刷新或重新生成。"
             }
             if message == "sms_provider_not_configured" {
-                return "手机号登录还在接入短信网关，请先用 Apple 或访客进入。"
+                return "手机号登录还在接入短信网关，请先用 Apple 登录。"
             }
             if message == "invalid_phone" {
                 return "请填写带国家区号的手机号，例如 +8613800138000。"
@@ -25,7 +25,7 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
                 return "验证码不正确或已经过期。"
             }
             if message == "wechat_not_configured" {
-                return "微信登录还在接入开放平台，请先用 Apple 或访客进入。"
+                return "微信登录还在接入开放平台，请先用 Apple 登录。"
             }
             if message == "invalid_wechat_code" {
                 return "微信授权暂时无效，请重新尝试。"

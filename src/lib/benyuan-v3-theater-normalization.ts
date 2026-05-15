@@ -18,15 +18,15 @@ function fingerprint(value: string) {
 }
 
 const fallbackDialogues = [
-  "第一道镜面把雨声收拢成一束暗光，等你说出最先浮现的方向。",
-  "第二道镜面把海面推近半步，像在确认你愿意把哪一种真实留下。",
-  "第三道镜面把一线月光移到你的掌心，等待那个尚未命名的答案浮出水面。",
+  "第一道追问把雨声收拢成一束暗光，帮你辨认刚才为什么停下。",
+  "第二道追问把海面推近半步，确认你更想先整理哪一种真实。",
+  "第三道追问把一线月光移到你的掌心，等待那个更接近你的答案浮出水面。",
 ];
 
 const fallbackQuestionTexts = [
-  "让镜面停在一个方向上：",
-  "你愿意先移动哪一半光？",
-  "哪一种回声最接近你想带走的答案？",
+  "刚才的选择，更像是因为什么？",
+  "如果要更准确地理解你，应该先看哪一部分？",
+  "哪一种原因最接近你想带走的答案？",
 ];
 
 export function dedupeMirrorQuestions(questions: MirrorQuestion[], fallbackQuestions: MirrorQuestion[]) {
@@ -67,7 +67,7 @@ export function dedupeMirrorQuestions(questions: MirrorQuestion[], fallbackQuest
     const nextDialogue =
       fallbackDialogue && !seenDialogues.has(fallbackKey)
         ? fallbackDialogue
-        : fallbackDialogues[index] ?? "另一道镜面把光线移向更深处，等待你重新辨认自己的答案。";
+        : fallbackDialogues[index] ?? "另一道追问把光线移向更深处，等待你重新辨认自己的答案。";
 
     seenDialogues.add(fingerprint(nextDialogue));
     return {

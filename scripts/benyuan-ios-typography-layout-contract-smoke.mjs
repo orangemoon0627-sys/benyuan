@@ -19,10 +19,10 @@ assert.match(
   /Text\("用 Apple 继续"\)[\s\S]*?\.font\(\.system\(size:\s*16,\s*weight:\s*\.semibold\)\)/,
   "native Apple login label should avoid extra-black typography inside the capsule"
 );
-assert.match(
+assert.doesNotMatch(
   auth,
-  /Text\("先以访客进入"\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.semibold\)\)/,
-  "native guest entry CTA should sit below the Apple button without shouting"
+  /Text\("先以访客进入"\)/,
+  "native auth view should no longer expose guest exploration before login"
 );
 
 assert.match(
@@ -125,18 +125,23 @@ assert.match(
 
 assert.match(
   theater,
-  /theaterLensCard\([\s\S]*?title:\s*displayText\(model\.theater\?\.theaterScript\.act1\.sceneDescription[\s\S]*?Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*theaterTitleSize\(title\),\s*weight:\s*\.semibold\)\)/,
-  "native theater act1 scene title should use sanitized semibold text inside the lens card, not black"
+  /act1ReadingScroll\([\s\S]*?ForEach\(Array\(readingParagraphs\(text\)\.enumerated\(\)\),\s*id:\s*\\\.offset\)[\s\S]*?Text\(paragraph\)[\s\S]*?\.font\(\.system\(size:\s*theaterAct1ReadingSize\(text\),\s*weight:\s*\.semibold\)\)/,
+  "native theater act1 should render long copy as paragraph-separated semibold reading text"
+);
+assert.match(
+  theater,
+  /private func readingParagraphs\(_ text:\s*String\) -> \[String\][\s\S]*?components\(separatedBy:\s*"\\n\\n"\)/,
+  "native theater act1 should split generated long copy into readable paragraphs"
 );
 assert.match(
   theater,
   /theaterLensCard\([\s\S]*?title:\s*displayText\(choice\.scene[\s\S]*?Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*theaterTitleSize\(title\),\s*weight:\s*\.semibold\)\)/,
   "native theater act2 scene title should use sanitized semibold text inside the lens card, not black"
 );
-assert.match(
+assert.doesNotMatch(
   theater,
-  /theaterLensCard\([\s\S]*?title:\s*displayText\(question\.question[\s\S]*?Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*theaterTitleSize\(title\),\s*weight:\s*\.semibold\)\)/,
-  "native theater act3 mirror question should use sanitized semibold text inside the lens card, not black"
+  /title:\s*displayText\(question\.question|currentMirrorQuestion|chooseAct3/,
+  "native theater must not keep the removed Act3 follow-up question surface"
 );
 assert.match(
   theater,

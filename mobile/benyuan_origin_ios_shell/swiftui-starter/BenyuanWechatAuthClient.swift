@@ -24,7 +24,7 @@ enum BenyuanWechatAuthError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            return "微信登录还在接入开放平台，请先用 Apple 或访客进入。"
+            return "微信登录还在接入开放平台，请先用 Apple 登录。"
         case .sdkUnavailable:
             return "微信 SDK 尚未进入当前构建。"
         case .wechatNotInstalled:

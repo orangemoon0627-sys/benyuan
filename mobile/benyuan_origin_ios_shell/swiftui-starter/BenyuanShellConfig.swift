@@ -9,6 +9,7 @@ enum BenyuanNativePreviewStage: String, Equatable {
     case upload
     case processing
     case theater
+    case theaterAct2 = "theater-act2"
     case constellation
     case constellationEnd = "constellation-end"
 }

@@ -135,14 +135,14 @@ extension BenyuanNativeFlowModel {
         do {
             authProviders = try await client.fetchAuthProviders()
         } catch {
-            toast = "登录能力表暂时无法读取，仍可先以访客进入。"
+            toast = "登录能力表暂时无法读取，请先尝试 Apple 登录。"
         }
     }
 
     func continueAsGuest() async {
         stage = .processing
         processingTitle = "正在建立私人月相档案"
-        processingDetail = "先以访客身份进入，之后可以绑定微信或手机号。"
+        processingDetail = "正在建立临时档案；正式探索请使用 Apple、微信或手机号登录。"
         processingProgress = 0.18
         do {
             let auth = try await client.createAnonymousSession()
@@ -180,7 +180,7 @@ extension BenyuanNativeFlowModel {
     func continueWithWechat(code: String, displayName: String? = nil) async {
         let normalizedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isWechatAuthReady else {
-            toast = "微信登录还在接入开放平台，请先用 Apple 或访客进入。"
+            toast = "微信登录还在接入开放平台，请先用 Apple 登录。"
             return
         }
         guard !normalizedCode.isEmpty else {

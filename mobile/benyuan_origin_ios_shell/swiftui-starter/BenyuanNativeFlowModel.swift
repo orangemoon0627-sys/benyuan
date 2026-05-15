@@ -17,8 +17,6 @@ enum BenyuanNativeStage: Equatable {
 enum BenyuanNativeTheaterPhase: Equatable {
     case act1
     case act2
-    case act3
-    case epilogue
 }
 
 enum BenyuanQuestionMotionDirection: Equatable {
@@ -68,7 +66,7 @@ enum BenyuanNativeFlowError: LocalizedError, Equatable {
 
 @MainActor
 final class BenyuanNativeFlowModel: ObservableObject {
-    @Published var stage: BenyuanNativeStage = .launching
+    @Published var stage: BenyuanNativeStage = .home
     @Published var questions: [BenyuanQuestion] = []
     @Published var activeQuestionIndex = 0
     @Published var session: BenyuanNativeSession
@@ -81,9 +79,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var theater: TheaterGenerateResponse?
     @Published var theaterPhase: BenyuanNativeTheaterPhase = .act1
     @Published var theaterChoiceIndex = 0
-    @Published var theaterMirrorIndex = 0
     @Published var selectedTheaterOptionId: String?
-    @Published var selectedMirrorOptionId: String?
+    @Published var isTheaterChoiceFeedbackVisible = false
+    @Published var isTheaterConstellationEntrySubmitting = false
     @Published var constellation: ConstellationGenerateResponse?
     @Published var prefersConstellationEndPreview = false
     @Published var shareItems: [Any] = []
@@ -104,6 +102,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var questionMotionDirection: BenyuanQuestionMotionDirection = .reset
     @Published var questionMotionToken = UUID()
     @Published var collectValidationPulse = 0
+    @Published var hasCompletedInitialHomeBoot = false
 
     let client: BenyuanAPIClient
     private let store: BenyuanFlowStore
@@ -113,6 +112,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     var mirrorLogs: [Part2MirrorRecord] = []
     var flowStartedAt = Date()
     var stageBeforeAccount: BenyuanNativeStage?
+    var activeNativePreviewStage: BenyuanNativePreviewStage?
     private let nativeGenerationPollIntervalNanoseconds: UInt64 = 2_000_000_000
     private var lastNativeGenerationJobSnapshot: BenyuanNativeGenerationJobResponse?
     private var isPollingNativeGenerationJob = false
@@ -180,8 +180,20 @@ final class BenyuanNativeFlowModel: ObservableObject {
         theater?.theaterScript.act2.choices[safe: theaterChoiceIndex]
     }
 
-    var currentMirrorQuestion: TheaterMirrorQuestion? {
-        theater?.theaterScript.act3.mirrorQuestions[safe: theaterMirrorIndex]
+    var requiredTheaterChoiceCount: Int {
+        min(4, theater?.theaterScript.act2.choices.count ?? 0)
+    }
+
+    var hasAnsweredCurrentTheaterChoice: Bool {
+        choiceLogs.count > theaterChoiceIndex
+    }
+
+    var canEnterConstellationGenerationFromTheater: Bool {
+        stage == .theater
+            && theaterPhase == .act2
+            && requiredTheaterChoiceCount > 0
+            && choiceLogs.count >= requiredTheaterChoiceCount
+            && !isTheaterConstellationEntrySubmitting
     }
 
     var theaterMotionProgress: Double {
@@ -189,13 +201,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         case .act1:
             return 0.08
         case .act2:
-            let total = max(1, theater?.theaterScript.act2.choices.count ?? 1)
-            return 0.18 + Double(theaterChoiceIndex) / Double(total) * 0.34
-        case .act3:
-            let total = max(1, theater?.theaterScript.act3.mirrorQuestions.count ?? 1)
-            return 0.58 + Double(theaterMirrorIndex) / Double(total) * 0.26
-        case .epilogue:
-            return 0.96
+            return 0.88
         }
     }
 
@@ -207,26 +213,31 @@ final class BenyuanNativeFlowModel: ObservableObject {
         mirrorLogs.count
     }
 
+    var canExploreFromHome: Bool {
+        guard let authSession = session.authSession else { return false }
+        return authSession.provider != .anonymous
+    }
+
+    var shouldAnimateStageTransition: Bool {
+        hasCompletedInitialHomeBoot || BenyuanShellConfig.nativePreviewStage != nil || BenyuanShellConfig.nativeE2EAutorun
+    }
+
     func start() async {
         if let previewStage = BenyuanShellConfig.nativePreviewStage {
             applyNativePreview(previewStage)
+            hasCompletedInitialHomeBoot = true
             return
         }
 
         if BenyuanShellConfig.nativeE2EAutorun {
             await runNativeE2EAutorun()
+            hasCompletedInitialHomeBoot = true
             return
-        }
-
-        if session.authSession != nil, session.activeGenerationJobId != nil {
-            client.setAuthSession(session.authSession)
-            if await restoreActiveGenerationJobIfNeeded() {
-                return
-            }
         }
 
         await refreshAuthProviders()
         stage = .home
+        hasCompletedInitialHomeBoot = true
     }
 
     func enterHome() {
@@ -253,6 +264,14 @@ final class BenyuanNativeFlowModel: ObservableObject {
         } catch {
             stage = .error(error.localizedDescription)
         }
+    }
+
+    func beginNativeExplorationFromHome() async {
+        guard canExploreFromHome else {
+            toast = "先选择 Apple、微信或手机号码登录，再开始探索。"
+            return
+        }
+        await beginNativeExploration()
     }
 
     func resumeProcessingIfNeeded() async {
@@ -366,7 +385,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
     }
 
     func applyNativePreview(_ previewStage: BenyuanNativePreviewStage) {
+        activeNativePreviewStage = previewStage
         prefersConstellationEndPreview = false
+        isTheaterConstellationEntrySubmitting = false
         switch previewStage {
         case .auth:
             authProviders = Self.previewAuthProviders
@@ -437,7 +458,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
             processingDetail = "深月场正在把问题、影像和选择压成一枚缓慢旋转的星核。"
             processingProgress = 0.72
             stage = .processing
-        case .theater:
+        case .theater, .theaterAct2:
             authProviders = Self.previewAuthProviders
             session.authSession = Self.previewAuthSession
             session.user = Self.previewUser
@@ -447,13 +468,20 @@ final class BenyuanNativeFlowModel: ObservableObject {
             theater = Self.previewTheater
             constellation = nil
             resetTheaterState()
+            switch previewStage {
+            case .theaterAct2:
+                theaterPhase = .act2
+                theaterChoiceIndex = 0
+            default:
+                break
+            }
             stage = .theater
         case .constellation, .constellationEnd:
             authProviders = Self.previewAuthProviders
             session.authSession = Self.previewAuthSession
             session.user = Self.previewUser
             client.setAuthSession(session.authSession)
-            constellation = Self.previewConstellation(archetypeVariant: BenyuanShellConfig.nativePreviewArchetypeVariant)
+            constellation = Self.previewConstellation(archetypeVariant: BenyuanShellConfig.nativePreviewArchetypeVariant).canonicalizedForNativeDisplay
             processingProgress = 0.88
             prefersConstellationEndPreview = previewStage == .constellationEnd
             stage = .constellation
@@ -482,16 +510,10 @@ final class BenyuanNativeFlowModel: ObservableObject {
         logNativeE2E("theater_autocomplete_start")
         enterAct2()
 
-        while theaterPhase == .act2 {
+        while choiceLogs.count < requiredTheaterChoiceCount {
             guard let option = currentTheaterChoice?.options.first else { break }
             chooseAct2(option)
             try? await Task.sleep(nanoseconds: 640_000_000)
-        }
-
-        while theaterPhase == .act3 {
-            guard let option = currentMirrorQuestion?.options.first else { break }
-            chooseAct3(option)
-            try? await Task.sleep(nanoseconds: 180_000_000)
         }
         logNativeE2E("theater_autocomplete_finished choices=\(choiceLogs.count) mirrors=\(mirrorLogs.count) phase=\(theaterPhase)")
     }
@@ -512,6 +534,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         resetTheaterState()
         flowStartedAt = Date()
         persist()
+        activeNativePreviewStage = nil
         stage = .home
     }
 
@@ -546,30 +569,11 @@ final class BenyuanNativeFlowModel: ObservableObject {
         choiceLogs = record.act2Choices
         mirrorLogs = record.act3Responses
         selectedTheaterOptionId = nil
-        selectedMirrorOptionId = nil
+        isTheaterChoiceFeedbackVisible = false
+        isTheaterConstellationEntrySubmitting = false
 
-        let act2Count = theater?.theaterScript.act2.choices.count ?? 0
-        let act3Count = theater?.theaterScript.act3.mirrorQuestions.count ?? 0
-        if act2Count > 0 {
-            theaterChoiceIndex = min(max(choiceLogs.count - 1, 0), act2Count - 1)
-        } else {
-            theaterChoiceIndex = 0
-        }
-        if act3Count > 0 {
-            theaterMirrorIndex = min(max(mirrorLogs.count - 1, 0), act3Count - 1)
-        } else {
-            theaterMirrorIndex = 0
-        }
-
-        if act2Count > 0, choiceLogs.count < act2Count {
-            theaterPhase = .act2
-            theaterChoiceIndex = min(choiceLogs.count, act2Count - 1)
-        } else if act3Count > 0, mirrorLogs.count < act3Count {
-            theaterPhase = .act3
-            theaterMirrorIndex = min(mirrorLogs.count, act3Count - 1)
-        } else {
-            theaterPhase = .epilogue
-        }
+        theaterPhase = .act2
+        theaterChoiceIndex = 0
 
         phaseStartedAt = Date()
         interactionStartedAt = Date()
@@ -626,9 +630,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
     func resetTheaterState() {
         theaterPhase = .act1
         theaterChoiceIndex = 0
-        theaterMirrorIndex = 0
         selectedTheaterOptionId = nil
-        selectedMirrorOptionId = nil
+        isTheaterChoiceFeedbackVisible = false
+        isTheaterConstellationEntrySubmitting = false
         choiceLogs = []
         mirrorLogs = []
         phaseStartedAt = Date()

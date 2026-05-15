@@ -23,6 +23,7 @@ const retiredLabels = [
   "深月观测者",
   "暮海寻光",
   "守光者",
+  "The Moonlit Seeker",
 ];
 
 for (const filePath of checkedFiles) {

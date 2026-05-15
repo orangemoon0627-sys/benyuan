@@ -30,9 +30,9 @@ function fingerprint(value: string | null | undefined) {
 const loneSeekerProfile: ArchetypeProfile = {
   archetype: {
     name: "远潮观月者",
-    english_name: "The Moonlit Seeker",
+    english_name: "The Far-Tide Moon Watcher",
     core_essence: "你常在幽暗、审美与记忆的回声里辨认意义，也愿意为真实保留足够的精神纵深。",
-    visual_prompt: "A poetic archetype portrait for The Moonlit Seeker, cosmic horizon, deep sea dusk, lunar mist, restrained gold light, contemplative East Asian poster composition, intimate but vast, cinematic stillness, 16:9",
+    visual_prompt: "A poetic archetype portrait for The Far-Tide Moon Watcher, cosmic horizon, deep sea dusk, lunar mist, restrained gold light, contemplative East Asian poster composition, intimate but vast, cinematic stillness, 16:9",
   },
   narrativeLead: "你给人的核心印象，不是张扬，而是一种安静却密度很高的存在感。",
   narrativeFocus: "你会把风景、音乐、句子和时间感当作真正的证据来阅读，所以外部世界对你来说从来不只是背景。",

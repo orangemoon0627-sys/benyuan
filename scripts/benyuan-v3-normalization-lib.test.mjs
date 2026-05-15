@@ -9,7 +9,7 @@ function constellation(overrides = {}) {
     generated_at: "2026-05-08T00:00:00.000Z",
     archetype: {
       name: "远潮观月者",
-      english_name: "The Moonlit Seeker",
+      english_name: "The Far-Tide Moon Watcher",
       core_essence: "在幽暗与审美里寻找意义。",
       visual_prompt: "moonlit sea",
     },

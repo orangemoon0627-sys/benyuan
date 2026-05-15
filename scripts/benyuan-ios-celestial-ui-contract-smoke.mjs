@@ -15,6 +15,7 @@ const renderer = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/B
 const flowModel = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeFlowModel.swift", "utf8");
 const rootView = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellRootView.swift", "utf8");
 const home = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeHomeView.swift", "utf8");
+const nativeArchetypes = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeArchetypeRegistry.swift", "utf8");
 const localMotionOverlay = backdrop.slice(
   backdrop.indexOf("struct BenyuanLocalCelestialAssetMotionOverlay"),
   backdrop.indexOf("struct BenyuanLocalFarTideMoonMotionPath"),
@@ -80,11 +81,21 @@ assert.match(home, /Image\("BenyuanHomeMoonEntrance"\)/, "native home moon entra
 assert.match(home, /BenyuanHomeLunarGlint/, "native home moon entrance must keep native lunar motion over the raster artwork");
 assert.ok(existsSync(homeMoonAssetPath), "native home moon entrance asset must exist as a dedicated local imageset");
 assert.doesNotMatch(home, /BenyuanDeepCelestialBody[\s\S]*?mode:\s*\.(?:accretionBlackHole|farTideMoon|starMapArchitect|moonHarbor|existentialNomad|rainWindowScribe|eventHorizonDiver|nebulaWeaver|solarCorona|terrestrialPlanet|deepSpaceAnchor)/, "native home must not visually duplicate the fixed result archetype celestial bodies");
+assert.match(home, /identityGatePanel/, "native home must expose the compact Apple, WeChat, and visitor preview choices");
+assert.match(flowModel, /@Published var hasCompletedInitialHomeBoot = false/, "native flow must track first home boot before animating away from the landing screen");
+assert.match(rootView, /shouldAnimateStageTransition \? \.easeInOut\(duration:\s*BenyuanMotion\.base\) : nil/, "native root must not animate a stale stage over the first home frame");
+assert.match(flowModel, /var canExploreFromHome:[\s\S]*?authSession\.provider != \.anonymous/, "native home must not let an anonymous guest session bypass the formal login gate");
+assert.match(home, /用 Apple 登录/, "native home must include an Apple login entry");
+assert.match(home, /微信登录/, "native home must include a WeChat login entry");
+assert.match(home, /访客预览/, "native home must include a visitor preview entry");
+assert.doesNotMatch(home, /手机号码登录/, "native home should not show phone login on the first landing surface");
+assert.doesNotMatch(home, /先选择身份|登录后再开始探索|选择身份后探索|不急着给自己下结论|REQUIRED|soon/, "native home should stay visual and avoid explanatory login labels");
 
 assert.match(auth, /BenyuanRevealedStack/, "native auth view must use staged entrance motion");
 assert.match(auth, /BenyuanDeepCelestialBody/, "native auth view must use the shared dynamic moon field");
 assert.match(auth, /\.foregroundStyle\(BenyuanColor\.bgVoid\)/, "native Apple login label must use dark text on its light capsule");
 assert.match(auth, /\.opacity\(0\.001\)/, "native Apple system button overlay must be visually hidden enough to avoid duplicate white text");
+assert.doesNotMatch(auth, /先以访客进入|可先以访客进入/, "native auth view must not expose guest exploration before login");
 
 assert.match(collect, /BenyuanQuestionSignalField/, "native collect view must include per-question signal motion");
 assert.match(collect, /BenyuanQuestionSignalBridge/, "native collect view must place the gold signal bridge between the celestial capsule and the options");
@@ -117,16 +128,39 @@ assert.doesNotMatch(account, /Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*21,
 assert.match(theater, /BenyuanTheaterAtmosphereLayer/, "native theater view must use the merged low-frequency atmosphere layer");
 assert.doesNotMatch(theater, /BenyuanStageLens/, "native theater view must not stack the old stage lens over the theater scene");
 assert.doesNotMatch(theater, /BenyuanNebulaTheaterField/, "native theater view must not stack the old nebula field over the theater scene");
-assert.match(theater, /mode:\s*\.theaterNebula/, "native theater hero body must use the theater nebula mode");
+assert.match(theater, /act1ReadingPage\(availableHeight:/, "native theater act1 hero body must use the full-screen reading surface");
+assert.match(theater, /BenyuanTheaterAtmosphereLayer\(progress:\s*theaterProgress\)/, "native theater act1 must keep the dedicated nebula atmosphere layer behind the reading surface");
 assert.match(theater, /benyuanSanitizedVisibleText/, "native theater visible text must sanitize raw slugs and OCR noise");
 assert.match(theater, /BenyuanRevealedStack/, "native theater view must reveal acts and choices cinematically");
 assert.match(theater, /\.transition\(/, "native theater view must animate act transitions");
+assert.doesNotMatch(theater, /ACT I|ACT II|ACT III|EPILOGUE/, "native theater should not show act or branch marker capsules in the user-facing scene");
+assert.match(theater, /act1ReadingPage\(availableHeight:/, "native theater act1 must use a full-screen scrollable reading page");
+assert.match(theater, /BenyuanNativePrimaryButton\(title:\s*"进入这一幕"[\s\S]*?model\.enterAct2\(\)/, "native theater act1 fixed bottom action must remain unchanged");
+assert.match(theater, /private func theaterLensCardHeight\(_ title:\s*String\)/, "native theater narrative lens should size from text instead of reserving a large empty portal");
+assert.match(theater, /\.frame\(height:\s*cardHeight,\s*alignment:\s*\.topLeading\)/, "native theater narrative lens must keep the text vertically tight in the capsule");
+assert.doesNotMatch(theater, /Text\(stage\.label\)|TheaterStage\(|theaterStageRail|theaterStageChip|model\.revisitTheaterPhase\(stage\.phase\)/, "native theater must not show the removed top stage capsule rail");
+for (const label of ["入场", "分岔", "追问", "星图", "镜面"]) {
+  assert.doesNotMatch(theater, new RegExp(`TheaterStage\\(label:\\s*"${label}"`), `native theater top stage rail must not expose ${label}`);
+}
+assert.doesNotMatch(theater, /BenyuanWarpApproachField|theaterEpiloguePortal|BenyuanConstellationWarpTunnel|ForEach\(0..<68/, "native theater must not retain the removed epilogue/warp transition page");
+assert.match(theater, /choice\.options\.prefix\(4\)/, "native theater must keep the visible theater test to four options");
+assert.match(theater, /BenyuanNativeOptionButton[\s\S]*?pressScale:\s*1/, "native theater option buttons must avoid press scaling so the card stack does not jump");
+assert.match(primitives, /animation\(pressScale == 1 \? nil : \.easeOut\(duration:\s*0\.18\), value:\s*active\)/, "native option buttons must disable active-state layout animation when theater asks for fixed press scale");
+assert.match(primitives, /HStack\(alignment:\s*\.center,\s*spacing:\s*BenyuanSpacing\.x4\)/, "native option capsules must center their icon, text, and selection ring vertically");
+assert.match(primitives, /\.frame\(maxWidth:\s*\.infinity,\s*minHeight:\s*34,\s*alignment:\s*\.leading\)/, "native option capsule text should keep horizontal reading alignment while the HStack centers it vertically");
+assert.match(primitives, /\.padding\(\.vertical,\s*8\)/, "native option capsules should keep tighter vertical padding instead of leaving excess top padding");
 
 assert.match(constellation, /BenyuanDeepCelestialBody/, "native constellation view must use the shared dynamic celestial body");
 assert.match(models, /let personalizedName:\s*String\?/, "native constellation DTO must decode personalized_name separately from the canonical archetype name");
 assert.match(models, /let personalizedSubtitle:\s*String\?/, "native constellation DTO must decode personalized_subtitle separately from the canonical archetype name");
 assert.match(models, /var displayName:\s*String/, "native constellation DTO must expose a display name that can prefer the personal label");
 assert.match(models, /var displaySubtitle:\s*String/, "native constellation DTO must expose a display subtitle that can prefer the personal label");
+assert.match(models, /canonicalizedForNativeDisplay/, "native constellation DTO must expose a final canonicalization pass for stale server or history labels");
+assert.match(nativeArchetypes, /月背寻光者/, "native archetype registry must recognize the retired moon-back seeker label from older builds");
+assert.match(nativeArchetypes, /事件视界沉潜者/, "native archetype registry must keep the official event-horizon label");
+assert.match(nativeArchetypes, /The Far-Tide Moon Watcher/, "native archetype registry must not leave 远潮观月者 with the old Moonlit Seeker subtitle");
+assert.match(nativeArchetypes, /sanitizedPersonalizedName/, "native archetype registry must sanitize stale personalized names before display");
+assert.match(nativeArchetypes, /containsOfficialOrRetiredLabel/, "native archetype registry must reject retired or official labels as personalized display names");
 assert.match(constellation, /Text\(data\.archetype\.name\)[\s\S]*?\.font\(\.system\(size:\s*42,\s*weight:\s*\.semibold\)\)/, "native constellation hero must use the fixed canonical 10-label archetype as the main title");
 assert.match(constellation, /Text\(data\.archetype\.englishName\)/, "native constellation hero must keep the English archetype name as a secondary label");
 assert.match(constellation, /Text\("\\\(data\.archetype\.displayName\)：\\\(data\.archetype\.displaySubtitle\)"\)/, "native constellation hero must move personalized naming into the explanatory annotation below the fixed label");
