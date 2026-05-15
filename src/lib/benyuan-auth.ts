@@ -9,6 +9,7 @@ import {
   saveAuthRateLimit,
   saveAuthUserAndSession,
   savePhoneOtp,
+  resolveBenyuanDataScope,
 } from "@/lib/benyuan-v3-store";
 import type { BenyuanAuthProvider, BenyuanAuthSession, BenyuanUser } from "@/lib/benyuan-v3-types";
 
@@ -268,7 +269,7 @@ export async function checkAuthRateLimit(input: { key: string; limit?: number; w
   const resetAt = existing ? new Date(existing.reset_at).getTime() : 0;
   const next =
     !existing || resetAt <= Date.now()
-      ? { key: input.key, count: 1, reset_at: new Date(Date.now() + windowMs).toISOString(), updated_at: timestamp }
+      ? { key: input.key, ...resolveBenyuanDataScope(), count: 1, reset_at: new Date(Date.now() + windowMs).toISOString(), updated_at: timestamp }
       : { ...existing, count: existing.count + 1, updated_at: timestamp };
 
   await saveAuthRateLimit(next);
@@ -375,8 +376,11 @@ export async function verifyAppleIdentityToken(identityToken: string): Promise<A
 
 async function createAuthSession(provider: BenyuanAuthProvider, options?: { subject?: string; displayName?: string }) {
   const timestamp = nowIso();
+  const dataScope = resolveBenyuanDataScope();
   const user: BenyuanUser = {
     user_id: createBenyuanAuthId("usr"),
+    data_cohort: dataScope.data_cohort,
+    data_environment: dataScope.data_environment,
     created_at: timestamp,
     updated_at: timestamp,
     display_name: options?.displayName,
@@ -392,6 +396,8 @@ async function createAuthSession(provider: BenyuanAuthProvider, options?: { subj
     user_id: user.user_id,
     token: createSessionToken(provider),
     provider,
+    data_cohort: dataScope.data_cohort,
+    data_environment: dataScope.data_environment,
     created_at: timestamp,
     updated_at: timestamp,
   };
@@ -436,6 +442,8 @@ async function createBoundAuthSession(user: BenyuanUser, provider: BenyuanAuthPr
     user_id: user.user_id,
     token: createSessionToken(provider),
     provider,
+    data_cohort: user.data_cohort,
+    data_environment: user.data_environment,
     created_at: timestamp,
     updated_at: timestamp,
   };
@@ -514,6 +522,7 @@ export async function requestPhoneOtp(input: { phone?: string; request?: Request
   }
   await savePhoneOtp({
     phone,
+    ...resolveBenyuanDataScope(),
     code_hash: hashPhoneCode(phone, code),
     created_at: timestamp,
     expires_at: expiresAt,
@@ -556,12 +565,52 @@ export async function readAuthFromRequest(request: Request): Promise<BenyuanAuth
   return (await getAuthSessionByToken(match[1].trim())) ?? null;
 }
 
-export async function getCurrentAuthSession(request: Request) {
+export function allowBenyuanLocalAuthFallback() {
+  if (process.env.BENYUAN_ALLOW_LOCAL_AUTH_FALLBACK !== "1") return false;
+  if (process.env.NODE_ENV === "production" && process.env.BENYUAN_ALLOW_LOCAL_AUTH_FALLBACK_IN_PRODUCTION !== "1") return false;
+  return true;
+}
+
+function createLocalAuthFallbackContext(): BenyuanAuthContext {
+  const timestamp = nowIso();
+  const dataScope = resolveBenyuanDataScope();
+  return {
+    user: {
+      user_id: "usr_local",
+      data_cohort: dataScope.data_cohort,
+      data_environment: dataScope.data_environment,
+      created_at: timestamp,
+      updated_at: timestamp,
+      display_name: "本地用户",
+      primary_provider: "anonymous",
+      providers: {
+        anonymous: "local:fallback",
+      },
+      phone_bound: false,
+      wechat_bound: false,
+    },
+    session: {
+      session_id: "auth_local_fallback",
+      user_id: "usr_local",
+      token: "local-fallback",
+      provider: "anonymous",
+      data_cohort: dataScope.data_cohort,
+      data_environment: dataScope.data_environment,
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+  };
+}
+
+export async function getRequiredBenyuanAuthSession(request: Request): Promise<BenyuanAuthContext> {
   const auth = await readAuthFromRequest(request);
-  if (!auth) {
-    throw new BenyuanAuthError("auth_required", 401);
-  }
-  return auth;
+  if (auth) return auth;
+  if (allowBenyuanLocalAuthFallback()) return createLocalAuthFallbackContext();
+  throw new BenyuanAuthError("auth_required", 401);
+}
+
+export async function getCurrentAuthSession(request: Request) {
+  return getRequiredBenyuanAuthSession(request);
 }
 
 export async function logoutAuthSession(request: Request) {
@@ -579,7 +628,12 @@ export async function logoutAuthSession(request: Request) {
 
 export async function assertPart1Owner(request: Request, part1: { user_id: string }) {
   const auth = await readAuthFromRequest(request);
-  if (!auth) return { ok: true as const, auth };
+  if (!auth) {
+    if (allowBenyuanLocalAuthFallback() && part1.user_id === "usr_local") {
+      return { ok: true as const, auth: createLocalAuthFallbackContext() };
+    }
+    return { ok: false as const, status: 401, error: "auth_required" };
+  }
   if (auth.user.user_id !== part1.user_id) {
     return { ok: false as const, status: 403, error: "part1_forbidden" };
   }

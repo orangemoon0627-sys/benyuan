@@ -39,7 +39,7 @@ extension BenyuanNativeFlowModel {
     func uploadImages(_ images: [UIImage], for question: BenyuanQuestion, origin: String, mode: BenyuanUploadApplyMode = .append) async {
         guard !images.isEmpty else { return }
         uploadingQuestionId = question.id
-        toast = "正在上传图片线索。"
+        showToast("正在上传图片线索。")
 
         do {
             let maxCount = question.uploadRange?.max ?? max(1, images.count)
@@ -47,7 +47,7 @@ extension BenyuanNativeFlowModel {
             let slots = max(0, maxCount - existingCount)
             let selectedImages = Array(images.prefix(slots))
             guard !selectedImages.isEmpty else {
-                toast = "这组图片已经达到上限。"
+                showToast("这组图片已经达到上限。")
                 uploadingQuestionId = nil
                 return
             }
@@ -60,12 +60,12 @@ extension BenyuanNativeFlowModel {
             }
             let nextAssets = applyUploadedAssets(response.assets, to: question.id, mode: mode, maxCount: maxCount)
             persist()
-            toast = "图片线索已归位。"
+            showToast("图片线索已归位。")
             if nextAssets.count >= maxCount {
                 advanceAfterAnswer(delay: 0.25)
             }
         } catch {
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
 
         uploadingQuestionId = nil
@@ -110,7 +110,7 @@ extension BenyuanNativeFlowModel {
         thumbnails[assetId] = nil
         session.answers[questionId] = .array((try? next.map { try $0.benyuanJSONValue() }) ?? [])
         persist()
-        toast = "已移除这条线索。"
+        showToast("已移除这条线索。")
     }
 
     func clearUploadAssets(questionId: String) {
@@ -120,7 +120,7 @@ extension BenyuanNativeFlowModel {
         session.uploadedAssets[questionId] = []
         session.answers[questionId] = .array([])
         persist()
-        toast = "已清空这组图片线索。"
+        showToast("已清空这组图片线索。")
     }
 
     func previousQuestion() {
@@ -142,7 +142,7 @@ extension BenyuanNativeFlowModel {
         let nextIndex = min(max(questions.count - 1, 0), activeQuestionIndex + 1)
         guard nextIndex != activeQuestionIndex else {
             if allQuestionsAnswered {
-                toast = "线索已完整，可以进入剧场。"
+                showToast("线索已完整，可以进入剧场。")
             } else {
                 pulseCollectValidation("还有未完成的问题。")
             }
@@ -211,7 +211,7 @@ extension BenyuanNativeFlowModel {
     }
 
     func pulseCollectValidation(_ message: String) {
-        toast = message
+        showToast(message)
         collectValidationPulse += 1
     }
 

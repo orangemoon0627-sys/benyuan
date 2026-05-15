@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
+import { BenyuanAuthError, getRequiredBenyuanAuthSession } from "@/lib/benyuan-auth";
 import { prewarmUploadedAssetMultimodalAnalysis } from "@/lib/benyuan-multimodal-prewarm";
 import { persistUploadedAsset } from "@/lib/benyuan-v3-assets";
 
 export async function POST(request: Request) {
+  let auth;
+  try {
+    auth = await getRequiredBenyuanAuthSession(request);
+  } catch (error) {
+    if (error instanceof BenyuanAuthError) {
+      return NextResponse.json({ error: error.code }, { status: error.status });
+    }
+    throw error;
+  }
+
   const formData = await request.formData();
   const questionId = formData.get("question_id");
   const fileEntries = formData.getAll("files");
@@ -21,6 +32,7 @@ export async function POST(request: Request) {
     files.map(async (file) => {
       const buffer = Buffer.from(await file.arrayBuffer());
       return persistUploadedAsset({
+        ownerUserId: auth.user.user_id,
         questionId,
         fileName: file.name,
         mimeType: file.type,

@@ -12,10 +12,10 @@ settings:
     SWIFT_VERSION: 5.0
     PRODUCT_BUNDLE_IDENTIFIER: com.fanhao.benyuan.origin.shell
     MARKETING_VERSION: 0.2.1
-    CURRENT_PROJECT_VERSION: 11
+    CURRENT_PROJECT_VERSION: 12
     BENYUAN_WECHAT_APP_ID: ""
-    BENYUAN_WECHAT_UNIVERSAL_LINK: ""
-    BENYUAN_WECHAT_ASSOCIATED_DOMAIN: "applinks:"
+    BENYUAN_WECHAT_UNIVERSAL_LINK: https://app.orangemoonai.cn/app/benyuan/
+    BENYUAN_WECHAT_ASSOCIATED_DOMAIN: applinks:app.orangemoonai.cn
     GENERATE_INFOPLIST_FILE: NO
     INFOPLIST_FILE: Info.plist
     IPHONEOS_DEPLOYMENT_TARGET: "18.0"
@@ -45,12 +45,12 @@ targets:
           BenyuanShellProductionBaseURL: http://120.26.126.88
         Staging:
           BenyuanShellEnvironment: staging
-          BenyuanShellStagingBaseURL: http://120.26.126.88
-          BenyuanShellProductionBaseURL: http://120.26.126.88
+          BenyuanShellStagingBaseURL: https://staging-benyuan.orangemoonai.cn
+          BenyuanShellProductionBaseURL: https://benyuan.orangemoonai.cn
         Release:
           BenyuanShellEnvironment: production
-          BenyuanShellStagingBaseURL: http://120.26.126.88
-          BenyuanShellProductionBaseURL: http://120.26.126.88
+          BenyuanShellStagingBaseURL: https://staging-benyuan.orangemoonai.cn
+          BenyuanShellProductionBaseURL: https://benyuan.orangemoonai.cn
   BenyuanOriginShellTests:
     type: bundle.unit-test
     platform: iOS

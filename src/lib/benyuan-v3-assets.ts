@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { createBenyuanV3Id, getUploadedAsset, saveUploadedAsset } from "@/lib/benyuan-v3-store";
+import { createBenyuanV3Id, getUploadedAsset, getUploadedAssetForOwner, resolveBenyuanDataScope, saveUploadedAsset } from "@/lib/benyuan-v3-store";
 import { getBenyuanV3UploadsDir } from "@/lib/benyuan-persistence";
 import type { BenyuanStoredAsset, BenyuanUploadedAssetRef } from "@/lib/benyuan-v3-types";
 
@@ -27,6 +27,7 @@ export async function ensureStoredAssetHash(stored: BenyuanStoredAsset, buffer?:
 }
 
 export async function persistUploadedAsset(params: {
+  ownerUserId: string;
   questionId: string;
   fileName: string;
   mimeType: string;
@@ -41,12 +42,16 @@ export async function persistUploadedAsset(params: {
   const safeBaseName = sanitizeName(path.basename(params.fileName, extension));
   const storedFileName = `${assetId}-${safeBaseName}${extension}`;
   const absolutePath = path.join(uploadsDir, storedFileName);
+  const dataScope = resolveBenyuanDataScope();
 
   await writeFile(absolutePath, params.buffer);
 
   const stored: BenyuanStoredAsset = {
     asset_id: assetId,
     question_id: params.questionId,
+    owner_user_id: params.ownerUserId,
+    data_cohort: dataScope.data_cohort,
+    data_environment: dataScope.data_environment,
     name: params.fileName,
     size: params.buffer.byteLength,
     mime_type: params.mimeType || "application/octet-stream",
@@ -61,6 +66,9 @@ export async function persistUploadedAsset(params: {
   const ref: BenyuanUploadedAssetRef = {
     asset_id: stored.asset_id,
     question_id: stored.question_id,
+    owner_user_id: stored.owner_user_id,
+    data_cohort: stored.data_cohort,
+    data_environment: stored.data_environment,
     name: stored.name,
     size: stored.size,
     mime_type: stored.mime_type,
@@ -74,6 +82,14 @@ export async function persistUploadedAsset(params: {
 
 export async function readUploadedAssetBuffer(assetId: string) {
   const stored = await getUploadedAsset(assetId);
+  if (!stored) return null;
+  const buffer = await readFile(stored.stored_path);
+  const sha256 = await ensureStoredAssetHash(stored, buffer);
+  return { stored: { ...stored, sha256 }, buffer };
+}
+
+export async function readUploadedAssetBufferForOwner(assetId: string, ownerUserId: string) {
+  const stored = await getUploadedAssetForOwner(assetId, ownerUserId);
   if (!stored) return null;
   const buffer = await readFile(stored.stored_path);
   const sha256 = await ensureStoredAssetHash(stored, buffer);

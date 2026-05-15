@@ -72,7 +72,7 @@ extension BenyuanNativeFlowModel {
             client.setAuthSession(auth.session)
             persist()
         } catch {
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
             clearLocalAuthAfterLogout()
         }
     }
@@ -124,7 +124,7 @@ extension BenyuanNativeFlowModel {
             )
             feedbackDraft = ""
             feedbackStatus = "已收到编号：\(response.feedbackId)"
-            toast = "问题已收到。"
+            showToast("问题已收到。")
             isFeedbackComposerPresented = true
         } catch {
             feedbackStatus = "提交失败：\(error.localizedDescription)"
@@ -135,7 +135,7 @@ extension BenyuanNativeFlowModel {
         do {
             authProviders = try await client.fetchAuthProviders()
         } catch {
-            toast = "登录能力表暂时无法读取，请先尝试 Apple 登录。"
+            showToast("登录能力表暂时无法读取，请先尝试 Apple 登录。")
         }
     }
 
@@ -180,11 +180,11 @@ extension BenyuanNativeFlowModel {
     func continueWithWechat(code: String, displayName: String? = nil) async {
         let normalizedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isWechatAuthReady else {
-            toast = "微信登录还在接入开放平台，请先用 Apple 登录。"
+            showToast("微信登录还在接入开放平台，请先用 Apple 登录。")
             return
         }
         guard !normalizedCode.isEmpty else {
-            toast = "微信授权暂时没有返回。"
+            showToast("微信授权暂时没有返回。")
             return
         }
 
@@ -201,7 +201,7 @@ extension BenyuanNativeFlowModel {
             await beginNativeExploration()
         } catch {
             stage = .auth
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
     }
 
@@ -209,9 +209,9 @@ extension BenyuanNativeFlowModel {
         let normalized = phone.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             let response = try await client.requestPhoneCode(phone: normalized)
-            toast = response.fixtureCode.map { "测试验证码：\($0)" } ?? "验证码已发送。"
+            showToast(response.fixtureCode.map { "测试验证码：\($0)" } ?? "验证码已发送。")
         } catch {
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
     }
 
@@ -232,16 +232,16 @@ extension BenyuanNativeFlowModel {
             await beginNativeExploration()
         } catch {
             stage = .auth
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
     }
 
     func logout() async {
         do {
             _ = try await client.logout()
-            toast = "已退出当前账户。"
+            showToast("已退出当前账户。")
         } catch {
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
         clearLocalAuthAfterLogout()
     }

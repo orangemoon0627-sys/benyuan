@@ -37,6 +37,8 @@ export async function POST(request: Request) {
     const record = {
       theater_script_id: createBenyuanV3Id("theater"),
       part1_id: part1.part1_id,
+      data_cohort: part1.data_cohort,
+      data_environment: part1.data_environment,
       created_at: new Date().toISOString(),
       runtime: result.runtime,
       theater_script: result.theaterScript,

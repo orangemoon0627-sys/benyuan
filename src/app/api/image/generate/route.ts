@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getConstellationRecord, saveConstellationRecord } from "@/lib/benyuan-v3-store";
+import { BenyuanAuthError, getCurrentAuthSession } from "@/lib/benyuan-auth";
+import { getConstellationRecord, getPart1Record, saveConstellationRecord } from "@/lib/benyuan-v3-store";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { constellation_id?: string; visual_prompt?: string };
@@ -10,6 +11,22 @@ export async function POST(request: Request) {
   const record = await getConstellationRecord(body.constellation_id);
   if (!record) {
     return NextResponse.json({ error: "constellation_not_found" }, { status: 404 });
+  }
+  let auth;
+  try {
+    auth = await getCurrentAuthSession(request);
+  } catch (error) {
+    if (error instanceof BenyuanAuthError) {
+      return NextResponse.json({ error: error.code }, { status: error.status });
+    }
+    throw error;
+  }
+  const part1 = await getPart1Record(record.part1_id);
+  if (!part1) {
+    return NextResponse.json({ error: "part1_not_found" }, { status: 404 });
+  }
+  if (part1.user_id !== auth.user.user_id) {
+    return NextResponse.json({ error: "part1_forbidden" }, { status: 403 });
   }
 
   const imageUrl = `/api/image/generate?prompt=${encodeURIComponent(body.visual_prompt.slice(0, 120))}`;

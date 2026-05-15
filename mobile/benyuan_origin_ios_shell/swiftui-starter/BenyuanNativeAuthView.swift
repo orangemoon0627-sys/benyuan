@@ -67,7 +67,7 @@ struct BenyuanNativeAuthView: View {
 
                     SignInWithAppleButton(.continue) { request in
                         request.requestedScopes = [.fullName]
-                        model.toast = nil
+                        model.showToast(nil)
                     } onCompletion: { result in
                         handleAppleCompletion(result)
                     }
@@ -202,7 +202,7 @@ struct BenyuanNativeAuthView: View {
 
     private func startWechatLogin() async {
         guard model.isWechatAuthReady else {
-            model.toast = "微信登录还在接入开放平台，请先用 Apple 登录。"
+            model.showToast("微信登录还在接入开放平台，请先用 Apple 登录。")
             return
         }
 
@@ -210,7 +210,7 @@ struct BenyuanNativeAuthView: View {
             let code = try await wechatAuth.requestCode()
             await model.continueWithWechat(code: code, displayName: "微信用户")
         } catch {
-            model.toast = error.localizedDescription
+            model.showToast(error.localizedDescription)
         }
     }
 
@@ -220,7 +220,7 @@ struct BenyuanNativeAuthView: View {
             guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
                   let identityTokenData = credential.identityToken,
                   let identityToken = String(data: identityTokenData, encoding: .utf8) else {
-                model.toast = "Apple 凭证暂时没有返回。"
+                model.showToast("Apple 凭证暂时没有返回。")
                 return
             }
 
@@ -236,7 +236,7 @@ struct BenyuanNativeAuthView: View {
                 )
             }
         case .failure(let error):
-            model.toast = BenyuanAppleAuthorizationCopy.toastMessage(for: error)
+            model.showToast(BenyuanAppleAuthorizationCopy.toastMessage(for: error))
         }
     }
 

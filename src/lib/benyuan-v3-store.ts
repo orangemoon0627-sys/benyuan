@@ -4,6 +4,8 @@ import type {
   AgentRuntimeOverride,
   BenyuanAuthProvider,
   BenyuanAuthSession,
+  BenyuanDataCohort,
+  BenyuanDataEnvironment,
   BenyuanAuthProviderIndex,
   BenyuanAuthRateLimit,
   BenyuanFeedbackRecord,
@@ -68,6 +70,11 @@ const EMPTY_STORE: BenyuanV3Store = {
 let storeWriteQueue: Promise<void> = Promise.resolve();
 const activeNativeGenerationJobRuns = new Set<string>();
 
+export type BenyuanDataScope = {
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
+};
+
 function recommendationKey(item: { title?: string; author?: string; director?: string; artist?: string; album?: string }) {
   return [item.title, item.author, item.director, item.artist, item.album].filter(Boolean).join("::").toLocaleLowerCase("zh-CN");
 }
@@ -113,6 +120,56 @@ function supplementGrowthSuggestions(preferred: ConstellationRecord["psyche_cons
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeBenyuanDataCohort(value?: string): BenyuanDataCohort {
+  return value === "public" || value === "local" || value === "beta" ? value : "beta";
+}
+
+function normalizeBenyuanDataEnvironment(value?: string): BenyuanDataEnvironment {
+  return value === "production" || value === "staging" || value === "test" || value === "development"
+    ? value
+    : process.env.NODE_ENV === "production"
+      ? "production"
+      : process.env.NODE_ENV === "test"
+        ? "test"
+        : "development";
+}
+
+export function resolveBenyuanDataScope(): BenyuanDataScope {
+  return {
+    data_cohort: normalizeBenyuanDataCohort(process.env.BENYUAN_DATA_COHORT),
+    data_environment: normalizeBenyuanDataEnvironment(process.env.BENYUAN_DATA_ENVIRONMENT ?? process.env.NODE_ENV),
+  };
+}
+
+function withBenyuanDataScope<T extends Partial<BenyuanDataScope>>(record: T): T & BenyuanDataScope {
+  const scope = resolveBenyuanDataScope();
+  return {
+    ...record,
+    data_cohort: record.data_cohort ?? scope.data_cohort,
+    data_environment: record.data_environment ?? scope.data_environment,
+  };
+}
+
+function cohortForClear(record: Partial<BenyuanDataScope>) {
+  return record.data_cohort ?? "beta";
+}
+
+function storedBenyuanDataScope<T extends Partial<BenyuanDataScope>>(record: T): T & BenyuanDataScope {
+  return {
+    ...record,
+    data_cohort: record.data_cohort ?? "beta",
+    data_environment: record.data_environment ?? "development",
+  };
+}
+
+function scopeFromPart1(part1?: Pick<Part1Record, "data_cohort" | "data_environment">): BenyuanDataScope {
+  const fallback = resolveBenyuanDataScope();
+  return {
+    data_cohort: part1?.data_cohort ?? fallback.data_cohort,
+    data_environment: part1?.data_environment ?? fallback.data_environment,
+  };
 }
 
 async function ensureStoreFile() {
@@ -193,22 +250,30 @@ export function createBenyuanFeedbackId() {
 
 export async function saveAuthUserAndSession(user: BenyuanUser, session: BenyuanAuthSession) {
   return withStoreWrite((store) => {
-    store.users[user.user_id] = user;
-    store.auth_sessions[session.token] = session;
+    const userScope = withBenyuanDataScope(user);
+    const sessionScope = withBenyuanDataScope({
+      ...session,
+      data_cohort: session.data_cohort ?? userScope.data_cohort,
+      data_environment: session.data_environment ?? userScope.data_environment,
+    });
+    store.users[user.user_id] = userScope;
+    store.auth_sessions[session.token] = sessionScope;
     const timestamp = new Date().toISOString();
     for (const [provider, providerSubject] of Object.entries(user.providers)) {
       if (!providerSubject) continue;
-      const indexKey = `${provider}:${providerSubject}`;
+      const indexKey = `${userScope.data_cohort}:${provider}:${providerSubject}`;
       const existing = store.auth_provider_index[indexKey];
       store.auth_provider_index[indexKey] = {
         provider: provider as BenyuanAuthProviderIndex["provider"],
         provider_subject: providerSubject,
         user_id: user.user_id,
+        data_cohort: userScope.data_cohort,
+        data_environment: userScope.data_environment,
         created_at: existing?.created_at ?? timestamp,
         updated_at: timestamp,
       };
     }
-    return { user, session };
+    return { user: userScope, session: sessionScope };
   });
 }
 
@@ -218,14 +283,24 @@ export async function getAuthSessionByToken(token: string) {
   if (!session || session.revoked_at) return undefined;
   const user = store.users[session.user_id];
   if (!user) return undefined;
-  return { session, user };
+  const scopedSession = storedBenyuanDataScope(session);
+  const scopedUser = storedBenyuanDataScope(user);
+  const currentScope = resolveBenyuanDataScope();
+  if (scopedSession.data_cohort !== currentScope.data_cohort || scopedUser.data_cohort !== currentScope.data_cohort) return undefined;
+  return { session: scopedSession, user: scopedUser };
 }
 
 export async function findUserByProviderSubject(provider: BenyuanAuthProviderIndex["provider"], providerSubject: string) {
   const store = await readBenyuanV3Store();
-  const indexed = store.auth_provider_index[`${provider}:${providerSubject}`];
+  const scope = resolveBenyuanDataScope();
+  const indexed =
+    store.auth_provider_index[`${scope.data_cohort}:${provider}:${providerSubject}`] ??
+    (scope.data_cohort === "beta" ? store.auth_provider_index[`${provider}:${providerSubject}`] : undefined);
   if (!indexed) return undefined;
-  return store.users[indexed.user_id];
+  const user = store.users[indexed.user_id];
+  const scopedUser = user ? storedBenyuanDataScope(user) : undefined;
+  if (!scopedUser || scopedUser.data_cohort !== scope.data_cohort) return undefined;
+  return scopedUser;
 }
 
 export async function revokeAuthSession(token: string, timestamp = new Date().toISOString()) {
@@ -240,26 +315,30 @@ export async function revokeAuthSession(token: string, timestamp = new Date().to
 
 export async function getAuthRateLimit(key: string) {
   const store = await readBenyuanV3Store();
-  return store.auth_rate_limits[key];
+  const scope = resolveBenyuanDataScope();
+  return store.auth_rate_limits[`${scope.data_cohort}:${key}`];
 }
 
 export async function saveAuthRateLimit(limit: BenyuanAuthRateLimit) {
   return withStoreWrite((store) => {
-    store.auth_rate_limits[limit.key] = limit;
-    return limit;
+    const scoped = withBenyuanDataScope(limit);
+    store.auth_rate_limits[`${scoped.data_cohort}:${limit.key}`] = scoped;
+    return scoped;
   });
 }
 
 export async function savePhoneOtp(otp: BenyuanPhoneOtp) {
   return withStoreWrite((store) => {
-    store.phone_otps[otp.phone] = otp;
-    return otp;
+    const scoped = withBenyuanDataScope(otp);
+    store.phone_otps[`${scoped.data_cohort}:${otp.phone}`] = scoped;
+    return scoped;
   });
 }
 
 export async function getPhoneOtp(phone: string) {
   const store = await readBenyuanV3Store();
-  return store.phone_otps[phone];
+  const scope = resolveBenyuanDataScope();
+  return store.phone_otps[`${scope.data_cohort}:${phone}`];
 }
 
 function countPart1Assets(part1: Part1Record) {
@@ -496,8 +575,9 @@ export async function deleteAccountHistoryForUser(userId: string, part1Id: strin
 
 export async function saveFeedbackRecord(record: BenyuanFeedbackRecord) {
   return withStoreWrite((store) => {
-    store.feedback_records[record.feedback_id] = record;
-    return record;
+    const scoped = withBenyuanDataScope(record);
+    store.feedback_records[record.feedback_id] = scoped;
+    return scoped;
   });
 }
 
@@ -686,8 +766,9 @@ export async function updateTestPlanItemStatus(
 
 export async function saveUploadedAsset(asset: BenyuanStoredAsset) {
   return withStoreWrite((store) => {
-    store.uploaded_assets[asset.asset_id] = asset;
-    return asset;
+    const scoped = withBenyuanDataScope(asset);
+    store.uploaded_assets[asset.asset_id] = scoped;
+    return scoped;
   });
 }
 
@@ -696,10 +777,17 @@ export async function getUploadedAsset(assetId: string) {
   return store.uploaded_assets[assetId];
 }
 
+export async function getUploadedAssetForOwner(assetId: string, ownerUserId: string) {
+  const asset = await getUploadedAsset(assetId);
+  if (!asset || asset.owner_user_id !== ownerUserId) return undefined;
+  return asset;
+}
+
 export async function savePart1Record(record: Part1Record) {
   return withStoreWrite((store) => {
-    store.part1_records[record.part1_id] = record;
-    return record;
+    const scoped = withBenyuanDataScope(record);
+    store.part1_records[record.part1_id] = scoped;
+    return scoped;
   });
 }
 
@@ -710,8 +798,12 @@ export async function getPart1Record(part1Id: string) {
 
 export async function saveTheaterScriptRecord(record: TheaterScriptRecord) {
   return withStoreWrite((store) => {
-    store.theater_scripts[record.theater_script_id] = record;
-    return record;
+    const scoped = withBenyuanDataScope({
+      ...record,
+      ...scopeFromPart1(store.part1_records[record.part1_id]),
+    });
+    store.theater_scripts[record.theater_script_id] = scoped;
+    return scoped;
   });
 }
 
@@ -722,8 +814,12 @@ export async function getTheaterScriptRecord(theaterScriptId: string) {
 
 export async function savePart2Record(record: Part2Record) {
   return withStoreWrite((store) => {
-    store.part2_records[record.part2_id] = record;
-    return record;
+    const scoped = withBenyuanDataScope({
+      ...record,
+      ...scopeFromPart1(store.part1_records[record.part1_id]),
+    });
+    store.part2_records[record.part2_id] = scoped;
+    return scoped;
   });
 }
 
@@ -739,6 +835,60 @@ export async function getPart2RecordForPart1(part1Id: string, part2Id?: string) 
     return record?.part1_id === part1Id ? record : undefined;
   }
   return findPart2ForPart1(store, part1Id);
+}
+
+export async function clearBenyuanCohortData(cohort: BenyuanDataCohort) {
+  return withStoreWrite((store) => {
+    const part1Ids = new Set(
+      Object.values(store.part1_records)
+        .filter((record) => cohortForClear(record) === cohort)
+        .map((record) => record.part1_id),
+    );
+    const assetIds = new Set(
+      Object.values(store.uploaded_assets)
+        .filter((asset) => cohortForClear(asset) === cohort)
+        .map((asset) => asset.asset_id),
+    );
+
+    for (const part1Id of part1Ids) delete store.part1_records[part1Id];
+    for (const assetId of assetIds) delete store.uploaded_assets[assetId];
+    for (const [id, user] of Object.entries(store.users)) {
+      if (cohortForClear(user) === cohort) delete store.users[id];
+    }
+    for (const [token, session] of Object.entries(store.auth_sessions)) {
+      if (cohortForClear(session) === cohort) delete store.auth_sessions[token];
+    }
+    for (const [id, index] of Object.entries(store.auth_provider_index)) {
+      if (cohortForClear(index) === cohort || id.startsWith(`${cohort}:`)) delete store.auth_provider_index[id];
+    }
+    for (const [id, otp] of Object.entries(store.phone_otps)) {
+      if (cohortForClear(otp) === cohort) delete store.phone_otps[id];
+    }
+    for (const [id, limit] of Object.entries(store.auth_rate_limits)) {
+      if (cohortForClear(limit) === cohort) delete store.auth_rate_limits[id];
+    }
+    for (const [id, theater] of Object.entries(store.theater_scripts)) {
+      if (part1Ids.has(theater.part1_id) || cohortForClear(theater) === cohort) delete store.theater_scripts[id];
+    }
+    for (const [id, part2] of Object.entries(store.part2_records)) {
+      if (part1Ids.has(part2.part1_id) || cohortForClear(part2) === cohort) delete store.part2_records[id];
+    }
+    for (const [id, constellation] of Object.entries(store.constellations)) {
+      if (part1Ids.has(constellation.part1_id) || cohortForClear(constellation) === cohort) delete store.constellations[id];
+    }
+    for (const [id, job] of Object.entries(store.native_generation_jobs)) {
+      if (part1Ids.has(job.part1_id) || cohortForClear(job) === cohort) delete store.native_generation_jobs[id];
+    }
+    for (const [id, feedback] of Object.entries(store.feedback_records)) {
+      if (part1Ids.has(feedback.part1_id ?? "") || cohortForClear(feedback) === cohort) delete store.feedback_records[id];
+    }
+
+    return {
+      cohort,
+      deleted_part1_records: part1Ids.size,
+      deleted_uploaded_assets: assetIds.size,
+    };
+  });
 }
 
 export async function startNativeGenerationJob(input: {
@@ -769,6 +919,8 @@ export async function startNativeGenerationJob(input: {
       part2_id: input.part2Id,
       theater_script_id: existingTheater?.theater_script_id,
       constellation_id: existingConstellation?.constellation_id,
+      data_cohort: part1.data_cohort,
+      data_environment: part1.data_environment,
       kind: input.kind,
       status,
       current_stage: currentStage,
@@ -919,6 +1071,8 @@ export async function runNativeGenerationJob(jobId: string) {
       const theaterRecord: TheaterScriptRecord = {
         theater_script_id: createBenyuanV3Id("theater"),
         part1_id: updatedPart1.part1_id,
+        data_cohort: updatedPart1.data_cohort,
+        data_environment: updatedPart1.data_environment,
         created_at: new Date().toISOString(),
         runtime: result.runtime,
         theater_script: result.theaterScript,
@@ -968,6 +1122,8 @@ export async function runNativeGenerationJob(jobId: string) {
       constellation_id: createBenyuanV3Id("const"),
       part1_id: part1.part1_id,
       part2_id: part2.part2_id,
+      data_cohort: part1.data_cohort,
+      data_environment: part1.data_environment,
       created_at: new Date().toISOString(),
       runtime: result.runtime,
       psyche_constellation: result.constellation,
@@ -997,8 +1153,12 @@ export async function runNativeGenerationJob(jobId: string) {
 
 export async function saveConstellationRecord(record: ConstellationRecord) {
   return withStoreWrite((store) => {
-    store.constellations[record.constellation_id] = record;
-    return record;
+    const scoped = withBenyuanDataScope({
+      ...record,
+      ...scopeFromPart1(store.part1_records[record.part1_id]),
+    });
+    store.constellations[record.constellation_id] = scoped;
+    return scoped;
   });
 }
 

@@ -140,8 +140,9 @@ assert.match(constellationDetailRoute, /part1\.user_id\s*!==\s*auth\.user\.user_
 assert.match(nativeJobStartRoute, /getCurrentAuthSession/, "native job start route must require auth");
 assert.match(nativeJobStatusRoute, /getCurrentAuthSession/, "native job status route must require auth");
 assert.match(nativeJobStatusRoute, /part1_forbidden/, "native job status route must reject cross-account reads");
-assert.match(part1Route, /readAuthFromRequest/, "part1 submit should resolve token user");
-assert.match(part1Route, /auth\?\.user\.user_id/, "part1 submit should prefer token user_id");
+assert.match(part1Route, /getRequiredBenyuanAuthSession/, "part1 submit should require an authenticated token user");
+assert.match(part1Route, /auth\.user\.user_id/, "part1 submit should stamp the authenticated user_id");
+assert.doesNotMatch(part1Route, /auth\?\.user\.user_id\s*\?\?\s*body\.user_id\s*\?\?\s*"usr_local"/, "part1 submit must not silently fall back to body user_id or usr_local");
 for (const [label, source] of [
   ["multimodal", multimodalRoute],
   ["theater", theaterRoute],

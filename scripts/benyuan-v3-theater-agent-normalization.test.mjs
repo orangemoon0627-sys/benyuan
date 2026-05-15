@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
 import test from "node:test";
 import path from "node:path";
@@ -193,6 +193,30 @@ test("normalizeTheaterScript pads short live act2 into the required four-round t
   assert.equal(normalized.act2.choices[1].scene, "第二轮来自模型。");
   assert.match(normalized.act2.choices[3].scene, /星图|最后一道门|先看见哪一层/);
   assert(normalized.act2.choices.every((choice) => choice.options.length === 4), "short live choices must be padded to four options per round");
+});
+
+test("normalizeTheaterScript repairs saved legacy three-round theater scripts", () => {
+  const fallback = generateDeterministicTheaterScript(createPart1Record());
+  const legacy = {
+    ...fallback,
+    act2: {
+      choices: fallback.act2.choices.slice(0, 3),
+    },
+  };
+  const normalized = normalizeTheaterScript(legacy, fallback);
+
+  assert.ok(normalized);
+  assert.equal(normalized.act2.choices.length, 4);
+  assert.equal(normalized.act2.choices[3].choice_id, 4);
+  assert.equal(normalized.act2.choices[3].options.length, 4);
+});
+
+test("part2 submit rejects incomplete four-round theater choice logs", () => {
+  const route = readFileSync("src/app/api/part2/submit/route.ts", "utf8");
+
+  assert.match(route, /requiredAct2Choices/, "part2 route must compute the visible theater choice requirement");
+  assert.match(route, /incomplete_theater_act2_choices/, "part2 route must reject incomplete theater choice logs");
+  assert.match(route, /status:\s*422/, "incomplete theater choices should be a validation failure");
 });
 
 test("normalizeTheaterScript cleans visible slug and OCR noise without rewriting internal signals", () => {

@@ -317,10 +317,7 @@ struct BenyuanNativeConstellationView: View {
                     activeDimensionKey = key
                 }
             )
-            Text(dimensionReadingText(active))
-                .font(.system(size: 16, weight: .regular))
-                .lineSpacing(7)
-                .foregroundStyle(BenyuanColor.textSecondary)
+            dimensionInsightCard(active)
                 .padding(.top, BenyuanSpacing.x2)
         }
     }
@@ -336,41 +333,128 @@ struct BenyuanNativeConstellationView: View {
         return "这张星图不是把你压缩成性格标签，而是在标出当下最有引力的几条精神轨道。\(primary)像主月面，\(secondary)与\(third)围绕它形成潮汐；它们一起决定你如何靠近关系、作品、选择和未说出口的愿望。"
     }
 
-    private func dimensionReadingText(_ dimension: (key: String, label: String, score: Int, interpretation: String)?) -> String {
+    private func dimensionInsightCard(_ dimension: (key: String, label: String, score: Int, interpretation: String)?) -> some View {
+        let insight = dimensionInsight(dimension)
+
+        return VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
+            dimensionInsightRow(label: "核心结论", text: insight.conclusion)
+            dimensionInsightRow(label: "潜在防御", text: insight.defense)
+            dimensionInsightRow(label: "盲点", text: insight.blindSpot)
+            dimensionInsightRow(label: "可用方向", text: insight.direction)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(BenyuanSpacing.x4)
+        .background(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(BenyuanColor.bgSurface.opacity(0.58))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(BenyuanColor.glassStroke.opacity(0.82), lineWidth: 1)
+                )
+        )
+    }
+
+    private func dimensionInsightRow(label: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(label)
+                .font(.system(size: 13, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.accentGold)
+            Text(text)
+                .font(.system(size: 15, weight: label == "核心结论" ? .semibold : .regular))
+                .lineSpacing(5)
+                .foregroundStyle(label == "核心结论" ? BenyuanColor.textPrimary : BenyuanColor.textSecondary)
+        }
+    }
+
+    private func dimensionInsight(_ dimension: (key: String, label: String, score: Int, interpretation: String)?) -> BenyuanDimensionInsight {
         guard let dimension else {
-            return "这组轨道暂时还在沉默。等更多选择和剧场回应进入星图，它会显出更清楚的自我轮廓。"
+            return BenyuanDimensionInsight(
+                conclusion: "这组轨道还在等待更多线索显影。",
+                defense: "暂时不急着下判断，先保留它的空白。",
+                blindSpot: "信息不足时，任何过满的解释都会显得粗糙。",
+                direction: "继续完成选择和剧场，星图会补上更清楚的轮廓。"
+            )
         }
 
-        let brightness: String
-        if dimension.score >= 82 {
-            brightness = "它像一条亮到近乎固执的主轨，说明你并不是偶尔触碰这个主题，而是经常用它决定自己如何靠近世界。"
-        } else if dimension.score >= 64 {
-            brightness = "它是一条稳定发光的中层轨道，常在关键时刻替你筛选人、事、风景和命运的重量。"
-        } else {
-            brightness = "它更像暗处的潮汐，不急着宣告自己，却会在压力、亲密或转身离开时忽然显影。"
-        }
+        let intensity = dimension.score >= 78 ? "强显影" : dimension.score >= 60 ? "稳定显影" : dimension.score >= 44 ? "中等显影" : "低显影"
+        let cleaned = cleanedDimensionInterpretation(dimension.interpretation)
+        let fallback: BenyuanDimensionInsight
 
-        let invitation: String
         switch dimension.key {
         case "openness":
-            invitation = "当它被点亮，你会更愿意让陌生经验先停留一会儿，再决定是否命名。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "开放性\(intensity)：你会被尚未命名的经验吸引，尤其是能让旧自我松动的作品、画面和关系处境。",
+                defense: "你常用“再理解一下”来延迟进入，这是一种避免被粗糙现实过早固定的保护。",
+                blindSpot: "理解有时会替代行动，让真正想要的东西停在想象里。",
+                direction: "给一个陌生愿望很小的位置，先观察它是否真的让你更接近自己。"
+            )
         case "independence":
-            invitation = "当它被点亮，你会把节奏感看得很重：靠近可以发生，但不能以失去自己为代价。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "独立性\(intensity)：你靠近世界之前，会先检查自己还在不在自己的位置上。",
+                defense: "你保护的是边界，不是冷淡；你怕的是关系太快进入全部房间。",
+                blindSpot: "可协商的靠近有时会被你误读成侵入。",
+                direction: "把边界说成坐标，而不是墙，让合适的人知道可以停在哪里。"
+            )
         case "emotional_depth":
-            invitation = "当它被点亮，情绪不只是反应，而像一口井，里面藏着需要、记忆和某种未完成的保护。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "情感深度\(intensity)：你的情绪常先沉到深处，再借一句话、一首歌或一张图浮上来。",
+                defense: "维持平静是你的外层光壳，用来给复杂感受争取时间。",
+                blindSpot: "别人可能只看见冷静，看不见底下已经很重的潮汐。",
+                direction: "不用一次说完，先把感受拆成一句能被接住的话。"
+            )
         case "meaning_seeking":
-            invitation = "当它被点亮，你会追问一件事是否值得，不只看结果，也看它有没有让生命变得更准确。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "意义追寻\(intensity)：你不只问有没有用，更问它能否让生活变得更准确。",
+                defense: "你用意义过滤欲望，没有内在理由的靠近很难说服你。",
+                blindSpot: "意义门槛太高时，一些本可以先试的小路会被提前排除。",
+                direction: "让一个选择先成为小实验，而不是立刻成为终身答案。"
+            )
         case "aesthetic_sensitivity":
-            invitation = "当它被点亮，光线、语气、材质和沉默都会变成判断真实感的线索。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "审美敏感\(intensity)：你会用光线、语气、构图和氛围判断一件事是否真实。",
+                defense: "你把难以直说的内在经验投射到画面和声音里，再从它们那里读回自己。",
+                blindSpot: "美感能保存真实，也可能延后现实命名。",
+                direction: "当某个画面击中你，问一句：它替我保存了哪件还没说出口的事。"
+            )
         case "action_tendency":
-            invitation = "当它被点亮，你需要把感受落到动作里，让一个小决定先替未来打开门。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "行动力\(intensity)：你不是完全被动的人；你更像确认轨道后，用一个小动作打破等待。",
+                defense: "行动有时是在抵消空白，让不确定性不要长期占据身体。",
+                blindSpot: "如果动作只是为了缓解焦虑，它会很快失去方向。",
+                direction: "先确认这一步服务的是愿望，还是只是想逃离等待。"
+            )
         case "relationship_need":
-            invitation = "当它被点亮，你在寻找的不是热闹，而是一种能容纳复杂性的回应。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "关系需求\(intensity)：你要的不是热闹连接，而是能理解边界、慢速和未说出口部分的回应。",
+                defense: "你反复确认的是：靠近会不会保留你的完整性。",
+                blindSpot: "你太擅长把需要藏成独立，别人可能误以为你并不期待回应。",
+                direction: "选择一个可信的人，说出一小块需要，不必把整座房间交出去。"
+            )
         default:
-            invitation = "当它被点亮，你会在日常细节里反复确认：什么真正靠近你，什么只是经过你。"
+            fallback = BenyuanDimensionInsight(
+                conclusion: "\(dimension.label)\(intensity)：这条轨道会在压力、亲密或选择时影响你的第一反应。",
+                defense: "它帮你保留节奏，也帮你避免被外界过快定义。",
+                blindSpot: "当它过度发亮，其他可能性会被暂时遮住。",
+                direction: "把它当成坐标，不当成全部答案。"
+            )
         }
 
-        return "\(dimension.label)不是一个分数，而是你精神星系里正在运行的力场。\(brightness)\(dimension.interpretation)\(invitation)把它看成一枚坐标：不是用来规定你是谁，而是提醒你，哪些微小反应已经反复替你说出了答案。"
+        guard !cleaned.isEmpty else { return fallback }
+        return BenyuanDimensionInsight(
+            conclusion: cleaned,
+            defense: fallback.defense,
+            blindSpot: fallback.blindSpot,
+            direction: fallback.direction
+        )
+    }
+
+    private func cleanedDimensionInterpretation(_ value: String) -> String {
+        let retiredPrefixes = ["分数", "分析"].map { "不是一个\($0)，而是" }
+        return retiredPrefixes
+            .reduce(value) { current, prefix in
+                current.replacingOccurrences(of: prefix, with: "")
+            }
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func river(_ data: PsycheConstellation) -> some View {
@@ -539,6 +623,13 @@ private extension BenyuanConstellationLayoutBudget {
             return .bottom
         }
     }
+}
+
+private struct BenyuanDimensionInsight {
+    let conclusion: String
+    let defense: String
+    let blindSpot: String
+    let direction: String
 }
 
 struct BenyuanConstellationActionDock: View {

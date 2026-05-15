@@ -1,5 +1,7 @@
 export type BenyuanModuleKey = "A" | "B" | "C";
 export type BenyuanQuestionKind = "single" | "multi" | "upload" | "distribution";
+export type BenyuanDataCohort = "beta" | "public" | "local";
+export type BenyuanDataEnvironment = "development" | "staging" | "production" | "test";
 export type BigFiveKey = "openness" | "conscientiousness" | "extraversion" | "agreeableness" | "neuroticism";
 export type SevenDimensionKey =
   | "openness"
@@ -113,6 +115,8 @@ export type Part1SubmissionInput = {
 export type Part1Record = {
   part1_id: string;
   user_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   created_at: string;
   updated_at: string;
   answers: Part1AnswerMap;
@@ -125,6 +129,9 @@ export type BenyuanPart1HistoryRecordResponse = Pick<Part1Record, "part1_id" | "
 export type BenyuanUploadedAssetRef = {
   asset_id: string;
   question_id: string;
+  owner_user_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   name: string;
   size: number;
   mime_type: string;
@@ -214,6 +221,8 @@ export type TheaterScript = {
 export type TheaterScriptRecord = {
   theater_script_id: string;
   part1_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   created_at: string;
   runtime: AgentRuntimeResult;
   theater_script: TheaterScript;
@@ -248,6 +257,8 @@ export type Part2Record = {
   part2_id: string;
   part1_id: string;
   theater_script_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   created_at: string;
   act2_choices: Part2ChoiceRecord[];
   act3_responses: Part2MirrorRecord[];
@@ -298,6 +309,8 @@ export type ConstellationRecord = {
   constellation_id: string;
   part1_id: string;
   part2_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   created_at: string;
   runtime: AgentRuntimeResult;
   psyche_constellation: PsycheConstellation;
@@ -337,6 +350,8 @@ export type BenyuanNativeGenerationJob = {
   part2_id?: string;
   theater_script_id?: string;
   constellation_id?: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   kind: BenyuanNativeGenerationJobKind;
   status: BenyuanNativeGenerationJobStatus;
   current_stage: BenyuanNativeGenerationJobStage;
@@ -379,6 +394,8 @@ export type BenyuanAuthProvider = "anonymous" | "apple" | "wechat" | "phone";
 
 export type BenyuanUser = {
   user_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   created_at: string;
   updated_at: string;
   display_name?: string;
@@ -393,6 +410,8 @@ export type BenyuanAuthSession = {
   user_id: string;
   token: string;
   provider: BenyuanAuthProvider;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   created_at: string;
   updated_at: string;
   revoked_at?: string;
@@ -400,6 +419,8 @@ export type BenyuanAuthSession = {
 
 export type BenyuanPhoneOtp = {
   phone: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   code_hash: string;
   created_at: string;
   expires_at: string;
@@ -411,12 +432,16 @@ export type BenyuanAuthProviderIndex = {
   provider: BenyuanAuthProvider;
   provider_subject: string;
   user_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   created_at: string;
   updated_at: string;
 };
 
 export type BenyuanAuthRateLimit = {
   key: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   count: number;
   reset_at: string;
   updated_at: string;
@@ -452,6 +477,8 @@ export type BenyuanFeedbackRecord = {
   feedback_id: string;
   user_id: string;
   auth_session_id: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
   kind: BenyuanFeedbackKind;
   status?: BenyuanFeedbackStatus;
   status_updated_at?: string;

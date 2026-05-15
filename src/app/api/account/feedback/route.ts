@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { BenyuanAuthError, getCurrentAuthSession } from "@/lib/benyuan-auth";
-import { createBenyuanFeedbackId, saveFeedbackRecord } from "@/lib/benyuan-v3-store";
+import { createBenyuanFeedbackId, resolveBenyuanDataScope, saveFeedbackRecord } from "@/lib/benyuan-v3-store";
 import type { BenyuanFeedbackKind, BenyuanFeedbackStage } from "@/lib/benyuan-v3-types";
 
 const FEEDBACK_KINDS = new Set<BenyuanFeedbackKind>(["issue", "ui", "content", "speed", "other"]);
@@ -57,10 +57,13 @@ export async function POST(request: Request) {
     }
 
     const createdAt = new Date().toISOString();
+    const dataScope = resolveBenyuanDataScope();
     const record = await saveFeedbackRecord({
       feedback_id: createBenyuanFeedbackId(),
       user_id: auth.user.user_id,
       auth_session_id: auth.session.session_id,
+      data_cohort: dataScope.data_cohort,
+      data_environment: dataScope.data_environment,
       kind: normalizeKind(body.kind),
       status: "new",
       status_updated_at: createdAt,

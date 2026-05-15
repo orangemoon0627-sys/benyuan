@@ -212,7 +212,11 @@ assert.match(constellation, /sevenDimensions/, "native constellation orbit map m
 assert.match(constellation, /\.frame\(height:\s*392\)/, "native constellation seven-dimension orbit must be large enough to read as the primary graphic system");
 assert.match(constellation, /BenyuanDimensionResonanceGraph/, "native constellation seven-dimension values must be rendered graphically instead of as percent data cards");
 assert.doesNotMatch(constellation, /Text\("\\\(dimension\.score\)%"\)/, "native constellation seven-dimension section must not fall back to raw percent cards");
-assert.match(constellation, /private func dimensionReadingText/, "native constellation must expand the selected dimension into a richer personal reading");
+assert.match(constellation, /private func dimensionInsightCard/, "native constellation must expand the selected dimension into a richer personal reading");
+assert.match(constellation, /private func dimensionInsight\(/, "native constellation must derive a structured personal reading from the selected dimension");
+for (const insightLabel of ["核心结论", "潜在防御", "盲点", "可用方向"]) {
+  assert.match(constellation, new RegExp(insightLabel), `native constellation dimension reading must include ${insightLabel}`);
+}
 assert.match(constellation, /safeAreaInset\(edge:\s*\.bottom,\s*spacing:\s*0\)/, "native constellation final actions must sit flush to the screen bottom without a safe-area inset gap");
 assert.match(constellation, /bottomDockHeight:\s*116/, "native constellation scroll content must keep the previous compact dock clearance");
 assert.match(constellation, /firstViewportReserve:\s*96/, "native constellation first viewport must hint at the seven-dimension section without colliding with the fixed action dock");

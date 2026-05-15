@@ -41,6 +41,8 @@ export async function POST(request: Request) {
       constellation_id: createBenyuanV3Id("const"),
       part1_id: part1.part1_id,
       part2_id: part2.part2_id,
+      data_cohort: part1.data_cohort,
+      data_environment: part1.data_environment,
       created_at: new Date().toISOString(),
       runtime: result.runtime,
       psyche_constellation: result.constellation,

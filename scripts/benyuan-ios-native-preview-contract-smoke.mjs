@@ -10,6 +10,10 @@ const fixtures = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-s
 const flowModel = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeFlowModel.swift`, "utf8");
 const theater = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeTheaterView.swift`, "utf8");
 const actions = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeTheaterActions.swift`, "utf8");
+const collectActions = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeCollectActions.swift`, "utf8");
+const constellationActions = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeConstellationActions.swift`, "utf8");
+const authView = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeAuthView.swift`, "utf8");
+const homeView = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeHomeView.swift`, "utf8");
 
 for (const stage of ["auth", "account", "collect", "upload", "processing", "theater", "theater-act2", "constellation", "constellation-end"]) {
   assert.match(script, new RegExp(`stage:\\s*['"]${stage}['"]`), `native preview screenshot script must include ${stage}`);
@@ -93,6 +97,8 @@ assert.ok(chooseAct2Body, "native theater actions must keep chooseAct2");
 assert.doesNotMatch(chooseAct2Body, /finishTheaterAndGenerateConstellation\(\)|enterConstellationGenerationFromTheater\(\)/, "native theater preview option tap must not auto-submit into generation");
 assert.match(flowModel, /case \.theaterAct2:[\s\S]*?theaterChoiceIndex = 0/, "native preview act2 must open the first visible theater test node");
 assert.match(flowModel, /var requiredTheaterChoiceCount:\s*Int[\s\S]*?min\(4,\s*theater\?\.theaterScript\.act2\.choices\.count \?\? 0\)/, "native preview act2 must require four theater rounds when available");
+assert.match(flowModel, /var canEnterConstellationGenerationFromTheater:[\s\S]*?choiceLogs\.count >= requiredTheaterChoiceCount/, "native theater must only reveal constellation generation after all four rounds are answered");
+assert.match(actions, /guard let choice = currentTheaterChoice,[\s\S]*?choiceLogs\.count < requiredTheaterChoiceCount/, "native theater must ignore extra option taps after the four required rounds");
 assert.match(actions, /if choiceLogs\.count < requiredTheaterChoiceCount[\s\S]*?theaterChoiceIndex = choiceLogs\.count/, "native theater must advance through the first three Act2 rounds and stop after the fourth");
 assert.doesNotMatch(fixtures, /question:\s*"让镜面停在一个方向上："/, "native preview Act3 visible question must not use the old mirror-direction wording");
 for (const motif of ["没有寄出的信", "旧音乐", "照片轮廓", "暗金轨道"]) {
@@ -122,6 +128,17 @@ assert.doesNotMatch(flowModel, /case \.theaterAct3|case \.theaterEpilogue|theate
 assert.match(fixtures, /sceneDescription:\s*"[\s\S]*?很深的月场边缘[\s\S]*?\\n\\n[\s\S]*?那段旧音乐[\s\S]*?\\n\\n[\s\S]*?一段只能由你继续往下走的小说/, "native preview Act1 must use a longer private-story scene with paragraph breaks");
 assert.doesNotMatch(fixtures, /售票|检票|座位|观众|演员|幕布|引座员/, "native preview Act1 should not literalize the theater as a physical venue");
 assert.match(script, /stage:\s*"theater-act2"[\s\S]*?waitMs:\s*10000/, "native preview screenshots should wait for theater act2 to settle before capture");
+
+assert.match(flowModel, /func showToast\(_ message:\s*String\?,\s*duration:\s*TimeInterval = 1\.8\)/, "native transient banners must use a unified short-lived toast helper");
+assert.match(flowModel, /Task\.sleep\(nanoseconds:\s*nanoseconds\)/, "native toast helper must auto-dismiss after its short duration");
+assert.match(flowModel, /self\.toast = nil/, "native toast helper must clear the banner after the timeout");
+for (const file of [collectActions, constellationActions, authView, homeView]) {
+  assert.match(file, /showToast\(/, "native transient user feedback must call showToast instead of leaving fixed banners on screen");
+}
+assert.doesNotMatch(collectActions, /(?<!showToast\()\btoast\s*=/, "collect flow must not assign persistent toast banners directly");
+assert.doesNotMatch(constellationActions, /\btoast\s*=/, "constellation save flow must not assign persistent toast banners directly");
+assert.match(collectActions, /showToast\("线索已完整，可以进入剧场。"\)/, "collect completion banner must disappear automatically");
+assert.match(constellationActions, /showToast\(success \? "星图长图已保存到相册。"/, "saved-image banner must disappear automatically");
 
 assert.equal(
   packageJson.scripts["ios:shell:native-preview"],

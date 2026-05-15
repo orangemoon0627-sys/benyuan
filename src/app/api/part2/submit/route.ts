@@ -27,12 +27,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "theater_script_part1_mismatch" }, { status: 409 });
   }
 
+  const requiredAct2Choices = Math.min(4, theaterScript.theater_script.act2.choices.length);
+  const submittedAct2Choices = body.act2_choices ?? [];
+  if (requiredAct2Choices >= 4 && submittedAct2Choices.length < requiredAct2Choices) {
+    return NextResponse.json(
+      {
+        error: "incomplete_theater_act2_choices",
+        required_act2_choice_count: requiredAct2Choices,
+        received_act2_choice_count: submittedAct2Choices.length,
+      },
+      { status: 422 },
+    );
+  }
+
   const record = {
     part2_id: createBenyuanV3Id("part2"),
     part1_id: body.part1_id,
     theater_script_id: body.theater_script_id,
+    data_cohort: part1.data_cohort,
+    data_environment: part1.data_environment,
     created_at: new Date().toISOString(),
-    act2_choices: body.act2_choices ?? [],
+    act2_choices: submittedAct2Choices,
     act3_responses: body.act3_responses ?? [],
     metadata: body.metadata ?? {},
   };

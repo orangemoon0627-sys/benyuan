@@ -14,7 +14,7 @@ extension BenyuanNativeFlowModel {
             let response = try await client.fetchAccountHistory()
             accountHistory = response.items
         } catch {
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
     }
 
@@ -105,7 +105,7 @@ extension BenyuanNativeFlowModel {
         } catch {
             restoringHistoryPart1Id = nil
             stage = .account
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
     }
 
@@ -136,9 +136,9 @@ extension BenyuanNativeFlowModel {
                 session.constellationId = nil
                 persist()
             }
-            toast = "这次探索已删除。"
+            showToast("这次探索已删除。")
         } catch {
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
     }
 }

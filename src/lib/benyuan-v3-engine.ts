@@ -11,6 +11,7 @@ import type {
   Part2Record,
   PreciousPhotoAnalysis,
   PsycheConstellation,
+  SevenDimensionKey,
   SocialPostAnalysis,
   SocialPostOverallPattern,
   TheaterScript,
@@ -713,8 +714,54 @@ function buildSevenDimensionScores(record: Part1Record, part2?: Part2Record) {
   };
 }
 
-function dimensionInterpretation(label: string, score: number, text: string) {
-  return `${label}${score >= 75 ? "很高" : score >= 55 ? "处于中高段" : score >= 40 ? "处于中段" : "偏低"}。${text}`;
+function dimensionIntensity(score: number) {
+  if (score >= 78) return "强";
+  if (score >= 60) return "稳定";
+  if (score >= 44) return "中等";
+  return "低显影";
+}
+
+function dimensionInterpretation(key: SevenDimensionKey, label: string, score: number) {
+  const intensity = dimensionIntensity(score);
+  const templates: Record<SevenDimensionKey, { conclusion: string; intention: string; blindSpot: string }> = {
+    openness: {
+      conclusion: "你会被尚未命名的经验吸引，尤其是能让旧自我松动的画面、作品和关系处境。",
+      intention: "你潜意识里想确认：新的东西是否能让你更接近真实，而不是只带来刺激。",
+      blindSpot: "你可能把“继续理解”当成安全距离，迟迟不让某个选择真正进入现实。",
+    },
+    independence: {
+      conclusion: "你靠近世界之前，会先检查自己还在不在自己的位置上。",
+      intention: "你的防御方式不是单纯退开，而是先保住边界，避免被过快的关系或期待吞没。",
+      blindSpot: "你有时会把可协商的靠近误读成入侵，于是让真正合适的人也等在门外。",
+    },
+    emotional_depth: {
+      conclusion: "你的情绪常常先沉到深处，再以一句话、一首歌或一张图的形式浮上来。",
+      intention: "你潜在意图是给复杂感受找容器，不让它们粗糙地外溢，也不让别人太早定义它们。",
+      blindSpot: "当你维持平静太久，别人可能只看见冷静，而看不见底下已经很重的潮汐。",
+    },
+    meaning_seeking: {
+      conclusion: "你做选择时不只问有没有用，更问它能否让生活变得更准确。",
+      intention: "你的欲望结构里有很强的“意义过滤”：没有内在理由的靠近，很难真正说服你。",
+      blindSpot: "你可能把意义门槛设得太高，让一些本可以先试试的小路被过早排除。",
+    },
+    aesthetic_sensitivity: {
+      conclusion: "你会用光线、语气、构图和氛围判断一件事是否真实。",
+      intention: "这像一种投射能力：你把难以直说的内在经验放到画面和声音里，再从它们那里读回自己。",
+      blindSpot: "美感会帮你保存真实，也可能替现实延后命名，让你停在“感到很对”却不行动的位置。",
+    },
+    action_tendency: {
+      conclusion: "你不是完全被动的人；你更像在确认轨道后，用一个小动作打破等待。",
+      intention: "你的潜在意图是用可控行动抵消空白，不让不确定性长期占据身体。",
+      blindSpot: "如果动作只是为了缓解焦虑，它会很快失去方向；你需要确认这一步服务的是愿望，而不只是逃离等待。",
+    },
+    relationship_need: {
+      conclusion: "你要的不是热闹连接，而是能理解边界、慢速和未说出口部分的回应。",
+      intention: "在客体关系层面，你反复确认的是：靠近会不会保留你的完整性，而不是把你变成对方期待的样子。",
+      blindSpot: "你可能太擅长把需要藏成独立，让别人误以为你并不期待被回应。",
+    },
+  };
+  const template = templates[key];
+  return `结论：${label}${intensity}显影，${template.conclusion} 潜在防御：${template.intention} 盲点：${template.blindSpot}`;
 }
 
 function buildDeterministicCoreTensions(
@@ -930,14 +977,14 @@ function buildDeterministicNarrativeOverview(params: {
     : "";
 
   return [
-    `当你把“${selectedA1}”选为核心意象时，星图里最先亮起的是月相边缘：一半显露，一半保留。荣格会把这种反复辨认称作个体化的入口，不是变得特殊，而是把散落的自己慢慢收回同一条轨道。${profile.narrativeFocus}`,
-    `你的证据并不抽象：那句“${socialText}”、${photo}，以及${music}，都像同一个黑色天体周围的碎光。它们说明你不是被宏大词语打动，而是会从一句话、一张图、一段声音里确认：这里有我的一部分。`,
+    `当你把“${selectedA1}”选为核心意象时，星图里最先亮起的是月相边缘：一半显露，一半保留。荣格会把这种反复辨认称作个体化的入口，不是变得特殊，而是把散落的自己慢慢收回同一条轨道。更深一层看，你真正想确认的是：有没有一个位置，既能容纳你的暗面，也不会急着替你解释。${profile.narrativeFocus}`,
+    `你的证据并不抽象：那句“${socialText}”、${photo}，以及${music}，都像同一个黑色天体周围的碎光。它们说明你不是被宏大词语打动，而是会从一句话、一张图、一段声音里确认：这里有我的一部分。潜意识在这里不是神秘预言，而是你尚未清楚命名、却反复借审美和距离表达出来的愿望。`,
     `在思维方式上，你更靠近“${selectedB1}”与“${selectedB2}”。这不是简单的直觉或犹豫，而像加缪式的清醒：先承认世界并不会自动给出意义，再用身体和时间去试探什么仍然值得靠近。`,
-    `如果把这些线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动，而不是一个固定标签。你在“${selectedB5}”里保留距离，在剧场里又先${act2PathText}，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。`,
+    `如果把这些线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动，而不是一个固定标签。你在“${selectedB5}”里保留距离，在剧场里又先${act2PathText}，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。你不自知地反复保护的，可能不是“孤独”，而是一个不愿被过早占用的自我位置。`,
     mirrorPath.length > 0
       ? `剧场里，你先${act2PathText}；历史追问里，又选择${mirrorPathText}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：你不是只想被理解，也在寻找一种不会过早占有你的理解。`
-      : `剧场四轮里，你先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：它不是额外剧情，而是在补足你如何靠近、如何保留、又如何把迟疑折成下一步。`,
-    `当你在关系里选择“${selectedB5}”，一条很清楚的轨道浮现出来：${profile.relationshipLens} 温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己。当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
+      : `剧场四轮里，你先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：它不是额外剧情，而是在补足你如何靠近、如何保留、又如何把迟疑折成下一步。这里有一种重复模式：你会先让物件、声音或距离替你说话，再决定自己是否直接出现。`,
+    `当你在关系里选择“${selectedB5}”，一条很清楚的轨道浮现出来：${profile.relationshipLens} 温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己。在客体关系的语言里，你不是没有依恋需求，而是在确认靠近不会产生被吞没感；当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
     `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学参照。${profile.movementLens}`,
     `${profile.closingLens}${supportLine ? ` ${supportLine}` : ""}`,
   ].join("\n\n");
@@ -988,31 +1035,31 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
     seven_dimensions: {
       openness: {
         score: scores.openness,
-        interpretation: dimensionInterpretation("你的开放性", scores.openness, "你愿意让抽象、复杂、矛盾与未完成在内心停留，因此会被更深层的艺术与思想吸引。"),
+        interpretation: dimensionInterpretation("openness", "开放性", scores.openness),
       },
       independence: {
         score: scores.independence,
-        interpretation: dimensionInterpretation("你的独立性", scores.independence, "你需要自己的节奏、边界和独处空间，这并不等于拒绝关系，而是拒绝低质量连接。"),
+        interpretation: dimensionInterpretation("independence", "独立性", scores.independence),
       },
       emotional_depth: {
         score: scores.emotional_depth,
-        interpretation: dimensionInterpretation("你的情感深度", scores.emotional_depth, "你的情绪不是表面的起伏，而更像会在体内缓慢流动的深层回声。"),
+        interpretation: dimensionInterpretation("emotional_depth", "情感深度", scores.emotional_depth),
       },
       meaning_seeking: {
         score: scores.meaning_seeking,
-        interpretation: dimensionInterpretation("你的意义追寻", scores.meaning_seeking, "你很难只停留在功能性答案上，总会继续问：这件事到底意味着什么。"),
+        interpretation: dimensionInterpretation("meaning_seeking", "意义追寻", scores.meaning_seeking),
       },
       aesthetic_sensitivity: {
         score: scores.aesthetic_sensitivity,
-        interpretation: dimensionInterpretation("你的审美敏感", scores.aesthetic_sensitivity, "美对你不是表面装饰，而是一种理解世界、识别真实与保存感受的方式。"),
+        interpretation: dimensionInterpretation("aesthetic_sensitivity", "审美敏感", scores.aesthetic_sensitivity),
       },
       action_tendency: {
         score: scores.action_tendency,
-        interpretation: dimensionInterpretation("你的行动力", scores.action_tendency, "你并非单纯的冲动派，更像是在理解足够充分后才愿意向前迈步。"),
+        interpretation: dimensionInterpretation("action_tendency", "行动力", scores.action_tendency),
       },
       relationship_need: {
         score: scores.relationship_need,
-        interpretation: dimensionInterpretation("你的关系需求", scores.relationship_need, "你并不追求热闹本身，而是在意是否真的被理解、被接住，以及是否还能保留自己。"),
+        interpretation: dimensionInterpretation("relationship_need", "关系需求", scores.relationship_need),
       },
     },
     narrative_overview: buildDeterministicNarrativeOverview({

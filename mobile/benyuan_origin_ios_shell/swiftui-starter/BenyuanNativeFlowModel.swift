@@ -116,6 +116,8 @@ final class BenyuanNativeFlowModel: ObservableObject {
     private let nativeGenerationPollIntervalNanoseconds: UInt64 = 2_000_000_000
     private var lastNativeGenerationJobSnapshot: BenyuanNativeGenerationJobResponse?
     private var isPollingNativeGenerationJob = false
+    private var toastDismissTask: Task<Void, Never>?
+    private var toastDismissToken = UUID()
 
     init(client: BenyuanAPIClient = BenyuanAPIClient(), store: BenyuanFlowStore = BenyuanFlowStore()) {
         self.client = client
@@ -244,6 +246,29 @@ final class BenyuanNativeFlowModel: ObservableObject {
         stage = .home
     }
 
+    func showToast(_ message: String?, duration: TimeInterval = 1.8) {
+        toastDismissTask?.cancel()
+        toastDismissToken = UUID()
+        let token = toastDismissToken
+        toast = message
+
+        guard let message, !message.isEmpty, duration > 0 else {
+            toastDismissTask = nil
+            return
+        }
+
+        let nanoseconds = UInt64((duration * 1_000_000_000).rounded())
+        toastDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self, self.toastDismissToken == token else { return }
+                self.toast = nil
+                self.toastDismissTask = nil
+            }
+        }
+    }
+
     func beginNativeExploration() async {
         if session.authSession == nil {
             await continueAsGuest()
@@ -268,7 +293,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
 
     func beginNativeExplorationFromHome() async {
         guard canExploreFromHome else {
-            toast = "先选择 Apple、微信或手机号码登录，再开始探索。"
+            showToast("先选择 Apple、微信或手机号码登录，再开始探索。")
             return
         }
         await beginNativeExploration()
@@ -295,7 +320,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
                 try await pollNativeGenerationJob(jobId: jobId)
             }
         } catch {
-            toast = error.localizedDescription
+            showToast(error.localizedDescription)
         }
     }
 

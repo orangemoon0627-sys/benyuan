@@ -25,7 +25,7 @@ extension BenyuanNativeFlowModel {
             PHAssetChangeRequest.creationRequestForAsset(from: image)
         } completionHandler: { [weak self] success, error in
             Task { @MainActor in
-                self?.toast = success ? "星图摘要已保存到相册。" : (error?.localizedDescription ?? "保存失败。")
+                self?.showToast(success ? "星图长图已保存到相册。" : (error?.localizedDescription ?? "保存失败。"))
             }
         }
     }
