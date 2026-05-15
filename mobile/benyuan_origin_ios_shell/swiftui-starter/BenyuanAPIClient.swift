@@ -46,13 +46,19 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
 
 final class BenyuanAPIClient {
     let baseURL: URL
+    private let fallbackBaseURL: URL?
     private let session: URLSession
     private var authSession: BenyuanAuthSession?
     private let defaultTimeout: TimeInterval = 60
     private let longAgentTimeout: TimeInterval = 240
 
-    init(baseURL: URL = BenyuanShellConfig.baseURL, session: URLSession = .shared) {
+    init(
+        baseURL: URL = BenyuanShellConfig.baseURL,
+        fallbackBaseURL: URL? = BenyuanShellConfig.networkFallbackBaseURL,
+        session: URLSession = .shared
+    ) {
         self.baseURL = baseURL
+        self.fallbackBaseURL = fallbackBaseURL
         self.session = session
     }
 
@@ -297,7 +303,28 @@ final class BenyuanAPIClient {
     }
 
     private func send<Response: Decodable>(_ request: URLRequest) async throws -> Response {
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            guard
+                Self.shouldRetryWithFallback(error),
+                let fallbackBaseURL,
+                let fallbackRequest = request.rewritingBaseURL(from: baseURL, to: fallbackBaseURL)
+            else {
+                throw error
+            }
+            NSLog(
+                "[BenyuanShell] primary network request failed, retrying fallback host=%@ path=%@ error=%@",
+                fallbackBaseURL.host ?? "unknown",
+                fallbackRequest.url?.path ?? "unknown",
+                String(describing: error)
+            )
+            (data, response) = try await session.data(for: fallbackRequest)
+        }
+
         guard let http = response as? HTTPURLResponse else {
             throw BenyuanAPIError.invalidResponse
         }
@@ -368,6 +395,28 @@ final class BenyuanAPIClient {
         return lowercased.hasPrefix("<!doctype html") || lowercased.hasPrefix("<html") || lowercased.contains("<head")
     }
 
+    private static func shouldRetryWithFallback(_ error: Error) -> Bool {
+        let urlError = error as? URLError ?? (error as NSError).underlyingURLError
+        guard let urlError else { return false }
+        switch urlError.code {
+        case .secureConnectionFailed,
+             .serverCertificateHasBadDate,
+             .serverCertificateUntrusted,
+             .serverCertificateHasUnknownRoot,
+             .serverCertificateNotYetValid,
+             .cannotLoadFromNetwork,
+             .cannotFindHost,
+             .cannotConnectToHost,
+             .dnsLookupFailed,
+             .networkConnectionLost,
+             .notConnectedToInternet,
+             .timedOut:
+            return true
+        default:
+            return false
+        }
+    }
+
     private func makeMultipartBody(questionId: String, images: [BenyuanImagePayload], origin: String, boundary: String) -> Data {
         var body = Data()
         appendField("question_id", value: questionId, to: &body, boundary: boundary)
@@ -408,5 +457,43 @@ private extension BenyuanNativeStage {
 private extension Data {
     mutating func appendString(_ value: String) {
         append(Data(value.utf8))
+    }
+}
+
+private extension NSError {
+    var underlyingURLError: URLError? {
+        if let error = userInfo[NSUnderlyingErrorKey] as? URLError {
+            return error
+        }
+        if let error = userInfo[NSUnderlyingErrorKey] as? NSError {
+            return error.underlyingURLError
+        }
+        guard domain == NSURLErrorDomain else { return nil }
+        return URLError(URLError.Code(rawValue: code))
+    }
+}
+
+private extension URLRequest {
+    func rewritingBaseURL(from originalBaseURL: URL, to fallbackBaseURL: URL) -> URLRequest? {
+        guard let url else { return nil }
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+        guard let fallbackComponents = URLComponents(url: fallbackBaseURL, resolvingAgainstBaseURL: false) else { return nil }
+
+        if
+            let originalHost = originalBaseURL.host,
+            let currentHost = components.host,
+            currentHost.caseInsensitiveCompare(originalHost) != .orderedSame
+        {
+            return nil
+        }
+
+        components.scheme = fallbackComponents.scheme
+        components.host = fallbackComponents.host
+        components.port = fallbackComponents.port
+
+        guard let rewrittenURL = components.url else { return nil }
+        var rewritten = self
+        rewritten.url = rewrittenURL
+        return rewritten
     }
 }

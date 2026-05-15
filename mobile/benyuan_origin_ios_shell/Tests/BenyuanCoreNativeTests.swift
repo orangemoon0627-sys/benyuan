@@ -177,6 +177,65 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(client.authorizationHeaderValue, "Bearer bya_anonymous_test")
     }
 
+    func testAPIClientRetriesFallbackBaseURLForSecureConnectionFailures() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "https://benyuan.orangemoonai.cn")!,
+            fallbackBaseURL: URL(string: "https://staging-benyuan.orangemoonai.cn")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        var requestedHosts: [String] = []
+        BenyuanMockURLProtocol.handler = { request in
+            requestedHosts.append(request.url?.host ?? "")
+            XCTAssertEqual(request.url?.path, "/api/auth/providers")
+
+            if requestedHosts.count == 1 {
+                throw URLError(.secureConnectionFailed)
+            }
+
+            return BenyuanMockURLProtocol.json(
+                200,
+                #"{"providers":[{"provider":"apple","enabled":true,"status":"ready","actions":["login"]}],"capabilities":["apple_login"]}"#
+            )
+        }
+
+        let response = try await client.fetchAuthProviders()
+
+        XCTAssertEqual(response.providers.map(\.provider), [.apple])
+        XCTAssertEqual(requestedHosts, [
+            "benyuan.orangemoonai.cn",
+            "staging-benyuan.orangemoonai.cn"
+        ])
+    }
+
+    func testAPIClientDoesNotRetryFallbackBaseURLForServerErrors() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "https://benyuan.orangemoonai.cn")!,
+            fallbackBaseURL: URL(string: "https://staging-benyuan.orangemoonai.cn")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        var requestedHosts: [String] = []
+        BenyuanMockURLProtocol.handler = { request in
+            requestedHosts.append(request.url?.host ?? "")
+            return BenyuanMockURLProtocol.json(400, #"{"error":"missing_apple_credential"}"#)
+        }
+
+        do {
+            _ = try await client.createAppleSession()
+            XCTFail("Expected server error")
+        } catch let error as BenyuanAPIError {
+            XCTAssertEqual(error, .server(status: 400, message: "missing_apple_credential"))
+            XCTAssertEqual(requestedHosts, ["benyuan.orangemoonai.cn"])
+        }
+    }
+
     @MainActor
     func testHomeExplorationRequiresFormalLogin() throws {
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())

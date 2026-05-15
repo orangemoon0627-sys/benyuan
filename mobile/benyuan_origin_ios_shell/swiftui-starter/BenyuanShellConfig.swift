@@ -33,6 +33,13 @@ struct BenyuanShellConfig {
     static var stagingBaseURL: URL? { infoConfiguredBaseURL(infoStagingBaseURLKey) }
     static var productionBaseURL: URL? { infoConfiguredBaseURL(infoProductionBaseURLKey) }
 
+    static var networkFallbackBaseURL: URL? {
+        guard environment == .production else { return nil }
+        guard let fallback = stagingBaseURL else { return nil }
+        guard !sameEndpoint(fallback, baseURL) else { return nil }
+        return fallback
+    }
+
     static var environment: Environment {
         if let raw = launchArgumentValue("--benyuan-environment")?.lowercased(),
            let environment = Environment(rawValue: raw) {
@@ -109,7 +116,7 @@ struct BenyuanShellConfig {
     }
 
     static var allowedHosts: Set<String> {
-        Set([baseURL.host].compactMap { $0 })
+        Set([baseURL.host, networkFallbackBaseURL?.host].compactMap { $0 })
     }
 
     static let inFlowPrefixes = [
@@ -257,5 +264,11 @@ struct BenyuanShellConfig {
     private static func isPlaceholderReleaseURL(_ url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return true }
         return host.hasSuffix(".invalid") || host == "127.0.0.1" || host == "localhost"
+    }
+
+    private static func sameEndpoint(_ lhs: URL, _ rhs: URL) -> Bool {
+        lhs.scheme?.lowercased() == rhs.scheme?.lowercased() &&
+            lhs.host?.lowercased() == rhs.host?.lowercased() &&
+            lhs.port == rhs.port
     }
 }
