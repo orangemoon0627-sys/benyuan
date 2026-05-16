@@ -231,7 +231,7 @@ struct BenyuanNativeAccountView: View {
 
             HStack(alignment: .top, spacing: BenyuanSpacing.x3) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(item.title)
+                    Text(item.titleForNativeDisplay)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
                         .lineLimit(1)
@@ -459,10 +459,10 @@ struct BenyuanNativeAccountView: View {
     }
 
     private func compactHistorySubtitle(_ item: BenyuanAccountHistoryItem) -> String {
-        if let archetypeName = item.archetypeName {
-            return "\(archetypeName) · \(item.subtitle)"
+        if let archetypeName = item.canonicalArchetypeNameForDisplay {
+            return "\(archetypeName) · \(item.subtitleForNativeDisplay)"
         }
-        return item.subtitle
+        return item.subtitleForNativeDisplay
     }
 
     private func accountOverlay<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -486,7 +486,7 @@ struct BenyuanNativeAccountView: View {
             Text("删除这次探索？")
                 .font(.system(size: 24, weight: .black))
                 .foregroundStyle(BenyuanColor.textPrimary)
-            Text("「\(item.title)」会从这个账户的历史里移除。这个动作不会影响你继续新的探索。")
+            Text("「\(item.titleForNativeDisplay)」会从这个账户的历史里移除。这个动作不会影响你继续新的探索。")
                 .font(.system(size: 14, weight: .semibold))
                 .lineSpacing(5)
                 .foregroundStyle(BenyuanColor.textSecondary)

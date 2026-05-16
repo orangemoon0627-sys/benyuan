@@ -170,8 +170,14 @@ assert.match(constellation, /Text\(data\.archetype\.name\)[\s\S]*?\.font\(\.syst
 assert.match(constellation, /Text\(data\.archetype\.englishName\)/, "native constellation hero must keep the English archetype name as a secondary label");
 assert.match(constellation, /Text\("\\\(data\.archetype\.displayName\)：\\\(data\.archetype\.displaySubtitle\)"\)/, "native constellation hero must move personalized naming into the explanatory annotation below the fixed label");
 assert.doesNotMatch(constellation, /Text\(data\.archetype\.displayName\)[\s\S]*?\.font\(\.system\(size:\s*4[0-9],/, "native constellation hero must not let personalized labels replace the official archetype heading");
-assert.match(renderer, /drawWrapped\(constellation\.archetype\.name/, "native constellation share image must render the canonical archetype label as the title");
+assert.match(renderer, /drawWrapped\(data\.archetype\.name/, "native constellation share image must render the canonical archetype label as the title");
 assert.match(renderer, /archetype\.displayName[\s\S]*?archetype\.displaySubtitle/, "native constellation share image may include personalized naming only as supporting annotation");
+assert.match(renderer, /drawDimensionOrbitChart/, "native constellation share image must render 七维轨道 as an orbital web chart");
+assert.doesNotMatch(renderer, /drawDimensionBars|星际谱系|drawLineageBlock/, "native constellation share image must remove the old bar-score and lineage block");
+assert.match(renderer, /userName/, "native constellation share image must include a user-name slot");
+assert.match(renderer, /celestialCoreAssetName/, "native constellation share image must reuse local archetype artwork instead of a generic mark");
+assert.match(models, /titleForNativeDisplay/, "native account history must canonicalize stale history titles before display");
+assert.match(models, /canonicalArchetypeNameForDisplay/, "native account history must recover old labels into the fixed 10 labels");
 assert.match(constellation, /celestialMode\(for:\s*data\.archetype\)/, "native constellation hero must choose celestial mode from the archetype");
 assert.match(constellation, /private func celestialMode\(for archetype:\s*PsycheArchetype\)/, "native constellation must expose archetype-to-celestial mapping");
 for (const [label, mode] of [

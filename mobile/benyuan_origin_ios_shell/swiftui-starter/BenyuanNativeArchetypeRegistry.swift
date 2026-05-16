@@ -13,7 +13,7 @@ enum BenyuanNativeArchetypeRegistry {
             name: "远潮观月者",
             englishName: "The Far-Tide Moon Watcher",
             visualPrompt: "far tide moon, silver lunar body, black sea horizon, restrained gold tide",
-            fingerprints: ["远潮观月者", "月背寻光者", "深月观测者", "moonlit seeker", "moonlitseeker", "far tide", "fartide", "观月", "月背", "寻光"]
+            fingerprints: ["远潮观月者", "月背寻光者", "深月观测者", "暮潮拾光者", "暮海寻光者", "暮海守光者", "目光拾亡者", "moonlit seeker", "moonlitseeker", "far tide", "fartide", "观月", "月背", "暮潮", "暮海", "寻光", "守光", "拾光"]
         ),
         BenyuanNativeArchetypeProfile(
             name: "星图筑序者",
@@ -93,6 +93,17 @@ enum BenyuanNativeArchetypeRegistry {
         }
 
         return profiles[0]
+    }
+
+    static func canonicalNameForLegacyDisplay(_ value: String) -> String? {
+        let normalized = normalize(value)
+        guard !normalized.isEmpty else { return nil }
+        for profile in profiles {
+            if profile.fingerprints.contains(where: { normalized.contains(normalize($0)) }) {
+                return profile.name
+            }
+        }
+        return nil
     }
 
     private static func profileForDominantVisualPrompt(_ normalizedVisualPrompt: String) -> BenyuanNativeArchetypeProfile? {

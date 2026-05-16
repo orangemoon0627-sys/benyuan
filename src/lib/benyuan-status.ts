@@ -154,13 +154,13 @@ const PILOT_SESSION_PATHS = [
   path.join(DOCS_DIR, "benyuan-pilot-session-03.md"),
 ];
 const SEVEN_DIMENSION_LABELS: Record<string, string> = {
-  openness: "开放性",
-  independence: "独立性",
-  emotional_depth: "情感深度",
-  meaning_seeking: "意义追寻",
-  aesthetic_sensitivity: "审美敏感",
-  action_tendency: "行动力",
-  relationship_need: "关系需求",
+  openness: "潜意识开放度",
+  independence: "边界完整度",
+  emotional_depth: "情绪沉潜度",
+  meaning_seeking: "意义欲望",
+  aesthetic_sensitivity: "象征感受力",
+  action_tendency: "现实落地力",
+  relationship_need: "客体联结需求",
 };
 
 function sortByGeneratedAt<T extends { generatedAt: string }>(items: T[]) {

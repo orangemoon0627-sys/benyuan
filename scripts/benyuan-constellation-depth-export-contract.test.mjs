@@ -142,8 +142,11 @@ test("constellation prompts require unconscious-level evidence, not only poetic 
 
   for (const prompt of [analystPrompt, fastPrompt]) {
     assert.match(prompt, /潜意识|意识之外/u);
+    assert.match(prompt, /潜意识剥离|剥离过程|显影依据/u);
+    assert.match(prompt, /具体证据层|精神分析层|星图转译层/u);
     assert.match(prompt, /防御|欲望|投射|重复|阴影|客体关系/u);
     assert.match(prompt, /意外感|不自知|尚未意识/u);
+    assert.match(prompt, /直接定性|关键性的定性|不要让用户解码/u);
     assert.match(prompt, /引经据典|思想旁证|哲学与文艺旁证/u);
   }
 });
@@ -153,9 +156,14 @@ test("deterministic constellation speaks in direct psychoanalytic conclusions", 
   const dimensionTexts = Object.values(constellation.seven_dimensions).map((dimension) => dimension.interpretation);
 
   assert.match(constellation.narrative_overview, /潜意识|意识之外/u);
+  assert.match(constellation.narrative_overview, /第一层线索|图像线索/u);
+  assert.match(constellation.narrative_overview, /第二层线索|选择线索/u);
+  assert.match(constellation.narrative_overview, /第三层线索|剧场线索/u);
+  assert.match(constellation.narrative_overview, /这不是单纯的审美偏好|不是随机的选择/u);
   assert.match(constellation.narrative_overview, /防御|欲望|投射|重复|阴影|客体关系/u);
   assert.match(constellation.narrative_overview, /荣格|温尼科特|弗洛伊德|拉康|加缪|尼采/u);
   assert.match(constellation.narrative_overview, /你真正想确认的是|你反复保护的是|你不自知地/u);
+  assert.match(constellation.narrative_overview, /所以，.*不是.*而是/u);
   assert.ok(dimensionTexts.every((text) => /^结论：/u.test(text)), "dimension interpretations must start with a direct conclusion");
   assert.ok(dimensionTexts.every((text) => /潜在防御：|潜在意图：/u.test(text)), "dimension interpretations must name intention or defense");
   assert.ok(dimensionTexts.every((text) => /盲点：/u.test(text)), "dimension interpretations must name a concrete blind spot");
@@ -164,6 +172,12 @@ test("deterministic constellation speaks in direct psychoanalytic conclusions", 
 
 test("native constellation dimension UI is structured with bold mental-feature labels", () => {
   assert.doesNotMatch(nativeConstellationView, /不是一个分数|不是一个分析/u);
+  for (const label of ["象征感受力", "潜意识开放度", "意义欲望", "情绪沉潜度", "客体联结需求", "边界完整度", "现实落地力"]) {
+    assert.match(`${nativeConstellationView}\n${nativeRenderer}`, new RegExp(label), `visible dimension labels must use ${label}`);
+  }
+  for (const retiredLabel of ["审美敏感", "开放性", "意义追寻", "情感深度", "关系需求", "独立性", "行动力"]) {
+    assert.doesNotMatch(nativeRenderer, new RegExp(`"${retiredLabel}"`), `saved poster labels should not keep retired ${retiredLabel}`);
+  }
   for (const label of ["核心结论", "潜在防御", "盲点", "可用方向"]) {
     assert.match(nativeConstellationView, new RegExp(label), `native dimension card must expose ${label}`);
   }
@@ -173,9 +187,18 @@ test("native constellation dimension UI is structured with bold mental-feature l
 test("saved constellation image is a full long report, not a compact share card", () => {
   assert.match(nativeRenderer, /long|Long|长图|完整星图/u);
   assert.match(nativeRenderer, /height:\s*3[0-9]{3}|height:\s*4[0-9]{3}/u, "poster renderer should be tall enough for the full constellation page");
-  for (const section of ["七维轨道", "星际谱系", "核心张力", "精神肖像", "继续共鸣"]) {
+  for (const section of ["七维轨道", "核心张力", "精神肖像", "继续共鸣"]) {
     assert.match(nativeRenderer, new RegExp(section), `long image renderer must include ${section}`);
   }
+  assert.match(nativeRenderer, /drawDimensionOrbitChart/u, "saved image must render seven dimensions as an orbital web chart");
+  assert.doesNotMatch(nativeRenderer, /drawDimensionBars|星际谱系|drawLineageBlock/u, "saved image must not keep the old bar-score or lineage block");
+  assert.match(nativeRenderer, /drawGrowth\([\s\S]*?suggestion\.description/u, "saved image path section must explain the path's role before the action");
+  assert.match(nativeRenderer, /drawRecommendations\([\s\S]*?reason/u, "saved image resonance section must include recommendation reasons, not only work names");
+  assert.doesNotMatch(nativeRenderer, /补足什么|照见什么|适合在什么时候靠近|这条路径的作用/u, "saved image should not expose stiff resonance labels");
+  assert.match(nativeRenderer, /为什么做|会带来什么/u, "saved image path should label purpose and expected effect");
+  assert.match(nativeRenderer, /userName/u, "saved image must be able to include the user's name");
+  assert.match(nativeRenderer, /celestialCoreAssetName/u, "saved image must reuse the local archetype subject artwork");
+  assert.match(nativeRenderer, /footerTop/u, "saved image footer should be anchored to the real bottom of the poster");
   assert.match(nativeRenderer, /在「本源」里，生成你的精神星图/u);
   assert.match(nativeRenderer, /搜索「本源」/u);
   assert.match(nativeRenderer, /发给想一起探索的人/u);

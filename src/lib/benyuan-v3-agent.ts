@@ -5,6 +5,7 @@ import {
   analyzeSocialPostInputs,
   generateDeterministicConstellation,
   generateDeterministicTheaterScript,
+  personalizeConstellationRecommendations,
 } from "@/lib/benyuan-v3-engine";
 import {
   ANALYST_SYSTEM_PROMPT,
@@ -428,9 +429,9 @@ const visibleSlugLabels: Record<string, string> = {
   surrealist_melancholic: "梦境化的幽暗诗意",
   introspective_cinematic: "内省的电影感",
   reflective_symbolic: "象征性的沉思底色",
-  aesthetic_sensitivity: "审美敏感",
-  meaning_seeking: "意义追问",
-  emotional_resonance: "情绪共振",
+  aesthetic_sensitivity: "象征感受力",
+  meaning_seeking: "意义欲望",
+  emotional_resonance: "情绪沉潜回响",
   solitary_comfort: "独处时的安慰感",
   post_rock: "后摇般的低频回声",
   postrock: "后摇般的低频回声",
@@ -1612,7 +1613,12 @@ function mergeNarrativeWithSeed(fallback: PsycheConstellation["narrative_overvie
   return merged.join("\n\n");
 }
 
-export function mergeFastConstellationSeed(fallback: PsycheConstellation, seed: FastConstellationSeed): PsycheConstellation {
+export function mergeFastConstellationSeed(
+  fallback: PsycheConstellation,
+  seed: FastConstellationSeed,
+  part1?: Part1Record,
+  part2?: Part2Record,
+): PsycheConstellation {
   const sevenDimensions = Object.fromEntries(
     Object.entries(fallback.seven_dimensions).map(([key, dimension]) => {
       const seedInterpretation = seed.dimension_interpretations[key as SevenDimensionKey];
@@ -1626,16 +1632,19 @@ export function mergeFastConstellationSeed(fallback: PsycheConstellation, seed: 
     }),
   ) as PsycheConstellation["seven_dimensions"];
 
+  const personalizedRecommendations = part1
+    ? personalizeConstellationRecommendations(fallback.recommendations, part1, part2)
+    : fallback.recommendations;
   const recommendations: PsycheConstellation["recommendations"] = {
-    books: fallback.recommendations.books.map((item, index) => ({
+    books: personalizedRecommendations.books.map((item, index) => ({
       ...item,
       reason: seed.recommendation_lenses.books[index] ?? item.reason,
     })),
-    films: fallback.recommendations.films.map((item, index) => ({
+    films: personalizedRecommendations.films.map((item, index) => ({
       ...item,
       reason: seed.recommendation_lenses.films[index] ?? item.reason,
     })),
-    music: fallback.recommendations.music.map((item, index) => ({
+    music: personalizedRecommendations.music.map((item, index) => ({
       ...item,
       reason: seed.recommendation_lenses.music[index] ?? item.reason,
     })),
@@ -2340,7 +2349,7 @@ export async function generateConstellationWithAgent(part1: Part1Record, part2: 
   if (profile.compactPrompt) {
     const seed = normalizeFastConstellationSeed(request.data);
     if (seed) {
-      return { constellation: mergeFastConstellationSeed(fallback, seed), runtime: request.runtime };
+      return { constellation: mergeFastConstellationSeed(fallback, seed, part1, part2), runtime: request.runtime };
     }
   }
 

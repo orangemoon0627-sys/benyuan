@@ -78,6 +78,8 @@ assert.match(store, /saveAuthRateLimit/, "store must persist auth rate limit buc
 assert.match(store, /savePhoneOtp/, "store must expose phone OTP persistence");
 assert.match(store, /listAccountHistoryForUser/, "store must expose account history aggregation");
 assert.match(store, /deleteAccountHistoryForUser/, "store must support deleting an owned exploration");
+assert.match(store, /visibleHistoryTheme/, "store must not expose internal trait slugs as account history titles");
+assert.match(store, /isCanonicalBenyuanArchetypeName/, "store must canonicalize account history archetype labels");
 
 assert.match(auth, /createAnonymousAuthSession/, "auth lib must create anonymous sessions");
 assert.match(auth, /createAppleAuthSession/, "auth lib must create Apple sessions");

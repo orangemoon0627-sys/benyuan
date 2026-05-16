@@ -35,13 +35,13 @@ struct BenyuanNativeConstellationView: View {
     private let layoutBudget = BenyuanConstellationLayoutBudget.defaults
 
     private let labels: [String: String] = [
-        "openness": "开放性",
-        "independence": "独立性",
-        "emotional_depth": "情感深度",
-        "meaning_seeking": "意义追寻",
-        "aesthetic_sensitivity": "审美敏感",
-        "action_tendency": "行动力",
-        "relationship_need": "关系需求"
+        "openness": "潜意识开放度",
+        "independence": "边界完整度",
+        "emotional_depth": "情绪沉潜度",
+        "meaning_seeking": "意义欲望",
+        "aesthetic_sensitivity": "象征感受力",
+        "action_tendency": "现实落地力",
+        "relationship_need": "客体联结需求"
     ]
 
     var body: some View {
@@ -383,49 +383,49 @@ struct BenyuanNativeConstellationView: View {
         switch dimension.key {
         case "openness":
             fallback = BenyuanDimensionInsight(
-                conclusion: "开放性\(intensity)：你会被尚未命名的经验吸引，尤其是能让旧自我松动的作品、画面和关系处境。",
+                conclusion: "潜意识开放度\(intensity)：你允许复杂、矛盾和未完成的东西在心里停留，尤其是能让旧自我松动的作品、画面和关系处境。",
                 defense: "你常用“再理解一下”来延迟进入，这是一种避免被粗糙现实过早固定的保护。",
                 blindSpot: "理解有时会替代行动，让真正想要的东西停在想象里。",
                 direction: "给一个陌生愿望很小的位置，先观察它是否真的让你更接近自己。"
             )
         case "independence":
             fallback = BenyuanDimensionInsight(
-                conclusion: "独立性\(intensity)：你靠近世界之前，会先检查自己还在不在自己的位置上。",
+                conclusion: "边界完整度\(intensity)：你靠近世界之前，会先检查自己还在不在自己的位置上。",
                 defense: "你保护的是边界，不是冷淡；你怕的是关系太快进入全部房间。",
                 blindSpot: "可协商的靠近有时会被你误读成侵入。",
                 direction: "把边界说成坐标，而不是墙，让合适的人知道可以停在哪里。"
             )
         case "emotional_depth":
             fallback = BenyuanDimensionInsight(
-                conclusion: "情感深度\(intensity)：你的情绪常先沉到深处，再借一句话、一首歌或一张图浮上来。",
+                conclusion: "情绪沉潜度\(intensity)：你的情绪常先沉到深处，再借一句话、一首歌或一张图浮上来。",
                 defense: "维持平静是你的外层光壳，用来给复杂感受争取时间。",
                 blindSpot: "别人可能只看见冷静，看不见底下已经很重的潮汐。",
                 direction: "不用一次说完，先把感受拆成一句能被接住的话。"
             )
         case "meaning_seeking":
             fallback = BenyuanDimensionInsight(
-                conclusion: "意义追寻\(intensity)：你不只问有没有用，更问它能否让生活变得更准确。",
+                conclusion: "意义欲望\(intensity)：你不只问有没有用，更问它能否让生活变得更准确。",
                 defense: "你用意义过滤欲望，没有内在理由的靠近很难说服你。",
                 blindSpot: "意义门槛太高时，一些本可以先试的小路会被提前排除。",
                 direction: "让一个选择先成为小实验，而不是立刻成为终身答案。"
             )
         case "aesthetic_sensitivity":
             fallback = BenyuanDimensionInsight(
-                conclusion: "审美敏感\(intensity)：你会用光线、语气、构图和氛围判断一件事是否真实。",
+                conclusion: "象征感受力\(intensity)：你会用光线、语气、构图和氛围判断一件事是否真实。",
                 defense: "你把难以直说的内在经验投射到画面和声音里，再从它们那里读回自己。",
                 blindSpot: "美感能保存真实，也可能延后现实命名。",
                 direction: "当某个画面击中你，问一句：它替我保存了哪件还没说出口的事。"
             )
         case "action_tendency":
             fallback = BenyuanDimensionInsight(
-                conclusion: "行动力\(intensity)：你不是完全被动的人；你更像确认轨道后，用一个小动作打破等待。",
+                conclusion: "现实落地力\(intensity)：你不是完全被动的人；你更像确认轨道后，用一个小动作打破等待。",
                 defense: "行动有时是在抵消空白，让不确定性不要长期占据身体。",
                 blindSpot: "如果动作只是为了缓解焦虑，它会很快失去方向。",
                 direction: "先确认这一步服务的是愿望，还是只是想逃离等待。"
             )
         case "relationship_need":
             fallback = BenyuanDimensionInsight(
-                conclusion: "关系需求\(intensity)：你要的不是热闹连接，而是能理解边界、慢速和未说出口部分的回应。",
+                conclusion: "客体联结需求\(intensity)：你要的不是热闹连接，而是能理解边界、慢速和未说出口部分的回应。",
                 defense: "你反复确认的是：靠近会不会保留你的完整性。",
                 blindSpot: "你太擅长把需要藏成独立，别人可能误以为你并不期待回应。",
                 direction: "选择一个可信的人，说出一小块需要，不必把整座房间交出去。"
@@ -464,7 +464,7 @@ struct BenyuanNativeConstellationView: View {
                 riverMoment(label: "张力", title: tension.name, body: tension.description)
             }
             if let path = data.growthSuggestions.first {
-                riverMoment(label: "路径", title: path.title, body: path.actionableSteps.first ?? path.description)
+                pathMoment(path)
             }
         }
     }
@@ -486,31 +486,127 @@ struct BenyuanNativeConstellationView: View {
         .overlay(Rectangle().fill(BenyuanColor.accentGold.opacity(0.34)).frame(width: 1), alignment: .leading)
     }
 
+    private func pathMoment(_ path: PsycheConstellation.GrowthSuggestion) -> some View {
+        VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
+            Text("路径")
+                .font(.system(size: 12, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.accentGold)
+            Text(path.title)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(BenyuanColor.textPrimary)
+            Text("为什么做")
+                .font(.system(size: 12, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.accentGold.opacity(0.92))
+            pathExplanation(path)
+            if let step = path.actionableSteps.first {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("可以尝试")
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(BenyuanColor.accentGold.opacity(0.92))
+                    Text(step)
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineSpacing(6)
+                        .foregroundStyle(BenyuanColor.textPrimary.opacity(0.94))
+                    Text("会带来什么")
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(BenyuanColor.accentGold.opacity(0.92))
+                        .padding(.top, BenyuanSpacing.x1)
+                    Text(pathExpectedEffect(path, step: step))
+                        .font(.system(size: 14, weight: .regular))
+                        .lineSpacing(5)
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                }
+                .padding(.top, BenyuanSpacing.x1)
+            }
+        }
+        .padding(.leading, BenyuanSpacing.x4)
+        .overlay(Rectangle().fill(BenyuanColor.accentGold.opacity(0.34)).frame(width: 1), alignment: .leading)
+    }
+
+    private func pathExplanation(_ path: PsycheConstellation.GrowthSuggestion) -> some View {
+        Text(path.description)
+            .font(.system(size: 15, weight: .regular))
+            .lineSpacing(6)
+            .foregroundStyle(BenyuanColor.textSecondary)
+    }
+
+    private func pathExpectedEffect(_ path: PsycheConstellation.GrowthSuggestion, step: String) -> String {
+        let markers = ["这样做会", "会让你", "帮助你", "从而", "用来"]
+        for marker in markers {
+            if let range = step.range(of: marker) {
+                let effect = String(step[range.lowerBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if effect.count >= 8 {
+                    return effect
+                }
+            }
+        }
+        if path.description.contains("边界") {
+            return "这样做会让边界从撤退变成可沟通的坐标，减少关系里的误读。"
+        }
+        if path.description.contains("行动") || path.description.contains("现实") {
+            return "这样做会让理解落到现实动作里，减少只在脑内反复校准的消耗。"
+        }
+        if path.description.contains("情绪") || path.description.contains("感受") {
+            return "这样做会让模糊感受变得可辨认，避免它只在身体里反复回放。"
+        }
+        return "这样做会让这条路径从理解变成可观察的小变化，而不是停留在一句漂亮建议里。"
+    }
+
     private func resonances(_ data: PsycheConstellation) -> some View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
             Text("继续共鸣")
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(BenyuanColor.accentGold)
-            resonanceLine("书籍", values: data.recommendations.books.prefix(2).map { "\($0.title) · \($0.author)" })
-            resonanceLine("电影", values: data.recommendations.films.prefix(2).map { "\($0.title) · \($0.director)" })
-            resonanceLine("音乐", values: data.recommendations.music.prefix(2).map { "\($0.artist) · \($0.album)" })
+            Text("这些不是泛泛的书影音清单，而是这张星图的外部回声：每一项都说明它为什么会和你的精神结构发生共振。")
+                .font(.system(size: 14, weight: .regular))
+                .lineSpacing(6)
+                .foregroundStyle(BenyuanColor.textSecondary)
+            resonanceLine(
+                "书籍",
+                items: data.recommendations.books.prefix(2).map {
+                    BenyuanResonanceItem(title: "\($0.title) · \($0.author)", reason: $0.reason)
+                }
+            )
+            resonanceLine(
+                "电影",
+                items: data.recommendations.films.prefix(2).map {
+                    BenyuanResonanceItem(title: "\($0.title) · \($0.director)", reason: $0.reason)
+                }
+            )
+            resonanceLine(
+                "音乐",
+                items: data.recommendations.music.prefix(2).map {
+                    BenyuanResonanceItem(title: "\($0.artist) · \($0.album)", reason: $0.reason)
+                }
+            )
         }
     }
 
-    private func resonanceLine(_ label: String, values: [String]) -> some View {
+    private func resonanceLine(_ label: String, items: [BenyuanResonanceItem]) -> some View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x2) {
             Text(label)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(BenyuanColor.textTertiary)
-            ForEach(values, id: \.self) { value in
-                Text(value)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(BenyuanColor.textPrimary)
+            ForEach(items) { item in
+                resonanceItem(item)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(BenyuanSpacing.x4)
         .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(BenyuanColor.glassFill))
+    }
+
+    private func resonanceItem(_ item: BenyuanResonanceItem) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(BenyuanColor.textPrimary)
+            Text(item.reason)
+                .font(.system(size: 13, weight: .regular))
+                .lineSpacing(5)
+                .foregroundStyle(BenyuanColor.textSecondary)
+        }
+        .padding(.top, BenyuanSpacing.x1)
     }
 
     private var closing: some View {
@@ -612,6 +708,13 @@ struct BenyuanConstellationClosingBody: View {
             .frame(width: width, height: height)
             .rotationEffect(.degrees(rotation))
     }
+}
+
+private struct BenyuanResonanceItem: Identifiable {
+    let title: String
+    let reason: String
+
+    var id: String { "\(title)-\(reason)" }
 }
 
 private extension BenyuanConstellationLayoutBudget {

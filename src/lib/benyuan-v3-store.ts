@@ -35,7 +35,7 @@ import { classifyBenyuanMultimodalCacheStatus, recordBenyuanAgentTiming } from "
 import { aggregateTraitsFromPart1, generateDeterministicConstellation } from "@/lib/benyuan-v3-engine";
 import { generateConstellationWithAgent, generateTheaterScriptWithAgent, runMultimodalAnalysis } from "@/lib/benyuan-v3-agent";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
-import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
+import { isCanonicalBenyuanArchetypeName, isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { uploadedAssetsFromAnswer } from "@/lib/benyuan-upload-assets";
 import { ensureBenyuanDataDirs, getBenyuanPersistenceHealth, getBenyuanV3StorePath } from "@/lib/benyuan-persistence";
 
@@ -521,8 +521,14 @@ function makeHistoryItem(store: BenyuanV3Store, part1: Part1Record): BenyuanAcco
   const constellation = findConstellationForPart1(store, part1.part1_id);
   const stage = constellation ? "constellation" : part2 ? "part2" : theater ? "theater" : "part1";
   const assetCount = countPart1Assets(part1);
-  const archetypeName = constellation?.psyche_constellation.archetype.name;
-  const theme = part1.aggregated_traits.core_themes[0] ?? "私人月相";
+  let archetypeName = constellation
+    ? normalizePsycheConstellation(constellation.psyche_constellation).archetype.name
+    : undefined;
+  if (archetypeName && !isCanonicalBenyuanArchetypeName(archetypeName)) {
+    const fallback = generateDeterministicConstellation(part1, part2);
+    archetypeName = fallback.archetype.name;
+  }
+  const theme = visibleHistoryTheme(part1.aggregated_traits.core_themes[0]);
   const title = archetypeName ? `${archetypeName}的本源档案` : `${theme}的本源档案`;
   const subtitleParts = [`影像线索 ${assetCount} 个`];
   if (constellation) subtitleParts.push("星图已生成");
@@ -544,6 +550,27 @@ function makeHistoryItem(store: BenyuanV3Store, part1: Part1Record): BenyuanAcco
     updated_at: updatedAt,
     asset_count: assetCount,
   };
+}
+
+function visibleHistoryTheme(value: string | undefined) {
+  const labels: Record<string, string> = {
+    meaning_seeking: "意义追问",
+    aesthetic_sensitivity: "审美线索",
+    emotional_depth: "情感深处",
+    relationship_need: "关系轨道",
+    action_tendency: "行动线索",
+    independence: "边界轨道",
+    openness: "开放轨道",
+    solitude: "独处线索",
+    boundary: "边界线索",
+    reflection: "自我回声",
+    contemplation: "沉思线索",
+    freedom: "自由线索",
+  };
+  const cleaned = (value ?? "").trim();
+  if (!cleaned) return "私人月相";
+  if (/^[a-z0-9_\-\s]+$/i.test(cleaned)) return labels[cleaned] ?? "私人月相";
+  return cleaned;
 }
 
 export async function listAccountHistoryForUser(userId: string) {

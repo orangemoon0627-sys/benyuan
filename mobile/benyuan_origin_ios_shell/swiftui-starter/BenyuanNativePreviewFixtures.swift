@@ -378,7 +378,10 @@ extension BenyuanNativeFlowModel {
                     PsycheConstellation.GrowthSuggestion(
                         title: "给暗面一个出口",
                         description: "把不愿被立刻解释的部分保留下来，但给它一个可被看见的形状。",
-                        actionableSteps: ["今晚写下三个不需要立刻解决的问题。", "选择一张最接近当下心境的图，给它命名。"]
+                        actionableSteps: [
+                            "今晚只记录一个反复出现的画面，用来把模糊情绪从身体里移到纸面上；这样做会让你更容易辨认它是否一直指向同一个张力。",
+                            "选择一张最接近当下心境的图，给它命名，用来让潜意识母题先获得一个可看见的形状；这样做会减少反复解释自己的压力。"
+                        ]
                     )
                 ],
                 recommendations: PsycheConstellation.Recommendations(

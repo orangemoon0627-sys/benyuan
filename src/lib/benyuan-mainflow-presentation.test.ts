@@ -19,7 +19,7 @@ test("collect primary action advances to next module when current module is comp
   });
 
   assert.deepEqual(action, {
-    label: "进入 B",
+    label: "进入下一章",
     disabled: false,
     intent: "next-module",
   });
@@ -79,11 +79,11 @@ test("constellation short flow keeps only the three highest dimensions and first
 
   const flow = buildConstellationShortFlow(source);
 
-  assert.equal(flow.essence.lead, "意义追寻 92%");
-  assert.equal(flow.essence.support, "情感深度 86%");
+  assert.equal(flow.essence.lead, "在迷雾里持续寻找确定性的人。");
+  assert.equal(flow.essence.support, "第一段，解释你为什么总会回到更深的问题。");
   assert.deepEqual(
     flow.structure.topDimensions.map((item) => `${item.label}:${item.score}`),
-    ["意义追寻:92", "情感深度:86", "开放性:79"],
+    ["意义欲望:92", "情绪沉潜度:86", "潜意识开放度:79"],
   );
   assert.equal(flow.moment.tension?.name, "理想与现实之间的拉扯");
   assert.equal(flow.moment.path?.title, "允许问题继续存在");

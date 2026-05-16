@@ -126,7 +126,7 @@ const VISIBLE_THEME_LABELS: Record<string, string> = {
   moon: "月光意象",
   transcendence: "辽阔感",
   romanticism: "浪漫底色",
-  aesthetic_sensitivity: "审美敏感",
+  aesthetic_sensitivity: "象征感受力",
   emotional_resonance: "情绪共振",
   connection: "深层连接",
   warmth: "温度与归属",
@@ -516,6 +516,7 @@ const MUSIC_TONE_LABELS: Record<string, string> = {
 const PHOTO_TERM_LABELS: Record<string, string> = {
   "moon over sea": "海面上方的月影",
   lone_figure_seascape_sunset: "暮色海边的独行身影",
+  morning_bicycle_tree_shadow: "清晨树影里的骑行身影",
   symbolic_landscape: "带有象征感的风景",
   moon: "月光",
   sea: "海面",
@@ -525,6 +526,11 @@ const PHOTO_TERM_LABELS: Record<string, string> = {
   horizon: "地平线",
   solitude: "独处感",
   vastness: "辽阔感",
+  bicycle: "自行车",
+  tree_shadow: "树影",
+  open_path: "开阔路径",
+  morning: "清晨",
+  renewal: "重新开始",
 };
 
 function normalizeVisibleToken(value: string) {
@@ -571,6 +577,141 @@ function musicMotif(record: Part1Record) {
   const tone = visibleMusicTone(music.emotional_tone) ?? "带着尚未完全显影的情绪底色";
   if (genres.length === 0) return `一段辨认不清却仍有温度的声音线索，${tone}`;
   return `${genres.slice(0, 3).join("、")}交织成一条声音线，${tone}`;
+}
+
+function evidenceFingerprint(record: Part1Record, part2?: Part2Record) {
+  const music = record.part1_data.aesthetics.music_analysis;
+  const social = record.part1_data.narrative.social_posts_analysis ?? [];
+  const photo = record.part1_data.narrative.precious_photo_analysis;
+  return [
+    record.part1_data.aesthetics.core_desire_image,
+    music?.primary_genres.join("|"),
+    music?.emotional_tone,
+    Object.entries(music?.personality_signals ?? {}).map(([key, value]) => `${key}:${value}`).join("|"),
+    social.map((item) => `${item.text_content}:${item.emotional_tone}:${item.themes.join("|")}`).join("||"),
+    photo?.visual_content,
+    photo?.composition,
+    photo?.lighting,
+    photo?.color_mood,
+    photo?.symbolic_elements.join("|"),
+    photo?.psychological_interpretation.core_themes.join("|"),
+    part2?.act2_choices.map((item) => item.selected).join("|"),
+  ].filter(Boolean).join("::").toLocaleLowerCase("zh-CN");
+}
+
+function hashString(value: string) {
+  let hash = 2166136261;
+  for (const char of value) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickRotated<T>(items: T[], offset: number, count = 3) {
+  if (items.length <= count) return items;
+  const next: T[] = [];
+  for (let index = 0; index < count; index += 1) {
+    next.push(items[(offset + index) % items.length]);
+  }
+  return next;
+}
+
+function uniqueRecommendationItems<T extends { title?: string; author?: string; director?: string; artist?: string; album?: string }>(items: T[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = [item.title, item.author, item.director, item.artist, item.album].filter(Boolean).join("::").toLocaleLowerCase("zh-CN");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function hasEvidenceCue(source: string, pattern: RegExp) {
+  return pattern.test(source);
+}
+
+function buildRecommendationEvidenceContext(record: Part1Record, part2?: Part2Record) {
+  const source = evidenceFingerprint(record, part2);
+  const music = musicMotif(record);
+  const photo = photoMotif(record);
+  const social = firstSocialPostText(record);
+  const act2 = part2?.act2_choices.map((item) => getTheaterAct2ChoiceText(item.selected) ?? item.selected).filter(Boolean) ?? [];
+  return {
+    source,
+    music,
+    photo,
+    social,
+    act2Text: act2.join("、"),
+    hash: hashString(source),
+  };
+}
+
+function contextualReason(prefix: string, reason: string, context: ReturnType<typeof buildRecommendationEvidenceContext>) {
+  const anchor = context.act2Text
+    ? `也回应你在剧场里“${context.act2Text.slice(0, 28)}”的路径。`
+    : `也回应“${context.social.slice(0, 24)}”留下的情绪线索。`;
+  return `${prefix} ${reason.replace(/。?$/u, "。")}它连接了${context.music}、${context.photo}，${anchor}`;
+}
+
+export function personalizeConstellationRecommendations(
+  base: PsycheConstellation["recommendations"],
+  record: Part1Record,
+  part2?: Part2Record,
+): PsycheConstellation["recommendations"] {
+  const context = buildRecommendationEvidenceContext(record, part2);
+  const bookCandidates = [...base.books];
+  const filmCandidates = [...base.films];
+  const musicCandidates = [...base.music];
+
+  if (hasEvidenceCue(context.source, /清晨|morning|骑车|bicycle|树影|tree|重新开始|renewal|open_path|warm_hopeful|electronic|电子|indie|独立/u)) {
+    bookCandidates.unshift(
+      { title: "《当下的力量》", author: "埃克哈特·托利", reason: "它把注意力从反复沉潜带回身体和当下，很适合有清晨、骑行与重新开始线索的星图。" },
+      { title: "《心流》", author: "米哈里·契克森米哈赖", reason: "它能把行动、节律和专注重新接起来，回应你这次材料里更明显的现实推进感。" },
+    );
+    filmCandidates.unshift(
+      { title: "《白日梦想家》", director: "本·斯蒂勒", reason: "它会映照从内在想象走向现实旅程的动作，贴近清晨道路和重新开始的母题。" },
+      { title: "《日日是好日》", director: "大森立嗣", reason: "它把节律、身体和日常练习放在一起，适合承接这次更温暖的行动线。" },
+    );
+    musicCandidates.unshift(
+      { artist: "Jon Hopkins", album: "Immunity", reason: "电子纹理、推进感和身体节律能承接这次歌单里更向前的能量。" },
+      { artist: "Four Tet", album: "Rounds", reason: "它的颗粒感和轻盈循环会回应树影、骑行与重新开始的日常光线。" },
+    );
+  }
+
+  if (hasEvidenceCue(context.source, /海|sea|ocean|夜|深夜|低光|旧|nostalgia|melancholic|post-rock|后摇|ambient|氛围|孤独|solitude/u)) {
+    bookCandidates.unshift(
+      { title: "《看不见的城市》", author: "伊塔洛·卡尔维诺", reason: "它把城市写成记忆、欲望和自我投射的容器，适合低光、海面与未说出口的材料。" },
+      { title: "《地下室手记》", author: "陀思妥耶夫斯基", reason: "它能照见过度自省如何形成回声，也提醒你把清醒带回生活表面。" },
+    );
+    filmCandidates.unshift(
+      { title: "《潜行者》", director: "安德烈·塔可夫斯基", reason: "它像一次缓慢进入内在禁区的长镜头，贴近海、低光和边界确认的母题。" },
+      { title: "《星际穿越》", director: "克里斯托弗·诺兰", reason: "事件视界、时间和牵挂共同构成与你这次材料相近的引力语言。" },
+    );
+    musicCandidates.unshift(
+      { artist: "Sigur Ros", album: "Agaetis byrjun", reason: "广阔、低频和微光感能承接后摇与氛围声场里的深层回响。" },
+      { artist: "Jóhann Jóhannsson", album: "Orphee", reason: "它像一条从黑暗里慢慢返回的声线，适合低光、记忆和边界感更强的星图。" },
+    );
+  }
+
+  const bookOffset = context.hash % Math.max(1, bookCandidates.length);
+  const filmOffset = Math.floor(context.hash / 7) % Math.max(1, filmCandidates.length);
+  const musicOffset = Math.floor(context.hash / 13) % Math.max(1, musicCandidates.length);
+
+  return {
+    books: pickRotated(uniqueRecommendationItems(bookCandidates), bookOffset, 3).map((item) => ({
+      ...item,
+      reason: contextualReason("这次推荐来自当次材料：", item.reason, context),
+    })),
+    films: pickRotated(uniqueRecommendationItems(filmCandidates), filmOffset, 3).map((item) => ({
+      ...item,
+      reason: contextualReason("这次推荐来自当次剧场与影像线索：", item.reason, context),
+    })),
+    music: pickRotated(uniqueRecommendationItems(musicCandidates), musicOffset, 3).map((item) => ({
+      ...item,
+      reason: contextualReason("这次推荐来自当次声音气候：", item.reason, context),
+    })),
+  };
 }
 
 function visibleTheme(value: string) {
@@ -855,19 +996,19 @@ function buildDeterministicCoreTensions(
 }
 
 const dimensionLabelMap: Record<string, string> = {
-  openness: "开放性",
-  independence: "独立性",
-  emotional_depth: "情感深度",
-  meaning_seeking: "意义追寻",
-  aesthetic_sensitivity: "审美敏感",
-  action_tendency: "行动力",
-  relationship_need: "关系需求",
+  openness: "潜意识开放度",
+  independence: "边界完整度",
+  emotional_depth: "情绪沉潜度",
+  meaning_seeking: "意义欲望",
+  aesthetic_sensitivity: "象征感受力",
+  action_tendency: "现实落地力",
+  relationship_need: "客体联结需求",
 };
 
 const themeLabelMap: Record<string, string> = {
   meaning_seeking: "意义追问",
   solitude: "独处重力",
-  aesthetic_sensitivity: "审美感应",
+  aesthetic_sensitivity: "象征感受力",
   emotional_resonance: "情绪共振",
   connection: "深层连接",
   warmth: "温度与归属",
@@ -886,7 +1027,7 @@ function formatJoined(values: string[], fallback: string) {
 }
 
 function formatThemeSummary(values: string[]) {
-  return formatJoined(values.map((value) => themeLabelMap[value] ?? value), "意义追寻、审美敏感与关系边界");
+  return formatJoined(values.map((value) => themeLabelMap[value] ?? value), "意义欲望、象征感受力与关系边界");
 }
 
 function pickTopDimensionLabels(scores: Record<string, number>) {
@@ -934,7 +1075,7 @@ function buildPersonalizedSubtitle(params: {
   act2Path: string[];
   mirrorPath: string[];
 }) {
-  const topDimension = pickTopDimensionLabels(params.scores).split("、")[0] ?? "意义追寻";
+  const topDimension = pickTopDimensionLabels(params.scores).split("、")[0] ?? "意义欲望";
   const actTrace = params.act2Path[params.act2Path.length - 1] ?? params.act2Path[0] ?? params.mirrorPath[0] ?? "那次慢下来的选择";
   const socialFragment = params.socialText.length > 14 ? `${params.socialText.slice(0, 14)}...` : params.socialText;
   const photoFragment = params.photo.split("，")[0] || "一张未显影的照片";
@@ -977,16 +1118,15 @@ function buildDeterministicNarrativeOverview(params: {
     : "";
 
   return [
-    `当你把“${selectedA1}”选为核心意象时，星图里最先亮起的是月相边缘：一半显露，一半保留。荣格会把这种反复辨认称作个体化的入口，不是变得特殊，而是把散落的自己慢慢收回同一条轨道。更深一层看，你真正想确认的是：有没有一个位置，既能容纳你的暗面，也不会急着替你解释。${profile.narrativeFocus}`,
-    `你的证据并不抽象：那句“${socialText}”、${photo}，以及${music}，都像同一个黑色天体周围的碎光。它们说明你不是被宏大词语打动，而是会从一句话、一张图、一段声音里确认：这里有我的一部分。潜意识在这里不是神秘预言，而是你尚未清楚命名、却反复借审美和距离表达出来的愿望。`,
-    `在思维方式上，你更靠近“${selectedB1}”与“${selectedB2}”。这不是简单的直觉或犹豫，而像加缪式的清醒：先承认世界并不会自动给出意义，再用身体和时间去试探什么仍然值得靠近。`,
-    `如果把这些线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动，而不是一个固定标签。你在“${selectedB5}”里保留距离，在剧场里又先${act2PathText}，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。你不自知地反复保护的，可能不是“孤独”，而是一个不愿被过早占用的自我位置。`,
+    `第一层线索来自图像与审美：你把“${selectedA1}”选为核心意象，旁边又出现了${photo}，以及${music}。这不是单纯的审美偏好，而是潜意识把“还没上场、还没说完、还没完全显形”的部分放进画面和声音里。荣格会把这种反复辨认称作个体化的入口：不是变得特殊，而是把散落的自己慢慢收回同一条轨道。更直接地说，你真正想确认的是：有没有一个位置，既能容纳你的暗面，也不会急着替你解释。${profile.narrativeFocus}`,
+    `第二层线索来自你的选择：那句“${socialText}”，和你在不确定时选择“${selectedB1}”、面对欲望时选择“${selectedB2}”，指向同一个动作。这不是随机的选择，而是一种很清楚的防御方式：你会先让行动、克制或审美替你争取时间，再决定要不要把真实愿望说出来。潜意识在这里不是神秘预言，而是你尚未清楚命名、却反复借距离、秩序和作品表达出来的需要。`,
+    `第三层线索来自剧场：你没有直接穿过入口，而是先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这个动作很关键，它把前面的问题变成了身体路线：你不是不靠近，而是要先确认光源、边界和房间的形状。这里有一种重复模式：你会先让物件、声音或距离替你说话，再决定自己是否直接出现。`,
+    `把这三层线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动。你在“${selectedB5}”里保留距离，在剧场里继续选择先确认轨道，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。你反复保护的，可能不是“孤独”，而是一个不愿被过早占用的自我位置。`,
     mirrorPath.length > 0
-      ? `剧场里，你先${act2PathText}；历史追问里，又选择${mirrorPathText}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：你不是只想被理解，也在寻找一种不会过早占有你的理解。`
-      : `剧场四轮里，你先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这条行动轨迹把社交文本里的“没有寄出的信”、照片里的海与逆光、音乐里的低频深流接到一起：它不是额外剧情，而是在补足你如何靠近、如何保留、又如何把迟疑折成下一步。这里有一种重复模式：你会先让物件、声音或距离替你说话，再决定自己是否直接出现。`,
-    `当你在关系里选择“${selectedB5}”，一条很清楚的轨道浮现出来：${profile.relationshipLens} 温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己。在客体关系的语言里，你不是没有依恋需求，而是在确认靠近不会产生被吞没感；当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
+      ? `历史追问里，你又选择${mirrorPathText}。这让潜意识剥离过程更清楚：你不是只想被理解，也在寻找一种不会过早占有你的理解。温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己；在客体关系的语言里，你要确认的是靠近不会产生被吞没感。`
+      : `这就是这张星图的潜意识剥离过程：图像保存未完成的情绪，选择显示延迟进入的防御，剧场把这种防御转成“先看光、再靠近”的动作。在客体关系的语言里，你不是没有依恋需求，而是在确认靠近不会产生被吞没感；当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
     `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学参照。${profile.movementLens}`,
-    `${profile.closingLens}${supportLine ? ` ${supportLine}` : ""}`,
+    `所以，${profile.archetype.name}不是一个“沉在黑暗里的人”，而是一个会靠近深处、辨认边界、再从深处带回意义的人。${profile.closingLens}${supportLine ? ` ${supportLine}` : ""}`,
   ].join("\n\n");
 }
 
@@ -1023,6 +1163,7 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
     mirrorPath,
   });
   const psychoanalyticConcepts = selectPsychoanalyticConceptsForPart1(part1, part2);
+  const recommendations = personalizeConstellationRecommendations(profile.recommendations, part1, part2);
 
   return {
     user_id: part1.user_id,
@@ -1035,31 +1176,31 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
     seven_dimensions: {
       openness: {
         score: scores.openness,
-        interpretation: dimensionInterpretation("openness", "开放性", scores.openness),
+        interpretation: dimensionInterpretation("openness", "潜意识开放度", scores.openness),
       },
       independence: {
         score: scores.independence,
-        interpretation: dimensionInterpretation("independence", "独立性", scores.independence),
+        interpretation: dimensionInterpretation("independence", "边界完整度", scores.independence),
       },
       emotional_depth: {
         score: scores.emotional_depth,
-        interpretation: dimensionInterpretation("emotional_depth", "情感深度", scores.emotional_depth),
+        interpretation: dimensionInterpretation("emotional_depth", "情绪沉潜度", scores.emotional_depth),
       },
       meaning_seeking: {
         score: scores.meaning_seeking,
-        interpretation: dimensionInterpretation("meaning_seeking", "意义追寻", scores.meaning_seeking),
+        interpretation: dimensionInterpretation("meaning_seeking", "意义欲望", scores.meaning_seeking),
       },
       aesthetic_sensitivity: {
         score: scores.aesthetic_sensitivity,
-        interpretation: dimensionInterpretation("aesthetic_sensitivity", "审美敏感", scores.aesthetic_sensitivity),
+        interpretation: dimensionInterpretation("aesthetic_sensitivity", "象征感受力", scores.aesthetic_sensitivity),
       },
       action_tendency: {
         score: scores.action_tendency,
-        interpretation: dimensionInterpretation("action_tendency", "行动力", scores.action_tendency),
+        interpretation: dimensionInterpretation("action_tendency", "现实落地力", scores.action_tendency),
       },
       relationship_need: {
         score: scores.relationship_need,
-        interpretation: dimensionInterpretation("relationship_need", "关系需求", scores.relationship_need),
+        interpretation: dimensionInterpretation("relationship_need", "客体联结需求", scores.relationship_need),
       },
     },
     narrative_overview: buildDeterministicNarrativeOverview({
@@ -1081,6 +1222,6 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
     }),
     core_tensions: buildDeterministicCoreTensions(primaryArchetypeHint, selectedB5),
     growth_suggestions: profile.growthSuggestions,
-    recommendations: profile.recommendations,
+    recommendations,
   };
 }

@@ -47,7 +47,7 @@ assert.match(
 );
 assert.match(
   account,
-  /Text\(item\.title\)[\s\S]*?\.font\(\.system\(size:\s*16,\s*weight:\s*\.semibold\)\)/,
+  /Text\(item\.titleForNativeDisplay\)[\s\S]*?\.font\(\.system\(size:\s*16,\s*weight:\s*\.semibold\)\)/,
   "native account history cards should keep a readable archive title scale"
 );
 assert.match(
@@ -164,6 +164,27 @@ assert.match(
   /firstViewportReserve:\s*96/,
   "constellation first viewport should leave a clearer visual gap before seven-dimensional orbit content appears under the bottom dock"
 );
+assert.match(
+  constellation,
+  /pathExplanation\(/,
+  "constellation path section must explain why the path exists before showing a small action"
+);
+assert.match(
+  constellation,
+  /resonanceItem\(/,
+  "constellation resonance section must render individual works with reasons, not only a title list"
+);
+assert.match(
+  constellation,
+  /\.reason/,
+  "constellation resonance section must surface book, film, and music reasons from the generated report"
+);
+for (const label of ["补足什么", "照见什么", "适合在什么时候靠近", "这条路径的作用"]) {
+  assert.doesNotMatch(constellation, new RegExp(label), `constellation should not expose stiff resonance label ${label}`);
+}
+for (const label of ["为什么做", "会带来什么"]) {
+  assert.match(constellation, new RegExp(label), `constellation path should expose action purpose and expected effect via ${label}`);
+}
 
 assert.match(
   primitives,

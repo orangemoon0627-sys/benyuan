@@ -1,4 +1,4 @@
-import { repairCanonicalBook, repairCanonicalFilm, repairCanonicalMusic } from "@/lib/benyuan-v3-report-profile";
+import { enrichGrowthSuggestions, repairCanonicalBook, repairCanonicalFilm, repairCanonicalMusic } from "@/lib/benyuan-v3-report-profile";
 import { dedupeCoreTensions } from "@/lib/benyuan-v3-constellation-normalization";
 import type { PsycheConstellation } from "@/lib/benyuan-v3-types";
 
@@ -188,7 +188,7 @@ export function normalizePsycheConstellation(constellation: PsycheConstellation)
     narrative_overview: cleanNarrative(constellation.narrative_overview),
     seven_dimensions: normalizeDimensions(constellation),
     core_tensions: tensions,
-    growth_suggestions: [...growthMap.values()],
+    growth_suggestions: enrichGrowthSuggestions([...growthMap.values()]),
     recommendations: {
       books: normalizeBooks(constellation.recommendations.books),
       films: normalizeFilms(constellation.recommendations.films),

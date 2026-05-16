@@ -614,6 +614,39 @@ struct BenyuanAccountHistoryItem: Codable, Identifiable, Equatable {
     let assetCount: Int
 
     var id: String { part1Id }
+
+    var canonicalArchetypeNameForDisplay: String? {
+        let raw = [archetypeName ?? "", title, subtitle].joined(separator: " ")
+        return BenyuanNativeArchetypeRegistry.canonicalNameForLegacyDisplay(raw)
+    }
+
+    var titleForNativeDisplay: String {
+        if let canonicalArchetypeNameForDisplay {
+            return "\(canonicalArchetypeNameForDisplay)的本源档案"
+        }
+        return title.replacingInternalTraitSlugsForNativeDisplay
+    }
+
+    var subtitleForNativeDisplay: String {
+        subtitle.replacingInternalTraitSlugsForNativeDisplay
+    }
+}
+
+private extension String {
+    var replacingInternalTraitSlugsForNativeDisplay: String {
+        var value = self
+        let replacements = [
+            "meaning_seeking": "意义追问",
+            "aesthetic_sensitivity": "审美线索",
+            "emotional_depth": "情感深处",
+            "relationship_need": "关系轨道",
+            "action_tendency": "行动线索"
+        ]
+        for (raw, display) in replacements {
+            value = value.replacingOccurrences(of: raw, with: display)
+        }
+        return value
+    }
 }
 
 struct BenyuanAccountHistoryResponse: Codable, Equatable {

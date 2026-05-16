@@ -20,7 +20,10 @@ extension BenyuanNativeFlowModel {
 
     func saveConstellationImage() {
         guard let constellation else { return }
-        let image = BenyuanConstellationImageRenderer.render(constellation: constellation.psycheConstellation)
+        let image = BenyuanConstellationImageRenderer.render(
+            constellation: constellation.psycheConstellation,
+            userName: session.user?.displayName
+        )
         PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.creationRequestForAsset(from: image)
         } completionHandler: { [weak self] success, error in

@@ -139,6 +139,14 @@ function createPart2Record() {
   };
 }
 
+function recommendationSignature(constellation) {
+  return [
+    ...constellation.recommendations.books.map((item) => `book:${item.title}:${item.author}`),
+    ...constellation.recommendations.films.map((item) => `film:${item.title}:${item.director}`),
+    ...constellation.recommendations.music.map((item) => `music:${item.artist}:${item.album}`),
+  ];
+}
+
 function allVisibleOptionText() {
   return benyuanPart1Questions.flatMap((question) => question.options?.map((option) => option.text) ?? []);
 }
@@ -250,4 +258,97 @@ test("analyst prompt and fallback constellation bind star language to psychoanal
   assert.doesNotMatch(reportText, /孤独求索者|敏感而复杂的人|关系哲学“/);
   assert.doesNotMatch(overview, /你给人的核心印象|你给人的第一印象/);
   assert(fallback.recommendations.books.some((item) => /精神旁证|存在主义|个体化|时间|动机|边界|辨认/.test(item.reason)));
+  assert.match(ANALYST_SYSTEM_PROMPT, /动作\s*→\s*目的\s*→\s*预期成效|动作 \+ 目的 \+ 预期成效/);
+  assert.doesNotMatch(ANALYST_SYSTEM_PROMPT, /补足什么|照见什么|什么时候靠近/);
+  assert.ok(
+    fallback.growth_suggestions.every((item) =>
+      item.actionable_steps.every((step) => /为了|用来|让你|帮助你|这样做会|从而|会让|目的|成效/u.test(step))
+    ),
+    "growth path actions must explain purpose and expected effect, not only give an isolated task"
+  );
+  assert.ok(
+    fallback.growth_suggestions.every((item) => !item.actionable_steps.some((step) => /写下三个不需要立刻|不需要立刻解决的问题/u.test(step))),
+    "growth path actions should not keep the old unclear three-unresolved-problems wording"
+  );
+  assert.ok(
+    [...fallback.recommendations.books, ...fallback.recommendations.films, ...fallback.recommendations.music].every((item) =>
+      /补足|延伸|照见|回应|适合|靠近|承接|镜面|旁证|结构|气质|节律|边界|意义|时间|情绪/u.test(item.reason)
+    ),
+    "recommendation reasons must explain resonance or use context, not just list a work"
+  );
+});
+
+test("same canonical archetype still personalizes report and recommendations from current evidence", () => {
+  assert.match(ANALYST_SYSTEM_PROMPT, /同一个主星体|同一主星体/);
+  assert.match(ANALYST_SYSTEM_PROMPT, /不能只套固定推荐|不得只套固定推荐|推荐.*当次输入/);
+
+  const basePart1 = createPart1Record();
+  basePart1.aggregated_traits.archetype_hints = ["black_hole_event_horizon", "lone_seeker"];
+  const basePart2 = createPart2Record();
+
+  const variantPart1 = structuredClone(basePart1);
+  variantPart1.part1_id = "part1_content_v4_variant";
+  variantPart1.user_id = "usr_content_v4_variant";
+  variantPart1.part1_data.aesthetics.music_analysis = {
+    primary_genres: ["electronic", "indie"],
+    emotional_tone: "warm_hopeful",
+    era_distribution: { "2010s": 40, "2020s": 60 },
+    language_diversity: ["chinese", "japanese"],
+    personality_signals: { openness: "medium", emotional_depth: "medium", nostalgia: "low" },
+  };
+  variantPart1.part1_data.narrative.social_posts_analysis = [
+    {
+      post_id: 1,
+      text_content: "清晨骑车穿过树影，突然觉得生活可以重新开始。",
+      emotional_tone: "warm_hopeful",
+      themes: ["movement", "morning", "renewal"],
+      expression_style: "reflective_direct",
+      self_presentation: "active_rebuilding",
+      time_clue: "morning_post",
+      psychological_signals: ["renewal", "action_tendency"],
+    },
+  ];
+  variantPart1.part1_data.narrative.social_posts_overall_pattern = {
+    dominant_emotion: "warm_hopeful",
+    core_themes: ["movement", "renewal", "daily_life"],
+    expression_authenticity: "high",
+  };
+  variantPart1.part1_data.narrative.precious_photo_analysis = {
+    visual_content: "morning_bicycle_tree_shadow",
+    composition: "moving_subject_open_path",
+    lighting: "soft_morning_light",
+    color_mood: "green_warm",
+    symbolic_elements: ["bicycle", "tree_shadow", "open_path"],
+    psychological_interpretation: {
+      core_themes: ["movement", "renewal", "grounded_action"],
+      emotional_tone: "calm_forward",
+      self_concept: "active_rebuilder",
+      existential_stance: "returning_to_life",
+      traits: ["action_tendency", "openness"],
+    },
+  };
+  variantPart1.aggregated_traits.core_themes = ["movement", "renewal", "grounded_action"];
+  variantPart1.aggregated_traits.archetype_hints = ["black_hole_event_horizon", "solar_corona"];
+
+  const variantPart2 = structuredClone(basePart2);
+  variantPart2.part1_id = variantPart1.part1_id;
+  variantPart2.act2_choices = [
+    { choice_id: 1, selected: "1A", hesitation_time: 1.4, timestamp: "2026-05-09T00:01:00.000Z" },
+    { choice_id: 2, selected: "2D", hesitation_time: 2.2, timestamp: "2026-05-09T00:02:00.000Z" },
+    { choice_id: 3, selected: "3B", hesitation_time: 2.8, timestamp: "2026-05-09T00:03:00.000Z" },
+    { choice_id: 4, selected: "4A", hesitation_time: 1.9, timestamp: "2026-05-09T00:04:00.000Z" },
+  ];
+
+  const base = generateDeterministicConstellation(basePart1, basePart2);
+  const variant = generateDeterministicConstellation(variantPart1, variantPart2);
+
+  assert.equal(base.archetype.name, "事件视界沉潜者");
+  assert.equal(variant.archetype.name, "事件视界沉潜者");
+  assert.notEqual(base.narrative_overview, variant.narrative_overview);
+  assert.notDeepEqual(
+    recommendationSignature(base),
+    recommendationSignature(variant),
+    "same fixed archetype should still produce evidence-sensitive recommendation variants"
+  );
+  assert.match(JSON.stringify(variant.recommendations), /清晨|骑车|树影|electronic|电子|indie|独立|重新开始|open_path|路径/u);
 });

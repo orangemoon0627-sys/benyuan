@@ -27,6 +27,79 @@ function fingerprint(value: string | null | undefined) {
   return cleanText(value ?? "").toLocaleLowerCase("zh-CN").replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
+function hasPurposeAndEffect(value: string) {
+  return /为了|用来|让你|帮助你|这样做会|从而|会让|目的|成效/u.test(value);
+}
+
+function stripAmbiguousLegacyAction(value: string) {
+  return value
+    .replace(/今晚写下三个不需要立刻[^。]*问题。?/gu, "今晚只记录一个反复出现的画面")
+    .replace(/不需要立刻[^，。；;]*问题/gu, "暂时还没有命名清楚的感受")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function inferGrowthPurpose(description: string) {
+  if (/边界|距离|关系|靠近|表达|联系|回应/u.test(description)) {
+    return "用来把关系里的边界从沉默或撤退变成可以被理解的坐标";
+  }
+  if (/行动|现实|推进|完成|开始|落地|小实验|输出/u.test(description)) {
+    return "用来把内在理解带回现实里的一个可观察动作";
+  }
+  if (/情绪|感受|记忆|回响|发酵|失重|深处/u.test(description)) {
+    return "用来把模糊情绪从身体里移到可辨认的位置";
+  }
+  if (/审美|意象|画面|音乐|创作|素材|象征|灵感/u.test(description)) {
+    return "用来把审美直觉从一瞬间的被击中变成持续可回看的线索";
+  }
+  if (/节律|稳定|休息|照料|容器|恢复/u.test(description)) {
+    return "用来给你的内在节律建立一个更稳定的承接容器";
+  }
+  return "用来把这条星图路径从理解带回生活现场";
+}
+
+function inferGrowthEffect(description: string) {
+  if (/边界|距离|关系|靠近|表达|联系|回应/u.test(description)) {
+    return "这样做会减少对方误读你的沉默，也让真正安全的靠近更容易发生。";
+  }
+  if (/行动|现实|推进|完成|开始|落地|小实验|输出/u.test(description)) {
+    return "这样做会让你看见哪一步真的减轻了当前张力，而不是只在脑内反复校准。";
+  }
+  if (/情绪|感受|记忆|回响|发酵|失重|深处/u.test(description)) {
+    return "这样做会让反复出现的情绪母题浮出轮廓，避免它只在体内循环。";
+  }
+  if (/审美|意象|画面|音乐|创作|素材|象征|灵感/u.test(description)) {
+    return "这样做会让你的象征感受力变成可积累的精神索引，而不是只停在当下的震动里。";
+  }
+  if (/节律|稳定|休息|照料|容器|恢复/u.test(description)) {
+    return "这样做会让恢复不再只靠临时退开，而是变成可以重复进入的支持系统。";
+  }
+  return "这样做会让你判断这条路径是否真的让当前张力变轻、变清楚。";
+}
+
+function enrichGrowthStep(step: string, description: string) {
+  const cleaned = stripAmbiguousLegacyAction(cleanText(step));
+  if (!cleaned) return cleaned;
+  if (hasPurposeAndEffect(cleaned)) return cleaned;
+
+  const purpose = inferGrowthPurpose(description);
+  const effect = inferGrowthEffect(description);
+  return `${cleaned}，${purpose}；${effect}`;
+}
+
+export function enrichGrowthSuggestions(
+  suggestions: PsycheConstellation["growth_suggestions"],
+): PsycheConstellation["growth_suggestions"] {
+  return suggestions.map((item) => {
+    const description = cleanText(item.description);
+    return {
+      ...item,
+      description,
+      actionable_steps: item.actionable_steps.map((step) => enrichGrowthStep(step, description)).filter(Boolean),
+    };
+  });
+}
+
 const loneSeekerProfile: ArchetypeProfile = {
   archetype: {
     name: "远潮观月者",
@@ -50,7 +123,7 @@ const loneSeekerProfile: ArchetypeProfile = {
       ],
     },
     {
-      title: "把审美敏感转化为稳定创造",
+      title: "把象征感受力转化为稳定创造",
       description: "你的审美不是装饰性的偏好，而是非常核心的理解方式。让它进入日常，会比单纯压抑更有恢复力。",
       actionable_steps: [
         "每周保留一次只为自己服务的创作或整理时间",
@@ -157,11 +230,11 @@ const gentleGuardianProfile: ArchetypeProfile = {
   narrativeLead: "你给人的靠近方式不是锋利的，而是温柔、克制、让人愿意放下防备的。",
   narrativeFocus: "你对世界的感受方式带着细腻度：不是靠碰撞确认自己，而是靠氛围、节律和真实情感来辨认什么值得停留。",
   relationshipLens: "你真正重视的不是热闹的注意力，而是少数关系里是否有足够的理解、安心和可持续。",
-  movementLens: "你有行动力，但更愿意在确认安全和意义后前进，所以节奏往往显得柔和而不仓促。",
+  movementLens: "你有现实落地力，但更愿意在确认安全和意义后前进，所以节奏往往显得柔和而不仓促。",
   closingLens: "你要学的不是变得更硬，而是在继续给予温度的同时，不把自己永远放在最后。",
   growthSuggestions: [
     {
-      title: "把“少而深”的关系需求说清楚",
+      title: "把“少而深”的客体联结需求说清楚",
       description: "你的核心需求不是社交数量，而是关系质量。越早说清边界与期待，越容易减少误解。",
       actionable_steps: [
         "只挑 1-2 个真正重要的人练习更深表达",
@@ -427,7 +500,7 @@ const solarCoronaProfile: ArchetypeProfile = {
   archetype: {
     name: "日冕引燃者",
     english_name: "The Solar Corona",
-    core_essence: "你带着向外扩散的热度、行动力与生命感，擅长把沉睡的东西重新照亮并推向发生。",
+    core_essence: "你带着向外扩散的热度、现实落地力与生命感，擅长把沉睡的东西重新照亮并推向发生。",
     visual_prompt: "A poetic archetype portrait for The Solar Corona, dark sun with radiant corona, restrained gold and white fire, kinetic but elegant, cinematic cosmic warmth, East Asian editorial poster, 16:9",
   },
   narrativeLead: "你身上有一种能把环境带动起来的热度，不一定喧哗，却很难被忽略。",
@@ -584,25 +657,78 @@ const archetypeAliases: Record<string, ArchetypeProfile> = {
   gas_giant: gentleGuardianProfile,
 };
 
-export function getBenyuanArchetypeProfile(hint: string | null | undefined) {
-  return archetypeProfiles[hint ?? ""] ?? archetypeAliases[hint ?? ""] ?? loneSeekerProfile;
+function enrichBookReason(reason: string) {
+  const cleaned = cleanText(reason);
+  if (/补足|延伸|精神旁证|个体化|边界|时间|意义|欲望|镜面/u.test(cleaned)) {
+    return cleaned;
+  }
+  return `它能补足你的精神旁证：${cleaned}`;
 }
 
-const bookCatalog = Object.values(archetypeProfiles)
+function enrichFilmReason(reason: string) {
+  const cleaned = cleanText(reason);
+  if (/照见|映照|回应|核心张力|关系姿态|叙事|潜意识|边界|时间|意义|结构/u.test(cleaned)) {
+    return cleaned;
+  }
+  return `它会照见你的叙事结构：${cleaned}`;
+}
+
+function enrichMusicReason(reason: string) {
+  const cleaned = cleanText(reason);
+  if (/适合|靠近|承接|回到|整理|节律|情绪|气质|身体|夜晚|现实/u.test(cleaned)) {
+    return cleaned;
+  }
+  return `适合在你需要承接情绪时靠近：${cleaned}`;
+}
+
+function withConstellationPurposes(profile: ArchetypeProfile): ArchetypeProfile {
+  return {
+    ...profile,
+    growthSuggestions: enrichGrowthSuggestions(profile.growthSuggestions),
+    recommendations: {
+      books: profile.recommendations.books.map((item) => ({
+        ...item,
+        reason: enrichBookReason(item.reason),
+      })),
+      films: profile.recommendations.films.map((item) => ({
+        ...item,
+        reason: enrichFilmReason(item.reason),
+      })),
+      music: profile.recommendations.music.map((item) => ({
+        ...item,
+        reason: enrichMusicReason(item.reason),
+      })),
+    },
+  };
+}
+
+export function getBenyuanArchetypeProfile(hint: string | null | undefined) {
+  return withConstellationPurposes(archetypeProfiles[hint ?? ""] ?? archetypeAliases[hint ?? ""] ?? loneSeekerProfile);
+}
+
+export function isCanonicalBenyuanArchetypeName(value: string | null | undefined) {
+  const cleaned = cleanText(value ?? "");
+  if (!cleaned) return false;
+  return Object.values(archetypeProfiles).some((profile) => profile.archetype.name === cleaned);
+}
+
+const enrichedArchetypeProfiles = Object.values(archetypeProfiles).map(withConstellationPurposes);
+
+const bookCatalog = enrichedArchetypeProfiles
   .flatMap((profile) => profile.recommendations.books)
   .reduce<Record<string, PsycheConstellation["recommendations"]["books"][number]>>((acc, item) => {
     acc[fingerprint(item.title)] = item;
     return acc;
   }, {});
 
-const filmCatalog = Object.values(archetypeProfiles)
+const filmCatalog = enrichedArchetypeProfiles
   .flatMap((profile) => profile.recommendations.films)
   .reduce<Record<string, PsycheConstellation["recommendations"]["films"][number]>>((acc, item) => {
     acc[fingerprint(item.title)] = item;
     return acc;
   }, {});
 
-const musicCatalog = Object.values(archetypeProfiles)
+const musicCatalog = enrichedArchetypeProfiles
   .flatMap((profile) => profile.recommendations.music)
   .reduce<Record<string, PsycheConstellation["recommendations"]["music"][number]>>((acc, item) => {
     acc[`${fingerprint(item.artist)}:${fingerprint(item.album)}`] = item;

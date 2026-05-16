@@ -735,6 +735,94 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(response.items[0].assetCount, 2)
     }
 
+    func testAccountHistoryDisplayCanonicalizesRetiredLabelsAndTraitSlugs() throws {
+        let constellationItem = BenyuanAccountHistoryItem(
+            part1Id: "part1_legacy",
+            theaterScriptId: nil,
+            part2Id: nil,
+            constellationId: "const_legacy",
+            stage: .constellation,
+            title: "暮海寻光者的本源档案",
+            subtitle: "暮海寻光者 · 影像线索 3 个 / 星图已生成",
+            archetypeName: "暮海寻光者",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:30:00.000Z",
+            assetCount: 3
+        )
+        let draftItem = BenyuanAccountHistoryItem(
+            part1Id: "part1_slug",
+            theaterScriptId: nil,
+            part2Id: nil,
+            constellationId: nil,
+            stage: .theater,
+            title: "meaning_seeking 的本源档案",
+            subtitle: "meaning_seeking · 影像线索 3 个 / 剧场进行中",
+            archetypeName: nil,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:12:00.000Z",
+            assetCount: 3
+        )
+
+        XCTAssertEqual(constellationItem.titleForNativeDisplay, "远潮观月者的本源档案")
+        XCTAssertEqual(constellationItem.canonicalArchetypeNameForDisplay, "远潮观月者")
+        XCTAssertFalse(draftItem.titleForNativeDisplay.contains("meaning_seeking"))
+        XCTAssertFalse(draftItem.subtitleForNativeDisplay.contains("meaning_seeking"))
+    }
+
+    func testConstellationLongImageRendererExportsFullPosterWithUserName() throws {
+        let constellation = PsycheConstellation(
+            userId: "usr_renderer_test",
+            generatedAt: "2026-05-08T00:00:00.000Z",
+            archetype: PsycheArchetype(
+                name: "事件视界沉潜者",
+                englishName: "The Event Horizon Diver",
+                personalizedName: "黑潮边的守信者",
+                personalizedSubtitle: "把未寄出的海与停顿收成一条暗金轨道",
+                coreEssence: "你习惯在强引力前保持清醒，只把自己交给足够深的入口。",
+                visualPrompt: "black hole event horizon with antique gold accretion rim"
+            ),
+            sevenDimensions: [
+                "openness": PsycheDimension(score: 86, interpretation: "你更容易被未命名的经验吸引。"),
+                "meaning_seeking": PsycheDimension(score: 91, interpretation: "你会把关系和选择放进更大的意义结构里观看。"),
+                "aesthetic_sensitivity": PsycheDimension(score: 88, interpretation: "氛围和材质会影响你对真实的判断。"),
+                "emotional_depth": PsycheDimension(score: 79, interpretation: "你会追问情绪背后的需要与防御。"),
+                "independence": PsycheDimension(score: 74, interpretation: "你需要自己的节奏，不喜欢被过早定义。"),
+                "action_tendency": PsycheDimension(score: 63, interpretation: "你需要先确认动作和内在方向之间没有背叛。"),
+                "relationship_need": PsycheDimension(score: 69, interpretation: "你期待一种安静但稳定的回应。")
+            ],
+            narrativeOverview: "你像一颗慢速经过黑潮的月体：外侧安静，内部却持续发生潮汐。你不是单纯回避世界，而是在等待一种能与你的深度相称的抵达。",
+            coreTensions: [
+                PsycheConstellation.CoreTension(
+                    tensionId: 1,
+                    name: "靠近与隐退",
+                    description: "你渴望被真正理解，又会在被粗略理解时迅速后撤。",
+                    growthDirection: "练习把边界说清，而不是只用消失保护自己。"
+                )
+            ],
+            growthSuggestions: [
+                PsycheConstellation.GrowthSuggestion(
+                    title: "给暗面一个出口",
+                    description: "把不愿被立刻解释的部分保留下来，但给它一个可被看见的形状。",
+                    actionableSteps: ["今晚只记录一个反复出现的画面，用来把模糊情绪从身体里移到纸面上；这样做会让你更容易辨认它是否一直指向同一个张力。"]
+                )
+            ],
+            recommendations: PsycheConstellation.Recommendations(
+                books: [PsycheConstellation.Recommendations.Book(title: "局外人", author: "阿尔贝·加缪", reason: "关于疏离感与真实感之间的冷光。")],
+                films: [PsycheConstellation.Recommendations.Film(title: "潜行者", director: "安德烈·塔可夫斯基", reason: "像进入内在禁区的一次缓慢长镜头。")],
+                music: [PsycheConstellation.Recommendations.Music(artist: "坂本龙一", album: "async", reason: "像一层缓慢展开的精神潮汐。")]
+            )
+        )
+
+        let image = BenyuanConstellationImageRenderer.render(
+            constellation: constellation,
+            userName: "测试用户"
+        )
+
+        XCTAssertEqual(Int(image.size.width), 1080)
+        XCTAssertEqual(Int(image.size.height), 3840)
+        XCTAssertNotNil(image.pngData())
+    }
+
     func testConstellationRecordResponseBuildsGeneratePayloadForHistoryRestore() throws {
         let data = """
         {
