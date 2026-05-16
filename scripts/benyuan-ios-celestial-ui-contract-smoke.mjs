@@ -100,6 +100,7 @@ assert.match(auth, /\.foregroundStyle\(BenyuanColor\.bgVoid\)/, "native Apple lo
 assert.match(auth, /BenyuanAppleAuthCoordinator/, "native Apple login must use an explicit authorization coordinator instead of a transparent system-button overlay");
 assert.match(auth, /startAppleLogin/, "native Apple login must have a real SwiftUI button action that opens Apple authorization");
 assert.doesNotMatch(auth, /\.opacity\(0\.001\)/, "native Apple login must not rely on a nearly transparent system button that can miss taps on device");
+assert.doesNotMatch(auth, /soon|SOON/, "native auth view should not show soon badges on login options");
 assert.doesNotMatch(auth, /先以访客进入|可先以访客进入/, "native auth view must not expose guest exploration before login");
 
 assert.match(collect, /BenyuanQuestionSignalField/, "native collect view must include per-question signal motion");

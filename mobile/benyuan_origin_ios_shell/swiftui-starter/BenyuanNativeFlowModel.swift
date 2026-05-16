@@ -105,7 +105,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var hasCompletedInitialHomeBoot = false
 
     let client: BenyuanAPIClient
-    private let store: BenyuanFlowStore
+    let store: BenyuanFlowStore
     var phaseStartedAt = Date()
     var interactionStartedAt = Date()
     var choiceLogs: [Part2ChoiceRecord] = []
@@ -238,6 +238,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         }
 
         await refreshAuthProviders()
+        await refreshStoredAuthSessionOnLaunch()
         stage = .home
         hasCompletedInitialHomeBoot = true
     }
@@ -296,6 +297,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
             showToast("先选择 Apple、微信或手机号码登录，再开始探索。")
             return
         }
+        guard await ensureCurrentAuthSession() else { return }
         await beginNativeExploration()
     }
 
@@ -561,6 +563,23 @@ final class BenyuanNativeFlowModel: ObservableObject {
         persist()
         activeNativePreviewStage = nil
         stage = .home
+    }
+
+    func resetExplorationDraftKeepingIdentity(authSession: BenyuanAuthSession?, user: BenyuanUser?) {
+        session = .empty
+        session.authSession = authSession
+        session.user = user
+        activeGenerationJobId = nil
+        client.setAuthSession(authSession)
+        thumbnails = [:]
+        questions = []
+        activeQuestionIndex = 0
+        theater = nil
+        constellation = nil
+        prefersConstellationEndPreview = false
+        resetTheaterState()
+        flowStartedAt = Date()
+        persist()
     }
 
     func uploadedAssets(for questionId: String) -> [BenyuanUploadedAssetRef] {

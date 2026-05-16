@@ -96,11 +96,18 @@ function providerSubject(provider: BenyuanAuthProvider, source?: string) {
   return `${provider}:${createHash("sha256").update(seed).digest("hex").slice(0, 28)}`;
 }
 
+function normalizeBenyuanDisplayName(displayName?: string) {
+  const value = displayName?.trim();
+  if (!value || value === "Apple 用户") return undefined;
+  return value;
+}
+
 function updateUserProvider(user: BenyuanUser, provider: BenyuanAuthProvider, providerSubjectValue: string, options?: { displayName?: string }) {
+  const displayName = normalizeBenyuanDisplayName(options?.displayName);
   return {
     ...user,
     updated_at: nowIso(),
-    display_name: user.display_name ?? options?.displayName,
+    display_name: displayName ?? normalizeBenyuanDisplayName(user.display_name),
     providers: {
       ...user.providers,
       [provider]: providerSubjectValue,
@@ -377,13 +384,14 @@ export async function verifyAppleIdentityToken(identityToken: string): Promise<A
 async function createAuthSession(provider: BenyuanAuthProvider, options?: { subject?: string; displayName?: string }) {
   const timestamp = nowIso();
   const dataScope = resolveBenyuanDataScope();
+  const displayName = normalizeBenyuanDisplayName(options?.displayName);
   const user: BenyuanUser = {
     user_id: createBenyuanAuthId("usr"),
     data_cohort: dataScope.data_cohort,
     data_environment: dataScope.data_environment,
     created_at: timestamp,
     updated_at: timestamp,
-    display_name: options?.displayName,
+    display_name: displayName,
     primary_provider: provider,
     providers: {
       [provider]: providerSubject(provider, options?.subject),
@@ -415,7 +423,8 @@ async function createOrReuseAuthSession(provider: BenyuanAuthProvider, options?:
 
   const existingUser = await findUserByProviderSubject(provider, providerSubjectValue);
   if (existingUser) {
-    return createBoundAuthSession(existingUser, provider);
+    const user = updateUserProvider(existingUser, provider, providerSubjectValue, { displayName: options?.displayName });
+    return createBoundAuthSession(user, provider);
   }
 
   const auth = await createAuthSession(provider, {
@@ -459,7 +468,7 @@ export async function createAppleAuthSession(input: { identityToken?: string; au
   const verified = await verifyAppleIdentityToken(input.identityToken ?? "");
   return createOrReuseAuthSession("apple", {
     subject: verified.subject,
-    displayName: input.displayName ?? "Apple 用户",
+    displayName: normalizeBenyuanDisplayName(input.displayName),
   });
 }
 

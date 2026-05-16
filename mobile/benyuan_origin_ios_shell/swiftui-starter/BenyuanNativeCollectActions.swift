@@ -65,6 +65,12 @@ extension BenyuanNativeFlowModel {
                 advanceAfterAnswer(delay: 0.25)
             }
         } catch {
+            if isExpiredAuthError(error) {
+                clearLocalAuthAfterLogout()
+                showToast("登录状态已过期，请重新登录。")
+                uploadingQuestionId = nil
+                return
+            }
             showToast(error.localizedDescription)
         }
 

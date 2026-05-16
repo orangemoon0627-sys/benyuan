@@ -9,6 +9,7 @@ final class BenyuanFlowStore {
     private let defaults: UserDefaults
     private let key = "benyuan-native-session"
     private let e2eEventsKey = "benyuan-native-e2e-events"
+    private let appleDisplayNameKey = "benyuan-apple-display-name"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -31,6 +32,18 @@ final class BenyuanFlowStore {
 
     func reset() {
         defaults.removeObject(forKey: key)
+    }
+
+    func loadAppleDisplayName() -> String? {
+        let value = defaults.string(forKey: appleDisplayNameKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value?.isEmpty == false ? value : nil
+    }
+
+    func saveAppleDisplayName(_ displayName: String?) {
+        let value = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value, !value.isEmpty, value != "Apple 用户" else { return }
+        defaults.set(value, forKey: appleDisplayNameKey)
+        defaults.synchronize()
     }
 
     func loadE2EEvents() -> [BenyuanNativeE2EEvent] {

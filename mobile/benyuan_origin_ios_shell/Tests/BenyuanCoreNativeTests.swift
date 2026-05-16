@@ -34,26 +34,24 @@ final class BenyuanMockURLProtocol: URLProtocol {
 
     override func stopLoading() {}
 
-    static func json(_ status: Int, _ body: String) -> (HTTPURLResponse, Data) {
-        let url = URL(string: "http://native-e2e.test")!
+    static func response(url: URL, status: Int, body: String, contentType: String = "application/json") -> (HTTPURLResponse, Data) {
         let response = HTTPURLResponse(
             url: url,
             statusCode: status,
             httpVersion: nil,
-            headerFields: ["Content-Type": "application/json"]
+            headerFields: ["Content-Type": contentType]
         )!
         return (response, body.data(using: .utf8)!)
     }
 
+    static func json(_ status: Int, _ body: String) -> (HTTPURLResponse, Data) {
+        let url = URL(string: "http://native-e2e.test")!
+        return response(url: url, status: status, body: body)
+    }
+
     static func html(_ status: Int, _ body: String) -> (HTTPURLResponse, Data) {
         let url = URL(string: "http://native-e2e.test")!
-        let response = HTTPURLResponse(
-            url: url,
-            statusCode: status,
-            httpVersion: nil,
-            headerFields: ["Content-Type": "text/html; charset=utf-8"]
-        )!
-        return (response, body.data(using: .utf8)!)
+        return response(url: url, status: status, body: body, contentType: "text/html; charset=utf-8")
     }
 }
 
@@ -155,6 +153,19 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(store.loadE2EEvents(), [])
     }
 
+    func testFlowStoreCachesAppleDisplayNameWithoutPlaceholder() throws {
+        let suiteName = "benyuan-core-native-apple-name-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = BenyuanFlowStore(defaults: defaults)
+
+        store.saveAppleDisplayName("Apple 用户")
+        XCTAssertNil(store.loadAppleDisplayName())
+
+        store.saveAppleDisplayName("樊浩")
+        XCTAssertEqual(store.loadAppleDisplayName(), "樊浩")
+    }
+
     func testAPIClientBuildsEndpointRelativeToBaseURL() throws {
         let client = BenyuanAPIClient(baseURL: URL(string: "http://120.26.126.88")!)
 
@@ -175,6 +186,62 @@ final class BenyuanCoreNativeTests: XCTestCase {
         ))
 
         XCTAssertEqual(client.authorizationHeaderValue, "Bearer bya_anonymous_test")
+    }
+
+    func testAPIClientUploadSendsBearerAuthToken() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-upload.test")!,
+            session: URLSession(configuration: config)
+        )
+        client.setAuthSession(BenyuanAuthSession(
+            sessionId: "auth_test",
+            userId: "usr_test",
+            token: "bya_apple_test",
+            provider: .apple,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        ))
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/api/part1/upload")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer bya_apple_test")
+            return BenyuanMockURLProtocol.json(200, """
+            {
+              "question_id": "C2_precious_photo_analysis",
+              "assets": [
+                {
+                  "asset_id": "upload_test",
+                  "question_id": "C2_precious_photo_analysis",
+                  "name": "fixture.jpg",
+                  "size": 4,
+                  "mime_type": "image/jpeg",
+                  "uploaded_at": "2026-05-10T00:00:00.000Z",
+                  "upload_origin": "native-library"
+                }
+              ]
+            }
+            """)
+        }
+
+        let response = try await client.upload(
+            questionId: "C2_precious_photo_analysis",
+            images: [
+                BenyuanImagePayload(
+                    name: "fixture.jpg",
+                    mimeType: "image/jpeg",
+                    data: Data([0xFF, 0xD8, 0xFF, 0xD9]),
+                    width: 1,
+                    height: 1
+                )
+            ],
+            origin: "native-library"
+        )
+
+        XCTAssertEqual(response.assets.first?.assetId, "upload_test")
     }
 
     func testAPIClientRetriesFallbackBaseURLForSecureConnectionFailures() async throws {
@@ -1022,6 +1089,113 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(model.stage, .account)
 
         model.clearLocalAuthAfterLogout()
+
+        XCTAssertNil(model.session.authSession)
+        XCTAssertNil(model.session.user)
+        XCTAssertEqual(model.stage, .home)
+        XCTAssertNil(store.load().authSession)
+    }
+
+    @MainActor
+    func testRefreshAccountKeepsLocalSessionForTransientNetworkFailure() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-account.test")!,
+            session: URLSession(configuration: config)
+        )
+        let suiteName = "benyuan-account-transient-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            BenyuanMockURLProtocol.handler = nil
+        }
+        let store = BenyuanFlowStore(defaults: defaults)
+        let model = BenyuanNativeFlowModel(client: client, store: store)
+        let authSession = BenyuanAuthSession(
+            sessionId: "auth_test",
+            userId: "usr_test",
+            token: "bya_apple_test",
+            provider: .apple,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        )
+        let user = BenyuanUser(
+            userId: "usr_test",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z",
+            displayName: "樊浩",
+            primaryProvider: .apple,
+            providers: ["apple": "apple:test"],
+            phoneBound: false,
+            wechatBound: false
+        )
+        model.session.authSession = authSession
+        model.session.user = user
+        model.stage = .account
+        client.setAuthSession(authSession)
+        store.save(model.session)
+
+        BenyuanMockURLProtocol.handler = { _ in
+            throw URLError(.timedOut)
+        }
+
+        await model.refreshAccount()
+
+        XCTAssertEqual(model.session.authSession, authSession)
+        XCTAssertEqual(model.session.user, user)
+        XCTAssertEqual(model.stage, .account)
+        XCTAssertEqual(store.load().authSession, authSession)
+    }
+
+    @MainActor
+    func testRefreshAccountClearsLocalSessionForExpiredServerAuth() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-account.test")!,
+            session: URLSession(configuration: config)
+        )
+        let suiteName = "benyuan-account-expired-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            BenyuanMockURLProtocol.handler = nil
+        }
+        let store = BenyuanFlowStore(defaults: defaults)
+        let model = BenyuanNativeFlowModel(client: client, store: store)
+        let authSession = BenyuanAuthSession(
+            sessionId: "auth_test",
+            userId: "usr_test",
+            token: "bya_apple_test",
+            provider: .apple,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        )
+        model.session.authSession = authSession
+        model.session.user = BenyuanUser(
+            userId: "usr_test",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z",
+            displayName: "樊浩",
+            primaryProvider: .apple,
+            providers: ["apple": "apple:test"],
+            phoneBound: false,
+            wechatBound: false
+        )
+        model.stage = .account
+        client.setAuthSession(authSession)
+        store.save(model.session)
+
+        BenyuanMockURLProtocol.handler = { request in
+            BenyuanMockURLProtocol.response(
+                url: request.url ?? URL(string: "http://native-account.test/api/auth/me")!,
+                status: 401,
+                body: #"{"error":"auth_required"}"#
+            )
+        }
+
+        await model.refreshAccount()
 
         XCTAssertNil(model.session.authSession)
         XCTAssertNil(model.session.user)

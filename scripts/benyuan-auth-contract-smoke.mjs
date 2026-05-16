@@ -163,6 +163,7 @@ assert.match(nativeModels, /BenyuanAccountHistoryItem/, "native models must deco
 assert.match(nativeModels, /BenyuanAccountHistoryResponse/, "native models must decode account history responses");
 assert.match(nativeModels, /BenyuanConstellationRecordResponse/, "native models must decode constellation detail responses");
 assert.match(nativeClient, /Authorization/, "native API client must attach Authorization header");
+assert.match(nativeClient, /func upload[\s\S]*?applyAuth\(to:\s*&request\)/, "native image upload must attach Authorization header to multipart requests");
 assert.match(nativeClient, /fallbackBaseURL/, "native API client must keep a fallback base URL for production network failures");
 assert.match(nativeClient, /secureConnectionFailed/, "native API client must retry fallback for SSL connection failures");
 assert.match(nativeClient, /networkFallbackBaseURL/, "native API client must source fallback URL from shell release config");

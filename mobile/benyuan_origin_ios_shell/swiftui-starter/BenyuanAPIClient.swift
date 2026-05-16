@@ -205,6 +205,7 @@ final class BenyuanAPIClient {
         var request = URLRequest(url: url(path: "/api/part1/upload"))
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        applyAuth(to: &request)
         request.httpBody = makeMultipartBody(questionId: questionId, images: images, origin: origin, boundary: boundary)
         return try await send(request)
     }

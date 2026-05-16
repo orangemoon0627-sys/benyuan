@@ -70,11 +70,65 @@ extension BenyuanNativeFlowModel {
             session.authSession = auth.session
             session.user = auth.user
             client.setAuthSession(auth.session)
+            if auth.session.provider == .apple {
+                store.saveAppleDisplayName(auth.user.displayName)
+            }
             persist()
         } catch {
-            showToast(error.localizedDescription)
-            clearLocalAuthAfterLogout()
+            if isExpiredAuthError(error) {
+                clearLocalAuthAfterLogout()
+                showToast("登录状态已过期，请重新登录。")
+                return
+            }
+            showToast("账户状态暂时无法同步，请稍后再试。")
         }
+    }
+
+    func refreshStoredAuthSessionOnLaunch() async {
+        guard session.authSession != nil else { return }
+        _ = await refreshAuthSessionOrClear(showExpiredToast: false)
+    }
+
+    func ensureCurrentAuthSession() async -> Bool {
+        guard session.authSession != nil else {
+            stage = .auth
+            return false
+        }
+        return await refreshAuthSessionOrClear(showExpiredToast: true)
+    }
+
+    private func refreshAuthSessionOrClear(showExpiredToast: Bool) async -> Bool {
+        do {
+            let auth = try await client.fetchCurrentAccount()
+            session.authSession = auth.session
+            session.user = auth.user
+            client.setAuthSession(auth.session)
+            if auth.session.provider == .apple {
+                store.saveAppleDisplayName(auth.user.displayName)
+            }
+            persist()
+            return true
+        } catch {
+            if isExpiredAuthError(error) {
+                clearLocalAuthAfterLogout()
+                if showExpiredToast {
+                    showToast("登录状态已过期，请重新登录。")
+                }
+                return false
+            }
+
+            if showExpiredToast {
+                showToast("账户状态暂时无法确认，请稍后再试。")
+            }
+            return false
+        }
+    }
+
+    func isExpiredAuthError(_ error: Error) -> Bool {
+        guard case BenyuanAPIError.server(let status, let message) = error else {
+            return false
+        }
+        return status == 401 && message == "auth_required"
     }
 
     func showBindingInfo(_ provider: BenyuanAuthProvider) {
@@ -162,19 +216,34 @@ extension BenyuanNativeFlowModel {
         processingDetail = "系统凭证会被写入同一个私人月相档案。"
         processingProgress = 0.2
         do {
+            let resolvedDisplayName = normalizedAppleDisplayName(displayName)
             let auth = try await client.createAppleSession(
                 identityToken: identityToken,
                 authorizationCode: authorizationCode,
-                displayName: displayName
+                displayName: resolvedDisplayName
             )
-            session.authSession = auth.session
-            session.user = auth.user
+            store.saveAppleDisplayName(auth.user.displayName ?? resolvedDisplayName)
+            resetExplorationDraftKeepingIdentity(authSession: auth.session, user: auth.user)
             client.setAuthSession(auth.session)
-            persist()
             await beginNativeExploration()
         } catch {
             stage = .error(error.localizedDescription)
         }
+    }
+
+    private func normalizedAppleDisplayName(_ displayName: String?) -> String? {
+        let currentName = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let currentName, !currentName.isEmpty {
+            return currentName
+        }
+        if let cached = store.loadAppleDisplayName() {
+            return cached
+        }
+        let existing = session.user?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let existing, !existing.isEmpty, existing != "Apple 用户" {
+            return existing
+        }
+        return nil
     }
 
     func continueWithWechat(code: String, displayName: String? = nil) async {

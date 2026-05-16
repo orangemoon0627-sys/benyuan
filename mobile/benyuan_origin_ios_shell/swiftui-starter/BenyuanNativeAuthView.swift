@@ -93,14 +93,6 @@ struct BenyuanNativeAuthView: View {
                             .foregroundStyle(model.isPhoneAuthReady ? BenyuanColor.textPrimary : BenyuanColor.textTertiary)
                             .frame(maxWidth: .infinity, minHeight: 34)
                             .background(Capsule().fill(BenyuanColor.glassFill.opacity(model.isPhoneAuthReady ? 0.82 : 0.72)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(model.isPhoneAuthReady ? 0.86 : 0.72))))
-                            .overlay(alignment: .topTrailing) {
-                                if !model.isPhoneAuthReady {
-                                    Text("soon")
-                                        .font(.system(size: 8, weight: .black, design: .monospaced))
-                                        .foregroundStyle(BenyuanColor.accentGold.opacity(0.74))
-                                        .offset(x: -10, y: -6)
-                                }
-                            }
                     }
                     .buttonStyle(.plain)
                 }
@@ -232,14 +224,6 @@ struct BenyuanNativeAuthView: View {
             .foregroundStyle(ready ? BenyuanColor.textPrimary : BenyuanColor.textTertiary)
             .frame(maxWidth: .infinity, minHeight: 34)
             .background(Capsule().fill(BenyuanColor.glassFill.opacity(ready ? 0.82 : 0.72)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(ready ? 0.86 : 0.72))))
-            .overlay(alignment: .topTrailing) {
-                if !ready {
-                    Text("soon")
-                        .font(.system(size: 8, weight: .black, design: .monospaced))
-                        .foregroundStyle(BenyuanColor.accentGold.opacity(0.74))
-                        .offset(x: -10, y: -6)
-                }
-            }
     }
 }
 
