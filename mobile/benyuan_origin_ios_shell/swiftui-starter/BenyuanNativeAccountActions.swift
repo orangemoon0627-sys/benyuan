@@ -193,6 +193,36 @@ extension BenyuanNativeFlowModel {
         }
     }
 
+    func updateDisplayName(_ displayName: String) async {
+        let normalized = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            showToast("名称不能为空。")
+            return
+        }
+
+        isDisplayNameUpdating = true
+        defer { isDisplayNameUpdating = false }
+
+        do {
+            let auth = try await client.updateDisplayName(normalized)
+            session.authSession = auth.session
+            session.user = auth.user
+            client.setAuthSession(auth.session)
+            if auth.session.provider == .apple {
+                store.saveAppleDisplayName(auth.user.displayName)
+            }
+            persist()
+            showToast("名称已更新。")
+        } catch {
+            if isExpiredAuthError(error) {
+                clearLocalAuthAfterLogout()
+                showToast("登录状态已过期，请重新登录。")
+                return
+            }
+            showToast(error.localizedDescription)
+        }
+    }
+
     func continueAsGuest() async {
         stage = .processing
         processingTitle = "正在建立私人月相档案"
@@ -227,7 +257,12 @@ extension BenyuanNativeFlowModel {
             client.setAuthSession(auth.session)
             await beginNativeExploration()
         } catch {
-            stage = .error(error.localizedDescription)
+            stage = .home
+            if case BenyuanAPIError.network = error {
+                showToast("Apple 授权已完成，但暂时连接不上本源服务器。请稍后再试。")
+            } else {
+                showToast(error.localizedDescription)
+            }
         }
     }
 

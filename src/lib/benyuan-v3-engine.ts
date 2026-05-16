@@ -579,6 +579,195 @@ function musicMotif(record: Part1Record) {
   return `${genres.slice(0, 3).join("、")}交织成一条声音线，${tone}`;
 }
 
+function deriveMusicPsycheReading(record: Part1Record) {
+  const music = record.part1_data.aesthetics.music_analysis;
+  const source = evidenceFingerprint(record);
+  if (!music) {
+    return "声音线索尚未显影，因此星图会更多依靠你的选择节奏和图像偏好来判断情绪运动。";
+  }
+
+  if (hasEvidenceCue(source, /post-rock|postrock|ambient|instrumental|melancholic|introspective|nostalgic|后摇|氛围|低频/u)) {
+    return "你选择的声音更偏低频、无词或缓慢铺陈，它反映的不是单纯伤感，而是一种把情绪先放进安全容器里的方式：先让声音替你承受，再决定自己要不要开口。";
+  }
+
+  if (hasEvidenceCue(source, /warm|hopeful|electronic|indie|morning|renewal|温暖|电子|独立|清晨|重新开始/u)) {
+    return "你这次的声音线索更接近温暖脉冲和身体节律，说明潜在欲望正在从纯粹沉潜转向重新启动：不是只想理解自己，也想把某个新方向带回现实。";
+  }
+
+  return "你的歌单像一种情绪气候图：它不急着说出结论，而是保留了一层可退可进的距离，让你能在不暴露全部的情况下辨认自己的真实状态。";
+}
+
+function derivePhotoPsycheReading(record: Part1Record) {
+  const photo = record.part1_data.narrative.precious_photo_analysis;
+  if (!photo) {
+    return "珍视物线索尚未显影，星图会暂时把你的审美选择当作投射入口。";
+  }
+
+  const source = evidenceFingerprint(record);
+  if (hasEvidenceCue(source, /sea|ocean|shore|horizon|海|岸|潮|lonefigure|seascape|solitude|辽阔/u)) {
+    return "你珍视的画面更像一处可退守的远景：辽阔、低光、人与世界保持距离。它背后的动机不是逃开关系，而是寻找一个不会立刻侵入你的空间，让情绪能慢慢显形。";
+  }
+
+  if (hasEvidenceCue(source, /morning|bicycle|tree|renewal|openpath|清晨|骑|树影|重新开始/u)) {
+    return "你珍视的画面带有路径、移动和重新开始的意味。它像是在替你保存一个尚未完全兑现的自我投射：你想回到生活表面，但希望这次不是被推着走，而是自己重新踩住节奏。";
+  }
+
+  if (hasEvidenceCue(source, /window|rain|room|interior|窗|雨|房间/u)) {
+    return "你珍视的画面更接近窗、雨或房间一类半开放空间。它背后隐藏的是边界动机：你想被世界看见一点，但仍需要一层玻璃，让真实不至于过早暴露。";
+  }
+
+  return "你珍视的图像不是装饰，它更像一块投射屏：你把难以直接说出的关系位置、时间感和未完成愿望，先交给光线、构图和物件来保存。";
+}
+
+function deriveSocialPsycheReading(record: Part1Record) {
+  const social = record.part1_data.narrative.social_posts_analysis?.[0];
+  const overall = record.part1_data.narrative.social_posts_overall_pattern;
+  if (!social && !overall) {
+    return "社交文字线索较少，因此星图会把你的表达方式更多放回问答和剧场选择里辨认。";
+  }
+
+  const style = social?.expression_style ?? "";
+  const presentation = social?.self_presentation ?? "";
+  const themes = new Set([...(social?.themes ?? []), ...(overall?.core_themes ?? [])]);
+  if (style.includes("poetic") || themes.has("unsent_words")) {
+    return "你的社交文字更像把真实折进隐喻里：它看上去是诗性表达，深处却有低强度求回应的愿望。你不是不想被懂，而是不想让这份需要显得太直接。";
+  }
+
+  if (presentation.includes("vulnerable") || social?.psychological_signals?.includes("emotional_depth")) {
+    return "你的文字里有真实袒露的痕迹，但它通常不会完全摊开。它显示的社交状态是：愿意让别人靠近，却会保留解释权，避免自己的情绪被别人过快命名。";
+  }
+
+  if (themes.has("movement") || themes.has("renewal") || themes.has("daily_life")) {
+    return "你的社交文字把更新愿望放进日常动作里，而不是直接宣布改变。它背后的心理动机更像在测试现实是否仍可重新开始，同时保留自己随时调整方向的自由。";
+  }
+
+  return "你的社交表达不是简单展示生活，而是在管理别人能看见你的哪一部分：既留下线索，也保留边界，这会成为星图判断客体距离的重要依据。";
+}
+
+function materialFingerprintForTheater(record: Part1Record) {
+  const music = record.part1_data.aesthetics.music_analysis;
+  const photo = record.part1_data.narrative.precious_photo_analysis;
+  const social = record.part1_data.narrative.social_posts_analysis ?? [];
+  return [
+    record.part1_data.aesthetics.core_desire_image,
+    record.part1_data.aesthetics.inspiration_scene,
+    record.part1_data.philosophy.decision_style,
+    record.part1_data.philosophy.emotion_pattern,
+    record.part1_data.philosophy.relationship_philosophy,
+    music?.primary_genres.join("|"),
+    music?.emotional_tone,
+    Object.entries(music?.personality_signals ?? {}).map(([key, value]) => `${key}:${value}`).join("|"),
+    photo?.visual_content,
+    photo?.composition,
+    photo?.lighting,
+    photo?.color_mood,
+    photo?.symbolic_elements.join("|"),
+    photo?.psychological_interpretation.core_themes.join("|"),
+    social.map((item) => `${item.emotional_tone}:${item.themes.join("|")}:${item.expression_style}:${item.psychological_signals.join("|")}`).join("||"),
+  ].filter(Boolean).join(" ").toLocaleLowerCase("zh-CN");
+}
+
+function hasTheaterCue(source: string, pattern: RegExp) {
+  return pattern.test(source);
+}
+
+function deriveTheaterMaterialReading(record: Part1Record) {
+  const source = materialFingerprintForTheater(record);
+  const social = record.part1_data.narrative.social_posts_analysis?.[0];
+  const socialThemes = new Set([...(social?.themes ?? []), ...(record.part1_data.narrative.social_posts_overall_pattern?.core_themes ?? [])]);
+  const socialSignals = new Set(social?.psychological_signals ?? []);
+  const music = record.part1_data.aesthetics.music_analysis;
+  const musicSignals = music?.personality_signals ?? {};
+
+  const seaLike = hasTheaterCue(source, /sea|ocean|shore|horizon|海|岸|潮|lonefigure|seascape/u);
+  const morningLike = hasTheaterCue(source, /morning|bicycle|tree|renewal|openpath|清晨|骑|树影|重新开始/u);
+  const windowLike = hasTheaterCue(source, /window|rain|room|interior|窗|雨|房间/u);
+  const structureLike = hasTheaterCue(source, /grid|architecture|city|order|map|building|秩序|城市|几何|坐标/u);
+  const lowFrequency = hasTheaterCue(source, /post-rock|postrock|ambient|instrumental|melancholic|introspective|nostalgic|低频|后摇|氛围/u);
+  const warmPulse = hasTheaterCue(source, /warm|hopeful|electronic|indie|morning|renewal|温暖|电子|独立/u);
+  const explicitConnection = socialThemes.has("love") || socialThemes.has("connection") || socialSignals.has("emotional_depth");
+
+  const visualMotive = seaLike
+    ? "远处海面和一条被潮水反复擦亮的边线"
+    : morningLike
+      ? "清晨树影里一段刚被照亮的路"
+      : windowLike
+        ? "一扇有雨痕的窗，窗后有一间没有完全点亮的房间"
+        : structureLike
+          ? "一组排列得很清楚、却在边缘轻微错位的坐标"
+          : "一块尚未完全显影的影像，边缘保留着光和距离";
+
+  const entranceSpace = seaLike
+    ? "一条被黑色潮水覆盖的长廊"
+    : morningLike
+      ? "一段悬在清晨与夜色之间的窄路"
+      : windowLike
+        ? "一间靠近窗边的暗房"
+        : structureLike
+          ? "一座安静旋转的星图房间"
+          : "一片低光浮动的深场";
+
+  const centralObject = seaLike
+    ? "一封被潮水托起、迟迟没有寄出的信"
+    : morningLike
+      ? "一把挂着微光的车钥匙"
+      : windowLike
+        ? "一页贴在窗上的薄纸"
+        : structureLike
+          ? "一枚刻着细线的黑色坐标盘"
+          : "一件被光擦亮边缘的旧物";
+
+  const soundWeather = lowFrequency
+    ? "很低的无词声场从墙后推来，像情绪先替你试探空气"
+    : warmPulse
+      ? "细小的脉冲在地面下亮起，像身体在提醒你仍可以往前"
+      : "一段辨认不清的声音贴着深处流动，像某种尚未开口的情绪";
+
+  const hiddenWish = explicitConnection
+    ? "想被真正听见，却不想被立刻解释"
+    : musicSignals.emotional_depth === "high"
+      ? "想让深处的情绪被承认，但仍保留自己的速度"
+      : "想确认这条路真的属于自己，而不是被外界推着走";
+
+  const defenseGesture = record.part1_data.philosophy.decision_style === "B2-1" || structureLike
+    ? "先整理轮廓，再决定是否进入"
+    : record.part1_data.philosophy.decision_style === "B2-4"
+      ? "先保留退路，避免被过早的后果拖住"
+      : "先观察光源，等它稳定后再靠近";
+
+  const relationDistance = record.part1_data.philosophy.relationship_philosophy === "B5-1"
+    ? "你会先读空气里最细微的变化，确认回应是否仍然稳定"
+    : record.part1_data.philosophy.relationship_philosophy === "B5-5"
+      ? "你会先判断这段靠近是否值得继续投入"
+      : "你靠近时仍会保留一小段让自己呼吸的距离";
+
+  const transformedSentence = social?.expression_style?.includes("poetic") || socialThemes.has("unsent_words")
+    ? "一句被写下却没有完全交出去的话"
+    : social?.self_presentation?.includes("vulnerable")
+      ? "一段没有完全收回去的真实"
+      : "一句在夜里反复返回的短句";
+
+  return {
+    entranceSpace,
+    visualMotive,
+    centralObject,
+    soundWeather,
+    hiddenWish,
+    defenseGesture,
+    relationDistance,
+    transformedSentence,
+    visualPromptFragment: seaLike
+      ? "black tidal corridor, distant sea horizon, unsent letter, antique gold rim light"
+      : morningLike
+        ? "liminal morning path, tree shadow, small glowing key, deep black cosmic field"
+        : windowLike
+          ? "rain window room, translucent paper, dark violet interior, silver glow"
+          : structureLike
+            ? "quiet star-map chamber, black coordinate disk, subtle geometric lines"
+            : "deep black symbolic chamber, edge-lit keepsake, silver and antique gold glow",
+  };
+}
+
 function evidenceFingerprint(record: Part1Record, part2?: Part2Record) {
   const music = record.part1_data.aesthetics.music_analysis;
   const social = record.part1_data.narrative.social_posts_analysis ?? [];
@@ -719,18 +908,12 @@ function visibleTheme(value: string) {
 }
 
 export function generateDeterministicTheaterScript(record: Part1Record): TheaterScript {
-  const coreImage = getSelectedText("A1_core_image", record.part1_data.aesthetics.core_desire_image);
   const cinema = getSelectedText("A4_cinema", record.part1_data.aesthetics.cinema);
-  const scene = getSelectedText("A5_inspiration_scene", record.part1_data.aesthetics.inspiration_scene);
-  const decision = getSelectedText("B2_decision_style", record.part1_data.philosophy.decision_style);
   const emotion = getSelectedText("B3_emotion_pattern", record.part1_data.philosophy.emotion_pattern);
-  const relation = getSelectedText("B5_relationship_philosophy", record.part1_data.philosophy.relationship_philosophy);
-  const socialText = firstSocialPostText(record);
-  const photo = photoMotif(record);
-  const music = musicMotif(record);
   const themes = record.aggregated_traits.core_themes;
   const archetype = getCoreArchetype(record);
   const visibleArchetype = getBenyuanArchetypeProfile(archetype).archetype.name;
+  const material = deriveTheaterMaterialReading(record);
 
   return {
     user_id: record.user_id,
@@ -742,26 +925,26 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
       key_themes: themes.map(visibleTheme),
     },
     act1: {
-      scene_description: `你醒来时，站在一片很深的月场边缘。远处的黑色天体缓慢转动，边缘有一圈暗金色的光，像从“${coreImage}”里抽出的引力。脚下不是地面，而是一层半透明的潮水；潮水下压着一张照片的轮廓：${photo}。\n\n空气里有${music}。它不是背景乐，更像这个空间自己的呼吸。某处传来一句低低的回声：“${socialText}” 这句话没有被解释，只是在你身边绕了一圈，落成一条通向前方的细线。\n\n你身后保留着“${scene}”的节律，前方则像被“${cinema}”的镜头慢慢推近。一封没有寄出的信浮在潮水上，信封背面有照片里的光，旁边还有几颗暗金粒子沿着同一个位置反复靠近。\n\n你意识到，这不是为了让你回答问题而临时搭出来的场景。它更像前面那些画面、声音、句子和停顿，被折成了一段只能由你继续往下走的小说。你只需要沿着第一条细线靠近，看看它会把你带到哪里。`,
-      visual_prompt: `deep black moon field, dark celestial body with antique gold rim light, translucent tidal floor, photo trace motif ${photo}, cinematic atmosphere inspired by ${cinema}, quiet immersive iPhone app scene, low saturation, silver glow, 16:9`,
-      ambient_sound: coreImage.includes("海") ? "ocean_waves_distant" : coreImage.includes("雨") ? "rain_soft" : "silence_deep",
+      scene_description: `你醒来时，站在${material.entranceSpace}的边缘。远处的黑色天体缓慢转动，边缘有一圈暗金色的光。地面像一层很薄的玻璃，玻璃下面浮着${material.visualMotive}，它没有解释自己，只把你带回某种熟悉的心境。\n\n${material.soundWeather}。这不是背景乐，更像这个空间自己的呼吸。某处有${material.transformedSentence}，它被折得很小，落在${material.centralObject}旁边。你能感觉到，那里藏着一个没有直接说出口的愿望：${material.hiddenWish}。\n\n前方的光像被${cinema}的镜头慢慢推近。它没有催促你，只让距离变得可见。你也没有马上进入，而是按照自己惯常的方式${material.defenseGesture}。这座空间因此不是临时搭出的场景，而像前面那些声音、画面、物件和停顿，终于被统筹成一条可以继续走下去的路。\n\n你只需要靠近第一处微光。不是为了证明什么，而是为了看看：当你真的站到那条路上时，自己会先保护什么，又会让什么靠近。`,
+      visual_prompt: `deep black personal symbolic scene, ${material.visualPromptFragment}, cinematic atmosphere inspired by ${cinema}, quiet immersive iPhone app scene, low saturation, silver glow, 16:9`,
+      ambient_sound: material.visualPromptFragment.includes("sea") ? "ocean_waves_distant" : material.visualPromptFragment.includes("rain") ? "rain_soft" : "silence_deep",
       duration: 30,
     },
     act2: {
       choices: [
         {
           choice_id: 1,
-          scene: `第一幕留下的那句话还在潮水上漂着。你往前走，发现它被折成一封没有寄出的信，信封背面有照片里的光。你的身体按照“${decision}”的方式先做出反应，而情绪像“${emotion}”一样在水下慢慢移动。`,
+          scene: `第一处微光停在${material.centralObject}上。你往前走，发现它并不要求你立刻解释，只把那股熟悉的情绪慢慢托出来。你的身体先进入${material.defenseGesture}的节奏，而水下的情绪像“${emotion}”一样缓慢移动。`,
           options: [
             { id: "1A", text: "靠近那封信，让潮水先读出第一行", trait_signal: "action_oriented + intuitive + risk_taking", response: "信封没有打开，只是变得更轻。你听见里面有一小段声音，像答案还没准备好，却已经承认你来了。" },
-            { id: "1B", text: "停下脚步，先看清信封背面的光", trait_signal: "analytical + cautious + risk_aware", response: "那束光没有催你。它沿着照片里的轮廓慢慢亮起，让你知道辨认本身也是一种靠近。" },
+            { id: "1B", text: "停下脚步，先看清信封背面的光", trait_signal: "analytical + cautious + risk_aware", response: "那束光没有催你。它沿着影像边缘的轮廓慢慢亮起，让你知道辨认本身也是一种靠近。" },
             { id: "1C", text: "沿着回声回应一句话，再等它回来", trait_signal: "relationship_oriented + openness + trust_tendency", response: "你的声音落进月场，过了一会儿才回来。它不是原样返回，而是多了一点像他人的温度。" },
             { id: "1D", text: "绕开信封，先把自己的影子带到前面", trait_signal: "independent + self_protective + avoidant_attachment", response: "影子比你先穿过那圈光。你没有丢下信，只是暂时不让它决定你的方向。" },
           ],
         },
         {
           choice_id: 2,
-          scene: `信的纸面化成一条窄桥。桥的另一端站着一个模糊的人影，像从“${relation}”里显出来的距离。TA 没有说话，只把那张照片推到桥中央，等你决定要不要共享这段光。`,
+          scene: `${material.centralObject}的边缘化成一条窄桥。桥的另一端有一个模糊的人影，没有逼近，也没有离开。${material.relationDistance}。这一轮不是问你要不要亲密，而是问你怎样让靠近保持清晰。`,
           options: [
             { id: "2A", text: "停下脚步，看那个人如何对待照片", trait_signal: "boundary + selective_social + discernment", response: "TA 没有急着拿走它，只把照片转向月光。你发现，真正的距离不是远近，而是对方是否懂得轻放。" },
             { id: "2B", text: "走向桥中央，把照片推回一点点", trait_signal: "deep_connection + vulnerability + connection_need", response: "照片在你们之间停住。你没有交出全部，只交出一角；但这一角已经足够让桥下的潮声变浅。" },
@@ -771,7 +954,7 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
         },
         {
           choice_id: 3,
-          scene: `桥尽头出现一枚小小的黑色星体。它没有吞没任何东西，只把信、照片、声音和那个人影缓慢拉成同一条轨道。你能感觉到，这里逼近的不是答案，而是你一直怎样保存自己。`,
+          scene: `桥尽头出现一枚小小的黑色星体。它没有吞没任何东西，只把${material.centralObject}、那段低处的声音和桥上的人影缓慢拉成同一条轨道。你能感觉到，这里逼近的不是答案，而是你一直怎样保存自己。`,
           options: [
             { id: "3A", text: "把信收进口袋，先让轨道稳定下来", trait_signal: "security_need + stabilization + emotional_regulation", response: "星体的光慢了一点。你把稳定当成容器，而不是退路；有些远方必须先有地方安放。" },
             { id: "3B", text: "伸手触碰星体边缘，允许未知靠近", trait_signal: "freedom_desire + openness + exploration", response: "你的手没有被吞没，只沾上一层银色的冷光。未知没有回答你，却让你更清楚自己仍愿意继续。" },
@@ -781,7 +964,7 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
         },
         {
           choice_id: 4,
-          scene: `黑色星体把信、照片、声音和那个人影压成一枚很小的月。星图还没有开始命名你，它先停在最后一道门前：如果要把这些线索交给它，你更愿意让它先看见哪一层？`,
+          scene: `黑色星体把这一路的声音、距离、物件和人影压成一枚很小的月。星图还没有开始命名你，它先停在最后一道门前：如果要更准确地理解你刚才的选择，它应该先看见哪一层？`,
           options: [
             { id: "4A", text: "把那些总会回来的旧画面交给星图", trait_signal: "self_narrative + time_orientation + past_integration", response: "旧画面没有把你困住，它只是把你反复回望的方向照亮，让星图知道从哪里开始读你。" },
             { id: "4B", text: "把迟迟没有说出口的靠近放进月光里", trait_signal: "desire_structure + indirect_expression + vulnerable_wish", response: "那件事没有立刻变亮，却在暗处多了一圈清晰的边，像终于被允许拥有一个位置。" },
@@ -796,7 +979,7 @@ export function generateDeterministicTheaterScript(record: Part1Record): Theater
       mirror_questions: [
         {
           question_id: 1,
-          dialogue: `那句“${socialText}”被潮声重新送回来。它不要求你解释，只帮你辨认：刚才你保留或靠近时，最接近哪一种原因？`,
+          dialogue: `${material.transformedSentence}被潮声重新送回来。它不要求你解释，只帮你辨认：刚才你保留或靠近时，最接近哪一种原因？`,
           question: "刚才的选择，更像是因为什么？",
           options: [
             { id: "3A-1", text: "我想被真正听懂，但不想被急着解释", trait_signal: "relationship_need + being_understood_desire" },
@@ -1096,12 +1279,15 @@ function buildDeterministicNarrativeOverview(params: {
   socialText: string;
   photo: string;
   music: string;
+  musicReading: string;
+  photoReading: string;
+  socialReading: string;
   act2Path: string[];
   mirrorPath: string[];
   longestPause: number;
   psychoanalyticConcepts: SelectedPsychoanalyticConcept[];
 }) {
-  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music, act2Path, mirrorPath, longestPause, psychoanalyticConcepts } = params;
+  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music, musicReading, photoReading, socialReading, act2Path, mirrorPath, longestPause, psychoanalyticConcepts } = params;
   const topDimensions = pickTopDimensionLabels(scores);
   const themeSummary = formatThemeSummary(themes);
   const act2PathText = formatJoined(act2Path, "靠近、停留与回望之间的路径");
@@ -1118,9 +1304,10 @@ function buildDeterministicNarrativeOverview(params: {
     : "";
 
   return [
-    `第一层线索来自图像与审美：你把“${selectedA1}”选为核心意象，旁边又出现了${photo}，以及${music}。这不是单纯的审美偏好，而是潜意识把“还没上场、还没说完、还没完全显形”的部分放进画面和声音里。荣格会把这种反复辨认称作个体化的入口：不是变得特殊，而是把散落的自己慢慢收回同一条轨道。更直接地说，你真正想确认的是：有没有一个位置，既能容纳你的暗面，也不会急着替你解释。${profile.narrativeFocus}`,
-    `第二层线索来自你的选择：那句“${socialText}”，和你在不确定时选择“${selectedB1}”、面对欲望时选择“${selectedB2}”，指向同一个动作。这不是随机的选择，而是一种很清楚的防御方式：你会先让行动、克制或审美替你争取时间，再决定要不要把真实愿望说出来。潜意识在这里不是神秘预言，而是你尚未清楚命名、却反复借距离、秩序和作品表达出来的需要。`,
-    `第三层线索来自剧场：你没有直接穿过入口，而是先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这个动作很关键，它把前面的问题变成了身体路线：你不是不靠近，而是要先确认光源、边界和房间的形状。这里有一种重复模式：你会先让物件、声音或距离替你说话，再决定自己是否直接出现。`,
+    `第一层线索来自图像与审美：你把“${selectedA1}”选为核心意象，旁边又出现了${photo}。${photoReading} 这不是单纯的审美偏好，而是潜意识把“还没上场、还没说完、还没完全显形”的部分放进画面里。荣格会把这种反复辨认称作个体化的入口：不是变得特殊，而是把散落的自己慢慢收回同一条轨道。更直接地说，你真正想确认的是：有没有一个位置，既能容纳你的暗面，也不会急着替你解释。${profile.narrativeFocus}`,
+    `第二层线索来自声音和文字：${music}。${musicReading} 那句“${socialText}”也不是普通记录，${socialReading} 所以，你的潜意识不是直接把愿望说出来，而是先把它放进声音、句子和可被误读为日常的表达里，让它既能被看见，又不至于失控。`,
+    `第三层线索来自你的选择：你在不确定时选择“${selectedB1}”，面对欲望时选择“${selectedB2}”。这不是随机的选择，而是一种很清楚的防御方式：你会先让行动、克制或审美替你争取时间，再决定要不要把真实愿望说出来。潜意识在这里不是神秘预言，而是你尚未清楚命名、却反复借距离、秩序和作品表达出来的需要。`,
+    `第四层线索来自剧场：你没有直接穿过入口，而是先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这个动作很关键，它把前面的问题变成了身体路线：你不是不靠近，而是要先确认光源、边界和房间的形状。这里有一种重复模式：你会先让物件、声音或距离替你说话，再决定自己是否直接出现。`,
     `把这三层线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动。你在“${selectedB5}”里保留距离，在剧场里继续选择先确认轨道，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。你反复保护的，可能不是“孤独”，而是一个不愿被过早占用的自我位置。`,
     mirrorPath.length > 0
       ? `历史追问里，你又选择${mirrorPathText}。这让潜意识剥离过程更清楚：你不是只想被理解，也在寻找一种不会过早占有你的理解。温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己；在客体关系的语言里，你要确认的是靠近不会产生被吞没感。`
@@ -1145,6 +1332,9 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
   const socialText = firstSocialPostText(part1);
   const photo = photoMotif(part1);
   const music = musicMotif(part1);
+  const musicReading = deriveMusicPsycheReading(part1);
+  const photoReading = derivePhotoPsycheReading(part1);
+  const socialReading = deriveSocialPsycheReading(part1);
   const act2Path = part2?.act2_choices.map((item) => getTheaterAct2ChoiceText(item.selected) ?? item.selected).filter(Boolean) ?? [];
   const mirrorPath = part2?.act3_responses.map((item) => getTheaterMirrorChoiceText(item.selected) ?? item.selected).filter(Boolean) ?? [];
   const longestPause = Math.max(
@@ -1215,6 +1405,9 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
       socialText,
       photo,
       music,
+      musicReading,
+      photoReading,
+      socialReading,
       act2Path,
       mirrorPath,
       longestPause,

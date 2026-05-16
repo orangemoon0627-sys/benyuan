@@ -99,6 +99,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var feedbackDraft = ""
     @Published var feedbackStatus: String?
     @Published var isFeedbackSubmitting = false
+    @Published var isDisplayNameUpdating = false
     @Published var questionMotionDirection: BenyuanQuestionMotionDirection = .reset
     @Published var questionMotionToken = UUID()
     @Published var collectValidationPulse = 0

@@ -8,6 +8,7 @@ import {
   BENYUAN_PENDING_PART2_KEY,
   BENYUAN_RUNTIME_STORAGE_KEY,
   BENYUAN_SESSION_STORAGE_KEY,
+  benyuanFetch,
   type BenyuanPendingPart2,
   type BenyuanSessionState,
 } from "@/lib/benyuan-v3-client-session";
@@ -100,7 +101,6 @@ export function BenyuanTheaterExperience() {
   const [completedChoiceLogs, setCompletedChoiceLogs] = useState<Part2ChoiceRecord[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState("");
-  const [act1Expanded, setAct1Expanded] = useState(false);
   const interactionStartedAtRef = useRef(0);
   const phaseStartedAtRef = useRef(0);
   const phaseDurationsRef = useRef<Record<string, number>>({});
@@ -129,7 +129,7 @@ export function BenyuanTheaterExperience() {
         return;
       }
 
-      const response = await fetch(`/api/theater/${encodeURIComponent(theaterScriptId)}`);
+      const response = await benyuanFetch(`/api/theater/${encodeURIComponent(theaterScriptId)}`);
       const data = (await response.json()) as TheaterScriptRecord;
       if (cancelled) return;
 
@@ -143,7 +143,6 @@ export function BenyuanTheaterExperience() {
       window.localStorage.setItem(BENYUAN_SESSION_STORAGE_KEY, JSON.stringify(nextSession));
 
       setRecord(data);
-      setAct1Expanded(false);
       setChoiceIndex(0);
       setSelectedChoiceId(null);
       setChoiceLogs([]);
@@ -166,7 +165,7 @@ export function BenyuanTheaterExperience() {
   const requiredChoiceCount = visibleChoices.length;
   const currentChoice = useMemo(() => visibleChoices[choiceIndex] ?? null, [visibleChoices, choiceIndex]);
   const act1Scene = useMemo(() => splitAct1Scene(record?.theater_script.act1.scene_description ?? ""), [record]);
-  const act2SceneLine = useMemo(() => shortSceneLine(currentChoice?.scene ?? "", 30), [currentChoice]);
+  const act2SceneLine = useMemo(() => shortSceneLine(currentChoice?.scene ?? "", 62), [currentChoice]);
 
   function resetInteractionTimer() {
     interactionStartedAtRef.current = currentTimestamp();
@@ -318,28 +317,13 @@ export function BenyuanTheaterExperience() {
             <div className="pt-3">
               <ImmersiveSigil size="sm" className="theater-stage-sigil mb-6 opacity-85" />
             </div>
-            <div className="cosmic-editorial-stage theater-scene-copy pl-5">
+            <div className="cosmic-editorial-stage theater-scene-copy theater-opening-copy pl-5">
               <p className={cx("max-w-[23rem] text-[var(--text-primary)] md:max-w-[28rem]", act1SceneClass(act1Scene.lead))}>
                 {act1Scene.lead}
               </p>
+              {act1Scene.tail ? <p className="theater-opening-tail max-w-[23rem] md:max-w-[28rem]">{act1Scene.tail}</p> : null}
             </div>
             <div className="theater-bottom-intent space-y-4 pl-5">
-              {act1Scene.tail ? (
-                <div className="space-y-4">
-                  <button
-                    type="button"
-                    onClick={() => setAct1Expanded((current) => !current)}
-                    className="theater-ghost-trigger inline-flex min-h-9 items-center justify-center rounded-full border border-[var(--lunar-border)] bg-[rgba(143,151,232,0.11)] px-4 text-[10px] tracking-[0.12em] text-[var(--text-secondary)] transition duration-150 hover:text-[var(--text-primary)] active:translate-y-px"
-                  >
-                    {act1Expanded ? "收起" : "展开场景"}
-                  </button>
-                  {act1Expanded ? (
-                    <div className="theater-scene-tail rounded-[1.7rem] border border-[rgba(243,241,234,0.09)] bg-[rgba(255,255,255,0.035)] px-5 py-4 text-left backdrop-blur-[22px]">
-                      <p className="text-sm leading-7 text-[var(--text-secondary)]">{act1Scene.tail}</p>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
               <PrimaryButton type="button" onClick={advanceFromAct1} className="w-full md:w-auto md:min-w-[15rem] md:px-8 md:py-4">
                 进入这一幕
               </PrimaryButton>
@@ -355,7 +339,7 @@ export function BenyuanTheaterExperience() {
         >
           <div className="theater-lens-stage__inner mx-auto flex min-h-[59vh] max-w-[25rem] flex-col justify-center md:max-w-[28rem]">
             <div className="cosmic-editorial-stage theater-scene-copy pl-5 text-left">
-              <p className="theater-phase-whisper">靠近一个方向</p>
+              <p className="theater-phase-whisper">第 {choiceIndex + 1} / {requiredChoiceCount} 轮</p>
               <h3 className={cx("text-[var(--text-primary)]", theaterHeadingClass(act2SceneLine || "你要走向哪一条轨道？"))}>{act2SceneLine || "你要走向哪一条轨道？"}</h3>
             </div>
             <div className="theater-choice-stack mt-8 grid gap-2.5">

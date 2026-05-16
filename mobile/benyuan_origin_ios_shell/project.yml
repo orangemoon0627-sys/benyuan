@@ -12,7 +12,7 @@ settings:
     SWIFT_VERSION: 5.0
     PRODUCT_BUNDLE_IDENTIFIER: com.fanhao.benyuan.origin.shell
     MARKETING_VERSION: 0.2.1
-    CURRENT_PROJECT_VERSION: 16
+    CURRENT_PROJECT_VERSION: 19
     BENYUAN_WECHAT_APP_ID: ""
     BENYUAN_WECHAT_UNIVERSAL_LINK: https://app.orangemoonai.cn/app/benyuan/
     BENYUAN_WECHAT_ASSOCIATED_DOMAIN: applinks:app.orangemoonai.cn
@@ -50,7 +50,7 @@ targets:
         Release:
           BenyuanShellEnvironment: production
           BenyuanShellStagingBaseURL: https://staging-benyuan.orangemoonai.cn
-          BenyuanShellProductionBaseURL: https://benyuan.orangemoonai.cn
+          BenyuanShellProductionBaseURL: https://staging-benyuan.orangemoonai.cn
   BenyuanOriginShellTests:
     type: bundle.unit-test
     platform: iOS

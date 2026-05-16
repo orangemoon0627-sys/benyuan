@@ -13,6 +13,10 @@ import {
   BENYUAN_PENDING_PART1_KEY,
   BENYUAN_PART1_STORAGE_KEY,
   BENYUAN_RUNTIME_STORAGE_KEY,
+  benyuanFetch,
+  benyuanUploadedAssetUrl,
+  ensureBenyuanWebAuthState,
+  readBenyuanWebAuthState,
   type BenyuanPendingPart1,
 } from "@/lib/benyuan-v3-client-session";
 import { benyuanPart1Questions, benyuanQuestionsByModule } from "@/lib/benyuan-v3-schema";
@@ -22,9 +26,15 @@ import { mergeUploadedAssets, removeUploadedAsset, remainingUploadSlots, uploade
 import type { AgentRuntimeOverride, BenyuanModuleKey, BenyuanQuestion, BenyuanUploadedAssetRef, Part1AnswerMap } from "@/lib/benyuan-v3-types";
 
 const moduleTitles: Record<BenyuanModuleKey, string> = {
-  A: "模块 A · 审美偏好",
-  B: "模块 B · 哲学提问",
-  C: "模块 C · 生命叙事",
+  A: "图像与声音",
+  B: "欲望与关系",
+  C: "记忆与叙事",
+};
+
+const moduleShortLabels: Record<BenyuanModuleKey, string> = {
+  A: "线索",
+  B: "结构",
+  C: "叙事",
 };
 
 const moduleOrder: BenyuanModuleKey[] = ["A", "B", "C"];
@@ -300,7 +310,7 @@ function QuestionBlock({
         ? remainingUploads > 0
           ? `还可补充 ${remainingUploads} 张。`
           : "这一题的素材已经足够。"
-        : "选择一张图，交出一条审美线索。";
+        : "选择一张图，让后面的剧场从真实材料里生长。";
   const questionStep = `${String(questionNumber).padStart(2, "0")} / ${String(totalQuestions).padStart(2, "0")}`;
   const uploadCountLine =
     uploadedAssets.length > 0
@@ -316,7 +326,7 @@ function QuestionBlock({
       <div className="postmodern-question-stage relative mx-auto w-full max-w-full text-left md:max-w-[30rem]">
         <div className="postmodern-question-kicker">
           <span>{questionStep}</span>
-          <span>MODULE {moduleKey}</span>
+          <span>{moduleShortLabels[moduleKey]}</span>
         </div>
         <h3 className={cx("postmodern-question-title mt-4 max-w-[20.75rem] text-[var(--text-primary)] md:mt-5 md:max-w-[26rem]", questionPromptClass(question.prompt))}>{question.prompt}</h3>
         {showHelperText ? <p className="mt-4 max-w-[22rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[26rem]">{question.helperText}</p> : null}
@@ -426,7 +436,7 @@ function QuestionBlock({
                   <UploadCloud className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-lg font-black tracking-[0em] text-[var(--text-primary)]">上传你的审美线索</p>
+                  <p className="text-lg font-black tracking-[0em] text-[var(--text-primary)]">加入这一条线索</p>
                   <p className="mt-2 text-sm leading-7 text-[var(--text-secondary)]">{uploadHint}</p>
                 </div>
               </div>
@@ -494,7 +504,7 @@ function QuestionBlock({
                         </button>
                         {file.mime_type.startsWith("image/") ? (
                           <Image
-                            src={`/api/part1/uploaded/${file.asset_id}`}
+                            src={benyuanUploadedAssetUrl(file.asset_id)}
                             alt={file.name ?? `文件 ${index + 1}`}
                             width={140}
                             height={140}
@@ -549,6 +559,10 @@ export function BenyuanPart1Workflow({
   const activeModuleRef = useRef<BenyuanModuleKey>(moduleFilter ?? "A");
 
   useEffect(() => {
+    void ensureBenyuanWebAuthState().catch(() => {
+      setStatus("当前网络暂时没有建立访客会话，稍后会自动重试。");
+    });
+
     const savedAnswers = window.localStorage.getItem(BENYUAN_PART1_STORAGE_KEY);
     if (savedAnswers) setAnswers(normalizeAnswers(JSON.parse(savedAnswers)));
 
@@ -616,6 +630,10 @@ export function BenyuanPart1Workflow({
     ? (moduleFilter ? currentQuestions.findIndex((question) => question.id === ritualQuestion.id) : benyuanPart1Questions.findIndex((question) => question.id === ritualQuestion.id)) + 1
     : 0;
   const activeQuestionAnswered = ritualQuestion ? isQuestionAnswered(ritualQuestion, answers) : false;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [ritualQuestion?.id]);
 
   useEffect(() => {
     currentQuestionIdsRef.current = currentQuestions.map((question) => question.id);
@@ -691,14 +709,14 @@ export function BenyuanPart1Workflow({
             moduleOrder.find((module) => countAnswered(benyuanQuestionsByModule[module], answersRef.current) < benyuanQuestionsByModule[module].length);
 
           if (nextModule && nextModule !== currentModule) {
-            focusModule(nextModule, `${moduleTitles[currentModule]} 已完成，已进入 ${moduleTitles[nextModule]}。`);
+            focusModule(nextModule, `已进入${moduleTitles[nextModule]}。`);
             autoAdvanceTimerRef.current = null;
             return;
           }
 
-          setStatus("三组模块已经全部完成，可以直接进入剧场分析。");
+          setStatus("十三条线索已经收束，可以进入剧场。");
         } else {
-          setStatus(`${moduleTitles[currentModule]} 已完成，可以返回总览继续后续模块。`);
+          setStatus(`${moduleTitles[currentModule]} 已完成。`);
         }
       }
 
@@ -753,7 +771,7 @@ export function BenyuanPart1Workflow({
     if (incomingFiles.length === 0) return;
     setUploadingQuestionId(questionId);
     setUploadErrors((current) => ({ ...current, [questionId]: "" }));
-    setStatus("正在上传图片素材...");
+    setStatus("正在上传这条线索...");
 
     try {
       const formData = new FormData();
@@ -762,10 +780,10 @@ export function BenyuanPart1Workflow({
       const preparedUploads = await Promise.all(incomingFiles.map((file) => optimizeUploadFile(file)));
       preparedUploads.forEach(({ file }) => formData.append("files", file));
 
-      const response = await fetch("/api/part1/upload", {
-        method: "POST",
-        body: formData,
-      });
+    const response = await benyuanFetch("/api/part1/upload", {
+      method: "POST",
+      body: formData,
+    });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "upload_failed");
 
@@ -776,8 +794,8 @@ export function BenyuanPart1Workflow({
       const savedBytes = preparedUploads.reduce((total, item) => total + Math.max(0, item.originalSize - item.file.size), 0);
       setStatus(
         optimizedCount > 0
-          ? `素材已上传，已在浏览器端优化 ${optimizedCount} 张图片，减少 ${formatBytes(savedBytes)} 传输体积。`
-          : "素材已上传，提交 Part 1 后会进入真实多模态分析。",
+          ? `线索已加入，已压缩 ${optimizedCount} 张图片，减少 ${formatBytes(savedBytes)} 传输体积。`
+          : "线索已加入。",
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "upload_failed";
@@ -830,10 +848,10 @@ export function BenyuanPart1Workflow({
     formData.append("upload_origin", "test-pack");
     files.forEach((file) => formData.append("files", file));
 
-    const response = await fetch("/api/part1/upload", {
-      method: "POST",
-      body: formData,
-    });
+      const response = await benyuanFetch("/api/part1/upload", {
+        method: "POST",
+        body: formData,
+      });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error ?? "sample_asset_upload_failed");
     return payload.assets as BenyuanUploadedAssetRef[];
@@ -887,11 +905,12 @@ export function BenyuanPart1Workflow({
     }
 
     setSubmitting(true);
-    setStatus("已锁定 Part 1，正在进入显影页并依次调用多模态分析与剧场导演...");
+    setStatus("线索已收束，正在进入剧场显影。");
 
     try {
+      const auth = await ensureBenyuanWebAuthState();
       const pending: BenyuanPendingPart1 = {
-        user_id: "usr_local",
+        user_id: readBenyuanWebAuthState()?.user.user_id ?? auth.user.user_id,
         answers,
         runtime_override: runtimeOverrideForRequest(runtimeOverride),
         part1_started_at: Number(window.localStorage.getItem(BENYUAN_PART1_STARTED_KEY) ?? Date.now()),
@@ -914,7 +933,7 @@ export function BenyuanPart1Workflow({
     }
 
     if (primaryAction.intent === "next-module" && nextActionableModule) {
-      focusModule(nextActionableModule, `已进入 ${moduleTitles[nextActionableModule]}。继续沿同一条 Part 1 链路推进。`);
+      focusModule(nextActionableModule, `已进入${moduleTitles[nextActionableModule]}。`);
       return;
     }
 
@@ -943,7 +962,7 @@ export function BenyuanPart1Workflow({
               const active = activeModule === module;
               return {
                 id: module,
-                label: `${module}`,
+                label: moduleShortLabels[module],
                 tone: active ? "active" : progress >= total ? "done" : "idle",
                 onClick: () => {
                   clearAutoAdvanceTimer();

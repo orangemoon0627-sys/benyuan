@@ -21,6 +21,7 @@ const { benyuanPart1Questions, getQuestionOption } = await import("../src/lib/be
 const {
   ANALYST_SYSTEM_PROMPT,
   DIRECTOR_SYSTEM_PROMPT,
+  MULTIMODAL_SYSTEM_PROMPT,
   buildAnalystUserPrompt,
   buildDirectorUserPrompt,
   buildFastDirectorUserPrompt,
@@ -188,6 +189,9 @@ test("director prompt v4 requires continuous destiny-like theater generated from
   assert.match(DIRECTOR_SYSTEM_PROMPT, /小说片段、心理寓言和象征性处境/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /第四轮问题应帮助区分|心性辨认|动机辨认/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /二阶追问|心理补问|动机辨认|边界辨认|关系姿态/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /统筹而非填空/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /私小说/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /歌单是什么声音风格|潜在愿望|潜在欲望/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /长度 500-800 字/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /\\n\\n 分隔/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /禁止把“月下剧场”字面化成售票、检票、座位、观众、演员、幕布、舞台、引座员/);
@@ -196,6 +200,9 @@ test("director prompt v4 requires continuous destiny-like theater generated from
   assert.match(prompt, /Act2 是四轮连续剧场题/);
   assert.match(prompt, /第四轮把前三轮选择补成动机、边界、时间感或行动确认/);
   assert.match(prompt, /上传素材不是素材库/);
+  assert.match(prompt, /必须先统筹再创作/);
+  assert.match(prompt, /歌单不是背景乐/);
+  assert.match(prompt, /审美动机、自我投射和关系距离/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);
   assert.match(prompt, /lone_figure_seascape_sunset/);
 });
@@ -212,6 +219,7 @@ test("fast director prompt preserves multimodal evidence and psychoanalytic samp
   assert.match(prompt, /act2_lenses 四条分别写进入、改变距离、触碰或放下、动机\/边界\/时间感\/行动确认的补采样/);
   assert.match(prompt, /精神分析概念卡只用于强化叙事种子/);
   assert.match(prompt, /关系距离、边界、暗面、轨道、回声或核心物件/);
+  assert.match(prompt, /先把回答、音乐、照片、珍视物和社交文本统筹成一个私小说处境/);
 });
 
 test("fallback theater is a continuous role-play scene rather than a questionnaire", () => {
@@ -219,17 +227,18 @@ test("fallback theater is a continuous role-play scene rather than a questionnai
   const visibleText = JSON.stringify(theater);
   const actionStart = /^(靠近|停下|沿着|伸手|绕开|留在|回望|推开|等待|把|走向)/;
 
-  assert.match(theater.act1.scene_description, /深夜的海像一封没有寄出的信|lone_figure_seascape_sunset|海/);
-  assert.match(theater.act1.scene_description, /一段只能由你继续往下走的小说|前面那些画面、声音、句子和停顿|第一条细线/);
+  assert.match(theater.act1.scene_description, /黑色潮水|远处海面|没有直接说出口的愿望|想被真正听见|墙后/);
+  assert.match(theater.act1.scene_description, /统筹成一条可以继续走下去的路|第一处微光|会先保护什么/);
   assert.match(theater.act1.scene_description, /\n\n/);
   assert.equal(theater.act2.choices.length, 4);
   assert(theater.act2.choices.every((choice) => choice.options.length === 4), "fallback theater must expose four options for each of the four rounds");
-  assert.match(theater.act2.choices[1].scene, /第一幕|那封没有寄出的信|潮声|照片/);
-  assert.match(theater.act2.choices[3].scene, /最后一道门|先看见哪一层|星图/);
+  assert.match(theater.act2.choices[1].scene, /窄桥|模糊的人影|靠近保持清晰|空气里最细微的变化/);
+  assert.match(theater.act2.choices[3].scene, /最后一道门|理解你刚才的选择|星图/);
   assert(theater.act2.choices.every((choice) => choice.options.every((option) => actionStart.test(option.text))), "act2 options must start with embodied actions");
   assert.doesNotMatch(visibleText, /镜像测试|选择最接近|你已经知道答案了|正确的答案/);
   assert.doesNotMatch(visibleText, /售票|检票|座位|观众|演员|幕布|引座员/);
-  assert.match(theater.act3.mirror_questions[0].dialogue, /剧场|追问|补问|声音|物件|海|动机|边界|关系/);
+  assert.doesNotMatch(visibleText, /lone_figure_seascape_sunset|melancholic_introspective|post-rock|ambient；|照片里|歌单里|社交动态里|剧场先把/);
+  assert.match(theater.act3.mirror_questions[0].dialogue, /一句被写下|潮声|靠近|原因/);
   assert.doesNotMatch(visibleText, /让镜面停在一个方向上/);
 });
 
@@ -255,6 +264,9 @@ test("analyst prompt and fallback constellation bind star language to psychoanal
   assert.match(overview, /没有标出的出口|第三条细线/);
   assert.match(overview, /把保护自己的边界放到暗金轨道上|四轮|补足/);
   assert.match(overview, /停顿|停留|迟疑|慢/);
+  assert.match(overview, /歌单|声音|低频|无词|后摇|氛围|心境|潜在欲望|防御/u);
+  assert.match(overview, /珍视|画面|投射|关系位置|未完成愿望|不会立刻侵入你的空间/u);
+  assert.match(overview, /社交文字|真实|隐喻|低强度求回应|精神状态|心理动机|不想让这份需要显得太直接/u);
   assert.doesNotMatch(reportText, /孤独求索者|敏感而复杂的人|关系哲学“/);
   assert.doesNotMatch(overview, /你给人的核心印象|你给人的第一印象/);
   assert(fallback.recommendations.books.some((item) => /精神旁证|存在主义|个体化|时间|动机|边界|辨认/.test(item.reason)));
@@ -270,6 +282,10 @@ test("analyst prompt and fallback constellation bind star language to psychoanal
     fallback.growth_suggestions.every((item) => !item.actionable_steps.some((step) => /写下三个不需要立刻|不需要立刻解决的问题/u.test(step))),
     "growth path actions should not keep the old unclear three-unresolved-problems wording"
   );
+  assert.match(MULTIMODAL_SYSTEM_PROMPT, /不是 OCR 归档/);
+  assert.match(MULTIMODAL_SYSTEM_PROMPT, /潜在欲望和防御方式/);
+  assert.match(MULTIMODAL_SYSTEM_PROMPT, /隐藏的精神状态和心理动机/);
+  assert.match(MULTIMODAL_SYSTEM_PROMPT, /审美动机、自我投射、关系位置/);
   assert.ok(
     [...fallback.recommendations.books, ...fallback.recommendations.films, ...fallback.recommendations.music].every((item) =>
       /补足|延伸|照见|回应|适合|靠近|承接|镜面|旁证|结构|气质|节律|边界|意义|时间|情绪/u.test(item.reason)

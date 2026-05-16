@@ -1374,7 +1374,7 @@ function normalizeFastTheaterSeed(candidate: unknown): FastTheaterSeed | null {
 }
 
 function mergeFastTheaterSeed(fallback: TheaterScript, seed: FastTheaterSeed): TheaterScript {
-  const motifLine = seed.motifs.length > 0 ? `这一次，剧场先把 ${seed.motifs.join("、")} 放在你面前。` : "";
+  const motifLine = seed.motifs.length > 0 ? "这些线索没有被逐一摆出来，只在同一处低光里变成了可进入的方向。" : "";
   const coreArchetype = seed.core_archetype && !isSuspiciousArchetypeName(seed.core_archetype)
     ? seed.core_archetype
     : fallback.personalization_summary.core_archetype;

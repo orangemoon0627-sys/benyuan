@@ -43,11 +43,6 @@ enum BenyuanConstellationImageRenderer {
             draw(data.archetype.englishName, at: CGPoint(x: margin, y: y), size: 27, weight: .medium, color: gold.withAlphaComponent(0.92))
             y += 54
 
-            if data.archetype.displayName != data.archetype.name || data.archetype.displaySubtitle != data.archetype.englishName {
-                let annotationHeight = drawWrapped("\(data.archetype.displayName)：\(data.archetype.displaySubtitle)", at: CGPoint(x: margin, y: y), width: contentWidth, size: 29, weight: .semibold, color: softWhite, lineHeight: 42, maxHeight: 92)
-                y += annotationHeight + 32
-            }
-
             drawWrapped(data.archetype.coreEssence, at: CGPoint(x: margin, y: y), width: contentWidth, size: 36, weight: .regular, color: UIColor(white: 0.92, alpha: 1), lineHeight: 53, maxHeight: 158)
             y += 212
 

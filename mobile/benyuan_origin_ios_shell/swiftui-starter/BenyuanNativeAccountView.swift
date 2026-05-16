@@ -2,6 +2,8 @@ import SwiftUI
 
 struct BenyuanNativeAccountView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @State private var isEditingDisplayName = false
+    @State private var displayNameDraft = ""
     private let accountCardCornerRadius: CGFloat = 28
     private let accountDockHeight: CGFloat = 92
 
@@ -46,17 +48,24 @@ struct BenyuanNativeAccountView: View {
                     feedbackComposer
                 }
             }
+
+            if isEditingDisplayName {
+                accountOverlay {
+                    displayNameEditor
+                }
+            }
         }
         .animation(.easeInOut(duration: BenyuanMotion.base), value: model.isDeleteHistoryConfirmationPresented)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: model.activeBindingProvider)
         .animation(.easeInOut(duration: BenyuanMotion.base), value: model.isFeedbackComposerPresented)
+        .animation(.easeInOut(duration: BenyuanMotion.base), value: isEditingDisplayName)
     }
 
     private var accountIdentityPanel: some View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
             HStack(alignment: .top) {
                 ZStack {
-                    BenyuanDeepCelestialBody(size: 116, progress: identityProgress, mode: .constellation)
+                    BenyuanDeepCelestialBody(size: 116, progress: identityProgress, mode: latestAccountCelestialMode)
                     Circle()
                         .stroke(BenyuanColor.accentGold.opacity(0.18), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [2, 10]))
                         .frame(width: 138, height: 138)
@@ -76,10 +85,24 @@ struct BenyuanNativeAccountView: View {
                 }
             }
 
-            Text(model.session.user?.displayName ?? "我的本源档案")
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(BenyuanColor.textPrimary)
-                .minimumScaleFactor(0.72)
+            HStack(alignment: .firstTextBaseline, spacing: BenyuanSpacing.x2) {
+                Text(accountDisplayName)
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                    .minimumScaleFactor(0.72)
+
+                Button {
+                    displayNameDraft = accountDisplayName == "我的本源档案" ? "" : accountDisplayName
+                    isEditingDisplayName = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.glassStroke)))
+                }
+                .buttonStyle(.plain)
+            }
 
             Text("身份摘要会跟随你的探索、剧场选择和星图记录一起保存。")
                 .font(.system(size: 14, weight: .regular))
@@ -103,6 +126,45 @@ struct BenyuanNativeAccountView: View {
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: accountCardCornerRadius, style: .continuous))
+    }
+
+    private var accountDisplayName: String {
+        let value = model.session.user?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if value.isEmpty || value == "Apple 用户" || value == "访客" {
+            return "我的本源档案"
+        }
+        return value
+    }
+
+    private var latestAccountArchetypeName: String? {
+        model.accountHistory.first { $0.stage == .constellation }?.canonicalArchetypeNameForDisplay
+    }
+
+    private var latestAccountCelestialMode: BenyuanDeepCelestialBody.Mode {
+        switch latestAccountArchetypeName {
+        case "远潮观月者":
+            return .farTideMoon
+        case "星图筑序者":
+            return .starMapArchitect
+        case "月港栖岸者":
+            return .moonHarbor
+        case "存在游牧者":
+            return .existentialNomad
+        case "雨窗抒写者":
+            return .rainWindowScribe
+        case "事件视界沉潜者":
+            return .eventHorizonDiver
+        case "星云织梦者":
+            return .nebulaWeaver
+        case "日冕引燃者":
+            return .solarCorona
+        case "类地栖居者":
+            return .terrestrialPlanet
+        case "深空锚定者":
+            return .deepSpaceAnchor
+        default:
+            return .constellation
+        }
     }
 
     private func identityStat(_ label: String, value: String) -> some View {
@@ -473,12 +535,74 @@ struct BenyuanNativeAccountView: View {
                     model.cancelDeleteHistoryItem()
                     model.dismissBindingInfo()
                     model.dismissFeedbackComposer()
+                    isEditingDisplayName = false
                 }
 
             content()
                 .padding(BenyuanSpacing.x6)
                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
         }
+    }
+
+    private var displayNameEditor: some View {
+        VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
+            HStack {
+                Text("编辑名称")
+                    .font(.system(size: 24, weight: .black))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                Spacer()
+                Button {
+                    isEditingDisplayName = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.glassStroke)))
+                }
+                .buttonStyle(.plain)
+            }
+
+            TextField("输入你的名称", text: $displayNameDraft)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(BenyuanColor.textPrimary)
+                .padding(.horizontal, BenyuanSpacing.x4)
+                .frame(height: 54)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(BenyuanColor.bgVoid.opacity(0.92))
+                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke))
+                )
+
+            Text("这个名称会用于你的本源档案和后续保存图。")
+                .font(.system(size: 13, weight: .regular))
+                .lineSpacing(5)
+                .foregroundStyle(BenyuanColor.textSecondary)
+
+            Button {
+                Task {
+                    await model.updateDisplayName(displayNameDraft)
+                    isEditingDisplayName = false
+                }
+            } label: {
+                Text(model.isDisplayNameUpdating ? "保存中" : "保存名称")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(displayNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isDisplayNameUpdating ? BenyuanColor.textTertiary : BenyuanColor.bgVoid)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(Capsule().fill(displayNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isDisplayNameUpdating ? BenyuanColor.glassFill : BenyuanColor.textPrimary))
+                    .overlay(Capsule().stroke(displayNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isDisplayNameUpdating ? BenyuanColor.glassStroke : Color.clear))
+            }
+            .buttonStyle(.plain)
+            .disabled(displayNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || model.isDisplayNameUpdating)
+        }
+        .padding(BenyuanSpacing.x6)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(BenyuanColor.bgSurface.opacity(0.96))
+                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.86)))
+        )
     }
 
     private func deleteConfirmation(_ item: BenyuanAccountHistoryItem) -> some View {

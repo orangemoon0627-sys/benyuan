@@ -3,22 +3,22 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowDown, BookOpen, Film, Music } from "lucide-react";
-import { GlassPanel, ImmersivePassiveState, ImmersiveSigil, ImmersiveTopBar, PrimaryButton, SecondaryButton } from "@/components/framework-primitives";
+import { GlassPanel, ImmersivePassiveState, ImmersiveTopBar, PrimaryButton, SecondaryButton } from "@/components/framework-primitives";
 import { benyuanUiRecipes, cx } from "@/config/benyuan-ui-recipes";
 import { buildConstellationShortFlow } from "@/lib/benyuan-mainflow-presentation";
-import { BENYUAN_SESSION_STORAGE_KEY, type BenyuanSessionState } from "@/lib/benyuan-v3-client-session";
+import { BENYUAN_SESSION_STORAGE_KEY, benyuanFetch, type BenyuanSessionState } from "@/lib/benyuan-v3-client-session";
 import { shareWithBenyuanNativeShell } from "@/lib/benyuan-native-shell";
 import { deriveConstellationSupportTone } from "@/lib/benyuan-v3-report-profile";
 import type { PsycheConstellation } from "@/lib/benyuan-v3-types";
 
 const labels: Record<string, string> = {
-  openness: "开放性",
-  independence: "独立性",
-  emotional_depth: "情感深度",
-  meaning_seeking: "意义追寻",
-  aesthetic_sensitivity: "审美敏感",
-  action_tendency: "行动力",
-  relationship_need: "关系需求",
+  openness: "潜意识开放度",
+  independence: "边界完整度",
+  emotional_depth: "情绪沉潜度",
+  meaning_seeking: "意义欲望",
+  aesthetic_sensitivity: "象征感受力",
+  action_tendency: "现实落地力",
+  relationship_need: "客体联结需求",
 };
 
 const recommendationMeta = [
@@ -81,12 +81,25 @@ function shortenText(value: string, maxLength: number) {
   return `${normalized.slice(0, maxLength).trim()}……`;
 }
 
+function stripDimensionPrefixes(value: string) {
+  return value
+    .replace(/^(结论|核心结论|潜在防御|潜在意图|盲点|可用方向)[：:]/u, "")
+    .replace(/\s+(潜在防御|潜在意图|盲点|可用方向)[：:]/gu, " ")
+    .trim();
+}
+
+function sentenceWithSpace(value: string) {
+  const text = value.trim();
+  if (!text) return "";
+  return /^[，。；、,.!?！？]/u.test(text) ? text : ` ${text}`;
+}
+
 function constellationDisplayName(data: PsycheConstellation) {
-  return data.archetype.personalized_name?.trim() || data.archetype.name;
+  return data.archetype.name;
 }
 
 function constellationDisplaySubtitle(data: PsycheConstellation) {
-  return data.archetype.personalized_subtitle?.trim() || data.archetype.english_name;
+  return data.archetype.english_name;
 }
 
 function downloadFile(filename: string, content: BlobPart, type: string) {
@@ -184,7 +197,6 @@ function buildConstellationExportSvg(
 
   addLines(["本源 · 精神星图"], 22, "#D4AF37", 28, 500);
   addLines([constellationDisplayName(data)], 58, "#FFFFFF", 64, 300);
-  addLines([data.archetype.name], 18, "rgba(212,175,55,0.88)", 24, 500);
   addLines([constellationDisplaySubtitle(data)], 22, "rgba(255,255,255,0.78)", 30, 400);
   y += 8;
   addParagraph(data.archetype.core_essence, { fontSize: 26, fill: "rgba(255,255,255,0.9)", lineHeight: 38, maxUnits: 28, weight: 300, gap: 28 });
@@ -202,9 +214,40 @@ function buildConstellationExportSvg(
   addParagraph(boundaryNote, { fontSize: 20, fill: "rgba(255,255,255,0.78)", lineHeight: 32, maxUnits: 38, gap: 36 });
 
   return `
-  <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-    ${blocks.join("")}
-  </svg>`;
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      ${blocks.join("")}
+    </svg>`;
+}
+
+function WebCelestialGlyph({ archetypeName }: { archetypeName: string }) {
+  const name = archetypeName.toLowerCase();
+  const variant = name.includes("事件视界") || name.includes("event horizon")
+    ? "black-hole"
+    : name.includes("星云") || name.includes("nebula")
+      ? "nebula"
+      : name.includes("日冕") || name.includes("solar")
+        ? "corona"
+        : name.includes("类地") || name.includes("terrestrial")
+          ? "earth"
+          : name.includes("锚定") || name.includes("anchor")
+            ? "anchor"
+            : name.includes("雨窗") || name.includes("rain")
+              ? "rain"
+              : name.includes("筑序") || name.includes("architect")
+                ? "architect"
+                : name.includes("游牧") || name.includes("nomad")
+                  ? "nomad"
+                  : name.includes("月港") || name.includes("harbor")
+                    ? "harbor"
+                    : "moon";
+
+  return (
+    <div className="web-celestial-glyph" data-celestial={variant} aria-hidden>
+      <span className="web-celestial-glyph__ring" />
+      <span className="web-celestial-glyph__body" />
+      <span className="web-celestial-glyph__dust" />
+    </div>
+  );
 }
 
 export function BenyuanConstellationView() {
@@ -244,7 +287,7 @@ export function BenyuanConstellationView() {
         return;
       }
 
-      const response = await fetch(`/api/constellation/${encodeURIComponent(id)}`);
+      const response = await benyuanFetch(`/api/constellation/${encodeURIComponent(id)}`);
       const payload = (await response.json()) as { constellation?: PsycheConstellation };
       if (cancelled) return;
       setData(payload.constellation ?? null);
@@ -263,7 +306,7 @@ export function BenyuanConstellationView() {
       key,
       label: labels[key] ?? key,
       score: value.score,
-      interpretation: value.interpretation,
+      interpretation: stripDimensionPrefixes(value.interpretation),
     }));
   }, [data]);
 
@@ -283,7 +326,6 @@ export function BenyuanConstellationView() {
 
     return [
       `本源｜${constellationDisplayName(data)}`,
-      `主星体：${data.archetype.name}`,
       constellationDisplaySubtitle(data),
       data.archetype.core_essence,
       `主导维度：${topDimensions || "--"}`,
@@ -399,12 +441,11 @@ export function BenyuanConstellationView() {
         <div className="constellation-lens-stage__inner">
           <div className="constellation-core-orb" aria-hidden>
             <div className="constellation-core-orb__axis" />
-            <ImmersiveSigil size="md" className="constellation-core-orb__sigil" />
+            <WebCelestialGlyph archetypeName={data.archetype.name} />
           </div>
           <p className="constellation-kicker">精神星图</p>
           <h2 className="constellation-archetype-title">{constellationDisplayName(data)}</h2>
-          <p className="constellation-archetype-subtitle">{data.archetype.name} · {data.archetype.english_name}</p>
-          <p className="constellation-personal-subtitle">{constellationDisplaySubtitle(data)}</p>
+          <p className="constellation-archetype-subtitle">{constellationDisplaySubtitle(data)}</p>
           <p className="constellation-essence-copy">{data.archetype.core_essence}</p>
           <a href="#constellation-map" className="constellation-scroll-cue" aria-label="继续查看星图">
             <ArrowDown className="h-4 w-4" strokeWidth={1.5} />
@@ -485,17 +526,17 @@ export function BenyuanConstellationView() {
               </div>
               {group.key === "books"
                 ? data.recommendations.books.slice(0, 2).map((item) => (
-                    <span key={`${item.title}-${item.author}`}>{item.title} · {item.author}</span>
+                    <span key={`${item.title}-${item.author}`}><strong>{item.title} · {item.author}</strong>{sentenceWithSpace(item.reason)}</span>
                   ))
                 : null}
               {group.key === "films"
                 ? data.recommendations.films.slice(0, 2).map((item) => (
-                    <span key={`${item.title}-${item.director}`}>{item.title} · {item.director}</span>
+                    <span key={`${item.title}-${item.director}`}><strong>{item.title} · {item.director}</strong>{sentenceWithSpace(item.reason)}</span>
                   ))
                 : null}
               {group.key === "music"
                 ? data.recommendations.music.slice(0, 2).map((item) => (
-                    <span key={`${item.artist}-${item.album}`}>{item.artist} · {item.album}</span>
+                    <span key={`${item.artist}-${item.album}`}><strong>{item.artist} · {item.album}</strong>{sentenceWithSpace(item.reason)}</span>
                   ))
                 : null}
             </article>

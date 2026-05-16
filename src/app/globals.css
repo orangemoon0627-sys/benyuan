@@ -400,6 +400,101 @@ select:focus-visible {
   box-shadow: 0 0 18px rgba(196, 177, 122, 0.54);
 }
 
+.benyuan-web-home::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  z-index: 1;
+  width: min(86vw, 27rem);
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 44% 36%, rgba(255, 255, 255, 0.16) 0 2%, transparent 3%),
+    radial-gradient(circle at 60% 64%, rgba(255, 255, 255, 0.07) 0 8%, transparent 9%),
+    radial-gradient(circle at 48% 48%, rgba(36, 34, 46, 0.74), rgba(4, 4, 10, 0.98) 54%, rgba(0, 0, 0, 1) 72%);
+  box-shadow:
+    0 0 0 1px rgba(247, 246, 238, 0.08),
+    0 0 82px rgba(184, 169, 123, 0.16),
+    inset -20px -22px 42px rgba(255, 255, 255, 0.035),
+    inset 24px 18px 34px rgba(0, 0, 0, 0.64);
+  transform: translateX(-50%);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.benyuan-web-home .postmodern-landing__moon {
+  opacity: 0.18;
+  transform: scale(1.24);
+}
+
+.postmodern-home-orbit-label {
+  position: relative;
+  width: 5.2rem;
+  height: 9.5rem;
+  margin-top: 2.4rem;
+  opacity: 0.72;
+}
+
+.postmodern-home-orbit-label::before,
+.postmodern-home-orbit-label::after,
+.postmodern-home-orbit-label span {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+}
+
+.postmodern-home-orbit-label::before {
+  inset: 0.5rem 1.2rem;
+  border: 1px solid rgba(196, 177, 122, 0.22);
+  transform: rotate(-17deg) scaleX(1.9);
+}
+
+.postmodern-home-orbit-label::after {
+  right: 1rem;
+  top: 4.1rem;
+  width: 0.44rem;
+  height: 0.44rem;
+  background: rgba(196, 177, 122, 0.9);
+  box-shadow: 0 0 18px rgba(196, 177, 122, 0.46);
+}
+
+.postmodern-home-orbit-label span {
+  left: 1.25rem;
+  top: 2.9rem;
+  width: 2.45rem;
+  height: 2.45rem;
+  border: 1px solid rgba(225, 230, 255, 0.14);
+  background: rgba(246, 248, 255, 0.045);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.34);
+}
+
+.benyuan-home-dock {
+  position: relative;
+  z-index: 4;
+}
+
+.benyuan-home-dock::before {
+  content: "";
+  position: absolute;
+  inset: -1.4rem -1.15rem calc(-1.25rem - env(safe-area-inset-bottom));
+  z-index: -1;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.64) 52%, rgba(0, 0, 0, 0.92));
+  pointer-events: none;
+}
+
+.benyuan-web-auth-pill {
+  min-height: 3.15rem;
+  border: 1px solid rgba(225, 230, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(231, 235, 255, 0.052);
+  color: rgba(246, 247, 252, 0.86);
+  font-size: 0.88rem;
+  font-weight: 650;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+}
+
 .postmodern-question-stage {
   position: relative;
   min-height: clamp(10.25rem, 24svh, 13.25rem);
@@ -781,6 +876,25 @@ select:focus-visible {
   text-shadow: 0 16px 54px rgba(2,3,10,0.42);
 }
 
+.theater-opening-copy {
+  max-height: min(45svh, 24rem);
+  overflow-y: auto;
+  padding-right: 0.9rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.theater-opening-copy::-webkit-scrollbar {
+  display: none;
+}
+
+.theater-opening-tail {
+  margin-top: 1.35rem;
+  color: var(--text-secondary);
+  font-size: 0.98rem;
+  line-height: 1.86;
+}
+
 .theater-ghost-trigger {
   box-shadow:
     0 12px 34px rgba(0,0,0,0.18),
@@ -1153,6 +1267,104 @@ select:focus-visible {
   opacity: 0.7;
 }
 
+.web-celestial-glyph {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 78%;
+  aspect-ratio: 1 / 1;
+  place-items: center;
+  filter: drop-shadow(0 20px 48px rgba(0, 0, 0, 0.45));
+}
+
+.web-celestial-glyph__ring,
+.web-celestial-glyph__body,
+.web-celestial-glyph__dust {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.web-celestial-glyph__ring {
+  inset: 3%;
+  border: 1px solid rgba(196, 177, 122, 0.28);
+  transform: rotate(-18deg) scaleX(1.46);
+  box-shadow: 0 0 32px rgba(196, 177, 122, 0.12);
+  mask-image: linear-gradient(90deg, transparent 0%, black 18%, black 78%, transparent 100%);
+}
+
+.web-celestial-glyph__body {
+  inset: 22%;
+  border: 1px solid rgba(225, 230, 255, 0.15);
+  background:
+    radial-gradient(circle at 41% 36%, rgba(248, 249, 255, 0.2) 0 4%, transparent 6%),
+    radial-gradient(circle at 62% 62%, rgba(196, 177, 122, 0.18) 0 10%, transparent 12%),
+    radial-gradient(circle, rgba(35, 34, 52, 0.64), rgba(5, 6, 18, 0.96) 64%, rgba(0, 0, 0, 1));
+  box-shadow:
+    inset 0 0 26px rgba(0, 0, 0, 0.58),
+    0 0 48px rgba(213, 219, 255, 0.08);
+}
+
+.web-celestial-glyph__dust {
+  right: 18%;
+  top: 37%;
+  width: 0.42rem;
+  height: 0.42rem;
+  background: rgba(196, 177, 122, 0.96);
+  box-shadow:
+    0 0 18px rgba(196, 177, 122, 0.54),
+    -2.1rem 1.7rem 0 -0.16rem rgba(248, 249, 255, 0.55),
+    1.4rem 2.3rem 0 -0.18rem rgba(196, 177, 122, 0.5);
+}
+
+.web-celestial-glyph[data-celestial="black-hole"] .web-celestial-glyph__ring {
+  inset: 12%;
+  border-color: rgba(196, 177, 122, 0.46);
+  transform: rotate(-12deg) scaleX(2.02);
+  box-shadow: 0 0 42px rgba(196, 177, 122, 0.18);
+}
+
+.web-celestial-glyph[data-celestial="black-hole"] .web-celestial-glyph__body {
+  inset: 26%;
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 1) 0 44%, rgba(184, 168, 121, 0.26) 47%, rgba(20, 18, 24, 0.92) 58%, rgba(0, 0, 0, 1) 72%);
+  border-color: rgba(196, 177, 122, 0.16);
+}
+
+.web-celestial-glyph[data-celestial="nebula"] .web-celestial-glyph__body {
+  inset: 15%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(248, 249, 255, 0.22), transparent 17%),
+    radial-gradient(circle at 62% 47%, rgba(196, 177, 122, 0.24), transparent 20%),
+    radial-gradient(circle at 42% 62%, rgba(92, 84, 128, 0.52), rgba(7, 8, 18, 0.9) 68%, transparent 76%);
+  filter: blur(0.2px);
+}
+
+.web-celestial-glyph[data-celestial="corona"] .web-celestial-glyph__body {
+  inset: 18%;
+  background:
+    radial-gradient(circle, rgba(255, 242, 187, 0.82) 0 8%, rgba(196, 177, 122, 0.58) 18%, rgba(22, 13, 6, 0.96) 60%, rgba(0, 0, 0, 1) 76%);
+  box-shadow: 0 0 68px rgba(196, 177, 122, 0.24), inset 0 0 24px rgba(0, 0, 0, 0.48);
+}
+
+.web-celestial-glyph[data-celestial="earth"] .web-celestial-glyph__body {
+  background:
+    radial-gradient(circle at 42% 35%, rgba(233, 238, 229, 0.2), transparent 6%),
+    radial-gradient(circle at 38% 52%, rgba(92, 118, 92, 0.5), transparent 20%),
+    radial-gradient(circle at 62% 58%, rgba(84, 96, 124, 0.44), transparent 22%),
+    radial-gradient(circle, rgba(40, 44, 64, 0.72), rgba(5, 6, 18, 0.96) 68%);
+}
+
+.web-celestial-glyph[data-celestial="rain"] .web-celestial-glyph__ring,
+.web-celestial-glyph[data-celestial="architect"] .web-celestial-glyph__ring {
+  border-radius: 32% 68% 52% 48% / 44% 45% 55% 56%;
+}
+
+.web-celestial-glyph[data-celestial="anchor"] .web-celestial-glyph__body,
+.web-celestial-glyph[data-celestial="architect"] .web-celestial-glyph__body {
+  border-radius: 42% 58% 44% 56% / 48% 42% 58% 52%;
+}
+
 .constellation-kicker,
 .constellation-section-intro p,
 .constellation-river-moment p,
@@ -1181,15 +1393,6 @@ select:focus-visible {
   font-size: 0.62rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-}
-
-.constellation-personal-subtitle {
-  max-width: 22rem;
-  margin-top: 0.9rem;
-  color: rgba(245, 239, 226, 0.82);
-  font-size: 0.94rem;
-  line-height: 1.72;
-  letter-spacing: 0;
 }
 
 .constellation-essence-copy {
@@ -1470,6 +1673,14 @@ select:focus-visible {
   color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.62;
+}
+
+.constellation-resonance-item span strong {
+  display: block;
+  margin-bottom: 0.28rem;
+  color: var(--text-primary);
+  font-weight: 780;
+  line-height: 1.35;
 }
 
 .constellation-closing-lens {

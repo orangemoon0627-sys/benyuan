@@ -11,13 +11,18 @@ const primitives = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter
 
 assert.match(
   auth,
-  /Text\("进入你的私人月相档案"\)[\s\S]*?\.font\(\.system\(size:\s*34,\s*weight:\s*\.semibold\)\)/,
-  "native auth hero title should use a quieter 34pt semibold setting, not a heavy poster headline"
+  /Text\("其实在宇宙大爆炸的那一瞬间,?\\n你就已经诞生了"\)|Text\("其实在宇宙大爆炸的那一瞬间，\\n你就已经诞生了"\)/,
+  "native auth fallback should reuse the current home slogan instead of the old moon archive entry"
 );
 assert.match(
   auth,
-  /Text\("用 Apple 继续"\)[\s\S]*?\.font\(\.system\(size:\s*16,\s*weight:\s*\.semibold\)\)/,
-  "native Apple login label should avoid extra-black typography inside the capsule"
+  /Text\("用 Apple 登录"\)[\s\S]*?\.font\(\.system\(size:\s*16,\s*weight:\s*\.semibold\)\)/,
+  "native Apple login label should use the same wording as the current home entry"
+);
+assert.doesNotMatch(
+  auth,
+  /进入你的私人月相档案|先完成登录，再开始探索|PRIVATE MOON FIELD/,
+  "native auth fallback must not show the stale pre-build-17 landing copy"
 );
 assert.doesNotMatch(
   auth,
@@ -27,7 +32,7 @@ assert.doesNotMatch(
 
 assert.match(
   account,
-  /Text\(model\.session\.user\?\.displayName \?\? "我的本源档案"\)[\s\S]*?\.font\(\.system\(size:\s*30,\s*weight:\s*\.semibold\)\)/,
+  /Text\(accountDisplayName\)[\s\S]*?\.font\(\.system\(size:\s*30,\s*weight:\s*\.semibold\)\)/,
   "native account identity title should stay large but not return to oversized poster scale"
 );
 assert.match(
@@ -145,7 +150,7 @@ assert.doesNotMatch(
 );
 assert.match(
   theater,
-  /private func theaterTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 92 \{ return 19 \}[\s\S]*?if value\.count > 64 \{ return 22 \}[\s\S]*?if value\.count > 36 \{ return 25 \}[\s\S]*?return 29[\s\S]*?\}/,
+  /private func theaterTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 92 \{ return 19 \}[\s\S]*?if value\.count > 64 \{ return 22 \}[\s\S]*?if value\.count > 36 \{ return 25 \}[\s\S]*?return 29[\s\S]*?\}[\s\S]*?private func theaterLensCardHeight\(_ title: String\) -> CGFloat \{[\s\S]*?if title\.count > 150 \{ return 286 \}/,
   "native theater title sizing should leave more breathing room after visual screenshot review"
 );
 

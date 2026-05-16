@@ -19,17 +19,11 @@ struct BenyuanNativeAuthView: View {
                         Text("本源")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(BenyuanColor.textPrimary)
-                        Text("PRIVATE MOON FIELD")
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        Text("私人月相档案")
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(BenyuanColor.textTertiary)
                     }
                     Spacer()
-                    Text("登录")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(BenyuanColor.accentGold)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
                 }
 
                 Spacer(minLength: BenyuanSpacing.x4)
@@ -45,16 +39,22 @@ struct BenyuanNativeAuthView: View {
                 .padding(.vertical, BenyuanSpacing.x3)
 
                 VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
-                    Text("进入你的私人月相档案")
-                        .font(.system(size: 34, weight: .semibold))
-                        .lineSpacing(4)
+                    HStack(spacing: BenyuanSpacing.x2) {
+                        Rectangle()
+                            .fill(BenyuanColor.accentGold.opacity(0.72))
+                            .frame(width: 28, height: 1)
+                        Text("ORIGIN BEFORE LIGHT")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .tracking(1.8)
+                            .foregroundStyle(BenyuanColor.accentGold.opacity(0.72))
+                    }
+
+                    Text("其实在宇宙大爆炸的那一瞬间，\n你就已经诞生了")
+                        .font(.system(size: 29, weight: .semibold))
+                        .lineSpacing(8)
                         .minimumScaleFactor(0.78)
                         .foregroundStyle(BenyuanColor.textPrimary)
-
-                    Text("答案、影像线索、剧场选择与精神星图会归入同一个身份。先完成登录，再开始探索。")
-                        .font(.system(size: 15, weight: .regular))
-                        .lineSpacing(6)
-                        .foregroundStyle(BenyuanColor.textSecondary)
+                        .frame(maxWidth: 352, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -71,7 +71,7 @@ struct BenyuanNativeAuthView: View {
                     appleLoginLabel
                 }
                 .buttonStyle(BenyuanPressableMotionStyle(scale: 0.974, glow: 0.12))
-                .accessibilityLabel("用 Apple 继续")
+                .accessibilityLabel("用 Apple 登录")
                 .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
 
                 HStack(spacing: BenyuanSpacing.x2) {
@@ -112,7 +112,7 @@ struct BenyuanNativeAuthView: View {
         HStack(spacing: BenyuanSpacing.x3) {
             Image(systemName: "apple.logo")
                 .font(.system(size: 18, weight: .semibold))
-            Text("用 Apple 继续")
+            Text("用 Apple 登录")
                 .font(.system(size: 16, weight: .semibold))
         }
         .foregroundStyle(BenyuanColor.bgVoid)
@@ -164,7 +164,7 @@ struct BenyuanNativeAuthView: View {
             }
 
             HStack {
-                Text(model.isPhoneAuthReady ? "手机号会绑定到当前本源档案。" : "真实短信网关接入后，这里会自动切换为可用。")
+                Text(model.isPhoneAuthReady ? "手机号会绑定到当前本源档案。" : "短信验证码登录还在接入中。")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(BenyuanColor.textTertiary)
                 Spacer()

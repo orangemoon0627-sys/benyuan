@@ -271,7 +271,7 @@ test("fast constellation seed merges personalized label while preserving canonic
   assert.match(merged.archetype.core_essence, /未寄出的信|精神潮汐/);
 });
 
-test("analyst prompts separate fixed archetype type from personalized naming", () => {
+test("analyst prompts keep fixed archetype as the only visible naming", () => {
   const part1 = createPart1Record();
   const part2 = createPart2Record();
   const fallback = generateDeterministicConstellation(part1, part2);
@@ -282,7 +282,12 @@ test("analyst prompts separate fixed archetype type from personalized naming", (
   assert.match(fullPrompt, /archetype\.name\s*必须保持/u);
   assert.match(fullPrompt, /personalized_name/);
   assert.match(fullPrompt, /personalized_subtitle/);
+  assert.match(fullPrompt, /用户可见的主标题只允许使用固定 10 个主星体标签/u);
+  assert.match(fullPrompt, /不进入结果页主标签、分享标题或保存长图标题/u);
+  assert.doesNotMatch(fullPrompt, /用于结果页展示更私人化的称谓和副标题/u);
+  assert.doesNotMatch(fullPrompt, /它们才是根据用户细节生成的个人化称谓/u);
   assert.match(fastPrompt, /不要覆盖 canonical_archetype_name/u);
   assert.match(fastPrompt, /personalized_name/);
   assert.match(fastPrompt, /personalized_subtitle/);
+  assert.match(fastPrompt, /只是内部显影短语，不能承担用户可见命名/u);
 });

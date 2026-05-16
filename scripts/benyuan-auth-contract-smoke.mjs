@@ -121,6 +121,8 @@ assert.match(wechatRoute, /readAuthFromRequest/, "wechat route must support bind
 assert.match(wechatRoute, /missing_wechat_code/, "wechat route must reject missing authorization codes");
 assert.match(providersRoute, /listBenyuanAuthProviders/, "providers route must list supported providers");
 assert.match(meRoute, /getCurrentAuthSession/, "me route must return the current authenticated account");
+assert.match(meRoute, /export async function PATCH/, "me route must support updating the account display name");
+assert.match(store, /updateAuthUserDisplayName/, "store must persist account display-name edits");
 assert.match(logoutRoute, /logoutAuthSession/, "logout route must revoke the bearer session");
 assert.match(accountHistoryRoute, /getCurrentAuthSession/, "account history route must require auth");
 assert.match(accountHistoryRoute, /listAccountHistoryForUser/, "account history route must list owned exploration records");
@@ -165,7 +167,8 @@ assert.match(nativeModels, /BenyuanConstellationRecordResponse/, "native models 
 assert.match(nativeClient, /Authorization/, "native API client must attach Authorization header");
 assert.match(nativeClient, /func upload[\s\S]*?applyAuth\(to:\s*&request\)/, "native image upload must attach Authorization header to multipart requests");
 assert.match(nativeClient, /fallbackBaseURL/, "native API client must keep a fallback base URL for production network failures");
-assert.match(nativeClient, /secureConnectionFailed/, "native API client must retry fallback for SSL connection failures");
+assert.match(nativeClient, /shouldRetryWithFallback[\s\S]*urlError\s*!=\s*nil/, "native API client must retry fallback for URLSession network failures");
+assert.match(nativeClient, /network request failed/, "native API client must log network failure details for auth diagnostics");
 assert.match(nativeClient, /networkFallbackBaseURL/, "native API client must source fallback URL from shell release config");
 assert.match(nativeClient, /createAnonymousSession/, "native API client must support anonymous auth");
 assert.match(nativeClient, /createAppleSession/, "native API client must support Apple auth");
@@ -173,6 +176,7 @@ assert.match(nativeClient, /requestPhoneCode/, "native API client must support p
 assert.match(nativeClient, /verifyPhoneCode/, "native API client must support phone code verification");
 assert.match(nativeClient, /createWechatSession/, "native API client must support WeChat auth handoff");
 assert.match(nativeClient, /fetchCurrentAccount/, "native API client must fetch the current account");
+assert.match(nativeClient, /updateDisplayName/, "native API client must update account display names");
 assert.match(nativeClient, /fetchAccountHistory/, "native API client must fetch account history");
 assert.match(nativeClient, /deleteAccountHistoryItem/, "native API client must delete history items");
 assert.match(nativeClient, /fetchPart1HistoryRecord/, "native API client must fetch saved Part1 detail for draft restore");
@@ -196,6 +200,7 @@ assert.match(nativeFlow, /restorePart2Replay/, "native flow must restore saved P
 assert.match(nativeFlow, /confirmDeleteHistoryItem/, "native flow must confirm history deletion before calling the API");
 assert.match(nativeFlow, /deleteHistoryItem/, "native flow must delete a history item");
 assert.match(nativeFlow, /logout/, "native flow must clear auth locally after logout");
+assert.match(nativeFlow, /updateDisplayName/, "native flow must let users customize the account display name");
 assert.match(nativeFlow, /continueAsGuest/, "native flow must support guest entry");
 assert.match(nativeFlow, /requestPhoneCode/, "native flow must request phone codes");
 assert.match(nativeFlow, /continueWithPhone/, "native flow must continue with phone auth");
@@ -212,7 +217,8 @@ assert.match(nativeAppleAuth, /ASAuthorizationControllerDelegate/, "native Apple
 assert.match(nativeAppleAuth, /ASAuthorizationControllerPresentationContextProviding/, "native Apple auth coordinator must provide a presentation anchor on device");
 assert.doesNotMatch(nativeAuthView, /SignInWithAppleButton[\s\S]*?\.opacity\(0\.001\)/, "native Apple login must not hide the system button at near-zero opacity");
 assert.match(nativeAuthView, /authorizationCode/, "native auth view must forward Apple authorization code when available");
-assert.match(nativeAuthView, /用 Apple 继续/, "native auth view should include Apple login copy");
+assert.match(nativeAuthView, /用 Apple 登录/, "native auth view should include current Apple login copy");
+assert.doesNotMatch(nativeAuthView, /进入你的私人月相档案|先完成登录，再开始探索|PRIVATE MOON FIELD/, "native auth view must not regress to stale landing copy");
 assert.doesNotMatch(nativeAuthView, /先以访客进入/, "native auth view should not expose guest exploration before login");
 assert.match(nativeAuthView, /微信登录/, "native auth view should reserve the WeChat login entry");
 assert.match(nativeAuthView, /BenyuanWechatAuthClient/, "native auth view must invoke the WeChat native auth client");
@@ -226,6 +232,9 @@ assert.match(nativeAccountView, /恢复 \\\(boundProviderCount\)\/4/, "native ac
 assert.doesNotMatch(nativeAccountView, /Apple、微信、手机号统一放在这里，不占用主页面。/, "native account home should not stack provider names in the main binding entry");
 assert.match(nativeAccountView, /探索历史/, "native account view must show exploration history");
 assert.match(nativeAccountView, /accountIdentityPanel/, "native account view must keep account identity as a dedicated visual panel");
+assert.match(nativeAccountView, /accountDisplayName/, "native account view must use a sanitized editable account display name");
+assert.match(nativeAccountView, /displayNameEditor/, "native account view must expose a display-name editor sheet");
+assert.match(nativeAccountView, /latestAccountCelestialMode/, "native account identity icon must use the latest constellation archetype when available");
 assert.match(nativeAccountView, /bindingOrbitSection/, "native account view must present provider binding as a clear orbit section");
 assert.match(nativeAccountView, /historyTimelineSection/, "native account view must present exploration history as a timeline section");
 assert.match(nativeAccountView, /historyMetaStrip/, "native account history cards must expose stage, assets, and updated metadata");

@@ -361,13 +361,11 @@ struct PsycheArchetype: Codable, Equatable {
     let visualPrompt: String
 
     var displayName: String {
-        let value = personalizedName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return value.isEmpty ? name : value
+        name
     }
 
     var displaySubtitle: String {
-        let value = personalizedSubtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return value.isEmpty ? englishName : value
+        englishName
     }
 
     var canonicalizedForNativeDisplay: PsycheArchetype {

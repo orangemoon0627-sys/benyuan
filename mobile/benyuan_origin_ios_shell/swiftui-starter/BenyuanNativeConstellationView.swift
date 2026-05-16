@@ -168,14 +168,6 @@ struct BenyuanNativeConstellationView: View {
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(BenyuanColor.accentGold.opacity(0.86))
                 .multilineTextAlignment(.center)
-            if data.archetype.displayName != data.archetype.name || data.archetype.displaySubtitle != data.archetype.englishName {
-                Text("\(data.archetype.displayName)：\(data.archetype.displaySubtitle)")
-                    .font(.system(size: 15, weight: .regular))
-                    .lineSpacing(5)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(BenyuanColor.textSecondary.opacity(0.92))
-                    .padding(.horizontal, BenyuanSpacing.x3)
-            }
             Text(data.archetype.coreEssence)
                 .font(.system(size: 17, weight: .regular))
                 .lineSpacing(6)

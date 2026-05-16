@@ -7,33 +7,45 @@ struct BenyuanNativeCollectView: View {
     @State private var novaBurstOptionId: String?
     @State private var novaBurstToken = 0
     private let collectBottomSafeSpace: CGFloat = 44
+    private let collectScrollTopAnchor = "benyuan-collect-scroll-top"
 
     var body: some View {
         VStack(spacing: 0) {
             BenyuanNativeTopBar(progress: model.progress, label: "线索收集 \(model.answeredCount)/\(model.questions.count)", onAccount: model.showAccount)
 
             if let question = model.currentQuestion {
-                ScrollView(showsIndicators: false) {
-                    BenyuanQuestionStepMotion(direction: model.questionMotionDirection, token: model.questionMotionToken) {
-                        BenyuanRevealedStack(spacing: collectStackSpacing(for: question)) {
-                            if question.kind == .upload {
-                                uploadHeader(question)
-                            } else {
-                                questionHeader(question)
-                            }
-                            if question.kind != .upload {
-                                collectCompletionHint(question)
-                            }
-                            questionBody(question)
-                            if question.kind == .upload {
-                                collectCompletionHint(question)
+                ScrollViewReader { scrollProxy in
+                    ScrollView(showsIndicators: false) {
+                        Color.clear
+                            .frame(height: 0)
+                            .id(collectScrollTopAnchor)
+
+                        BenyuanQuestionStepMotion(direction: model.questionMotionDirection, token: model.questionMotionToken) {
+                            BenyuanRevealedStack(spacing: collectStackSpacing(for: question)) {
+                                if question.kind == .upload {
+                                    uploadHeader(question)
+                                } else {
+                                    questionHeader(question)
+                                }
+                                if question.kind != .upload {
+                                    collectCompletionHint(question)
+                                }
+                                questionBody(question)
+                                if question.kind == .upload {
+                                    collectCompletionHint(question)
+                                }
                             }
                         }
+                        .id(model.activeQuestionIndex)
+                        .padding(.horizontal, BenyuanSpacing.x4)
+                        .padding(.top, collectTopPadding(for: question))
+                        .padding(.bottom, collectBottomSafeSpace)
                     }
-                    .id(model.activeQuestionIndex)
-                    .padding(.horizontal, BenyuanSpacing.x4)
-                    .padding(.top, collectTopPadding(for: question))
-                    .padding(.bottom, collectBottomSafeSpace)
+                    .onChange(of: model.activeQuestionIndex) { _, _ in
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            scrollProxy.scrollTo(collectScrollTopAnchor, anchor: .top)
+                        }
+                    }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     bottomBar

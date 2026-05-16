@@ -12,7 +12,6 @@ const componentNeedles = [
   "constellation-final-dock",
   "constellationDisplayName",
   "constellationDisplaySubtitle",
-  "constellation-personal-subtitle",
   "data-constellation-state",
   "data-constellation-section",
 ];
@@ -23,7 +22,6 @@ const cssNeedles = [
   ".constellation-dimension-orbit",
   ".constellation-narrative-river",
   ".constellation-final-dock",
-  ".constellation-personal-subtitle",
 ];
 
 const forbiddenNeedles = [
@@ -34,6 +32,9 @@ const forbiddenNeedles = [
   "ESSENCE",
   "STRUCTURE",
   "NOW",
+  "constellation-personal-subtitle",
+  "personalized_name?.trim() || data.archetype.name",
+  "personalized_subtitle?.trim() || data.archetype.english_name",
 ];
 
 const missing = [
@@ -42,11 +43,21 @@ const missing = [
 ];
 
 const forbidden = forbiddenNeedles
-  .filter((needle) => component.includes(needle))
-  .map((needle) => `component:${needle}`);
+  .flatMap((needle) => [
+    component.includes(needle) ? `component:${needle}` : null,
+    css.includes(needle) ? `css:${needle}` : null,
+  ].filter(Boolean));
 
 if (missing.length > 0 || forbidden.length > 0) {
   throw new Error(`constellation ui contract failed missing=[${missing.join(", ")}] forbidden=[${forbidden.join(", ")}]`);
+}
+
+if (!/function constellationDisplayName\(data: PsycheConstellation\) \{\s*return data\.archetype\.name;\s*\}/m.test(component)) {
+  throw new Error("constellation ui contract failed: web constellation title must use the fixed canonical archetype name");
+}
+
+if (!/function constellationDisplaySubtitle\(data: PsycheConstellation\) \{\s*return data\.archetype\.english_name;\s*\}/m.test(component)) {
+  throw new Error("constellation ui contract failed: web constellation subtitle must use the fixed canonical archetype English name");
 }
 
 console.log("constellation-ui-contract:ok");

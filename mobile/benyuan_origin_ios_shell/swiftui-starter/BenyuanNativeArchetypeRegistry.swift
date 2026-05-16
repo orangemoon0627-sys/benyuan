@@ -13,7 +13,7 @@ enum BenyuanNativeArchetypeRegistry {
             name: "远潮观月者",
             englishName: "The Far-Tide Moon Watcher",
             visualPrompt: "far tide moon, silver lunar body, black sea horizon, restrained gold tide",
-            fingerprints: ["远潮观月者", "月背寻光者", "深月观测者", "暮潮拾光者", "暮海寻光者", "暮海守光者", "目光拾亡者", "moonlit seeker", "moonlitseeker", "far tide", "fartide", "观月", "月背", "暮潮", "暮海", "寻光", "守光", "拾光"]
+            fingerprints: ["远潮观月者", "月门潜航者", "月背寻光者", "深月观测者", "暮潮拾光者", "暮海寻光者", "暮海守光者", "目光拾亡者", "moonlit seeker", "moonlitseeker", "far tide", "fartide", "观月", "月门", "月背", "暮潮", "暮海", "寻光", "守光", "拾光"]
         ),
         BenyuanNativeArchetypeProfile(
             name: "星图筑序者",
@@ -154,7 +154,25 @@ enum BenyuanNativeArchetypeRegistry {
         }
         if containsOfficialOrRetiredLabel { return nil }
         if normalized == normalize(profile.name) || normalized == normalize(profile.englishName) { return nil }
+        if retiredPersonalizedLabels.contains(where: { normalized.contains(normalize($0)) }) { return nil }
         if trimmed.count > maximumCount { return nil }
         return trimmed
     }
+
+    private static let retiredPersonalizedLabels = [
+        "月门潜航者",
+        "月背寻光者",
+        "深月观测者",
+        "暮潮拾光者",
+        "暮海寻光者",
+        "暮海守光者",
+        "目光拾亡者",
+        "事件视界潜行者",
+        "日冕燃心者",
+        "孤独求索者",
+        "理性建构者",
+        "温柔守护者",
+        "Moonlit Seeker",
+        "The Moonlit Seeker"
+    ]
 }

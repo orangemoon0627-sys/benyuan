@@ -848,7 +848,7 @@ function buildSevenDimensions(input: AnalysisInput, vector: FeatureVector): Cons
   const scored = [
     {
       key: 'openness' as const,
-      label: '开放性',
+      label: '潜意识开放度',
       value: clamp01(average([
         values.aesthetic_visual_surreal,
         values.aesthetic_literary_existential,
@@ -864,7 +864,7 @@ function buildSevenDimensions(input: AnalysisInput, vector: FeatureVector): Cons
     },
     {
       key: 'independence' as const,
-      label: '独立性',
+      label: '边界完整度',
       value: clamp01(average([
         values.aesthetic_visual_minimal,
         values.aesthetic_niche_orientation,
@@ -879,7 +879,7 @@ function buildSevenDimensions(input: AnalysisInput, vector: FeatureVector): Cons
     },
     {
       key: 'emotional_depth' as const,
-      label: '情感深度',
+      label: '情绪沉潜度',
       value: clamp01(average([
         values.emotional_depth,
         values.emotional_granularity,
@@ -894,7 +894,7 @@ function buildSevenDimensions(input: AnalysisInput, vector: FeatureVector): Cons
     },
     {
       key: 'meaning_seeking' as const,
-      label: '意义追寻',
+      label: '意义欲望',
       value: clamp01(average([
         values.temporal_meaning_density,
         values.aesthetic_literary_existential,
@@ -909,7 +909,7 @@ function buildSevenDimensions(input: AnalysisInput, vector: FeatureVector): Cons
     },
     {
       key: 'aesthetic_sensitivity' as const,
-      label: '审美敏感',
+      label: '象征感受力',
       value: clamp01(average([
         values.aesthetic_music_nocturnal,
         values.aesthetic_visual_surreal,
@@ -924,7 +924,7 @@ function buildSevenDimensions(input: AnalysisInput, vector: FeatureVector): Cons
     },
     {
       key: 'action_tendency' as const,
-      label: '行动力',
+      label: '现实落地力',
       value: clamp01(average([
         values.temporal_change_openness,
         values.temporal_future_pull,
@@ -938,7 +938,7 @@ function buildSevenDimensions(input: AnalysisInput, vector: FeatureVector): Cons
     },
     {
       key: 'relationship_need' as const,
-      label: '关系需求',
+      label: '客体联结需求',
       value: clamp01(average([
         values.aesthetic_literary_tenderness,
         values.emotional_depth,
@@ -1044,7 +1044,7 @@ function buildGrowthSuggestions(
     });
   } else if (dimensionMap.aesthetic_sensitivity >= 75) {
     items.push({
-      title: '让审美敏感进入你的现实结构',
+      title: '让象征感受力进入你的现实结构',
       description: '你的审美天赋不必只停留在欣赏层面。它也可以进入书写、摄影、空间整理、歌单编排或任何能让你持续组织经验的介质。',
       actionableSteps: [
         '开始一个只对自己负责的小型创作档案。',
@@ -1091,7 +1091,7 @@ function buildCuratedRecommendations(vector: FeatureVector): RecommendationColle
           { title: '《小偷家族》', creator: '是枝裕和', reason: '它适合那些会从细节、沉默和边缘处辨认关系重量的人。' },
         ]
       : [
-          { title: '《生命之树》', creator: '特伦斯·马力克', reason: '它能把你的情感深度、自然感与意义追问拉到同一片银幕上。' },
+          { title: '《生命之树》', creator: '特伦斯·马力克', reason: '它能把你的情绪沉潜度、自然感与意义欲望拉到同一片银幕上。' },
           { title: '《潜行者》', creator: '安德烈·塔可夫斯基', reason: '如果你想在场景里而不是答案里寻找理解，它会非常像你的精神旅程。' },
           { title: '《布达佩斯大饭店》', creator: '韦斯·安德森', reason: '当你需要秩序、节制和形式感来重新整理自己时，它会提供一块更轻盈的容器。' },
         ];

@@ -11,6 +11,7 @@ import {
   BENYUAN_PENDING_PART2_KEY,
   BENYUAN_RUNTIME_STORAGE_KEY,
   BENYUAN_SESSION_STORAGE_KEY,
+  benyuanFetch,
   type BenyuanPendingPart1,
   type BenyuanPendingPart2,
   type BenyuanSessionState,
@@ -19,13 +20,13 @@ import {
 const stageLabels = {
   part1: [
     { key: "part1_submit", title: "收束线索", detail: "正在把你的回答合拢。", paceSec: 6 },
-    { key: "multimodal", title: "解析光谱", detail: "审美线索正在显出纹理。", paceSec: 90 },
-    { key: "director", title: "构建剧场", detail: "正在把你的线索折成一幕剧场。", paceSec: 95 },
+    { key: "multimodal", title: "读取材料", detail: "正在从图片、歌单和文字里辨认情绪纹理。", paceSec: 90 },
+    { key: "director", title: "生成短篇", detail: "正在把这些线索写成只属于你的四轮选择。", paceSec: 95 },
     { key: "handoff", title: "剧场就位", detail: "下一幕正在靠近。", paceSec: 4 },
   ],
   constellation: [
     { key: "part2_submit", title: "记录选择", detail: "正在收束你的剧场轨迹。", paceSec: 6 },
-    { key: "analyst", title: "折成星图", detail: "星图正在从暗处浮现。", paceSec: 120 },
+    { key: "analyst", title: "折成星图", detail: "正在把选择、材料和迟疑显影成精神星图。", paceSec: 120 },
     { key: "handoff", title: "原型显形", detail: "准备进入结果页。", paceSec: 4 },
   ],
 } as const;
@@ -104,7 +105,7 @@ function readActiveStageStartedAt(phase: RitualPhase) {
 }
 
 async function postJson(path: string, body: unknown) {
-  const response = await fetch(path, {
+  const response = await benyuanFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

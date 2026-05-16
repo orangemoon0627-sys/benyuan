@@ -303,6 +303,64 @@ final class BenyuanCoreNativeTests: XCTestCase {
         }
     }
 
+    func testAPIClientRetriesFallbackBaseURLForAnyURLError() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "https://benyuan.orangemoonai.cn")!,
+            fallbackBaseURL: URL(string: "https://staging-benyuan.orangemoonai.cn")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        var requestedHosts: [String] = []
+        BenyuanMockURLProtocol.handler = { request in
+            requestedHosts.append(request.url?.host ?? "")
+
+            if requestedHosts.count == 1 {
+                throw URLError(.badServerResponse)
+            }
+
+            return BenyuanMockURLProtocol.json(
+                200,
+                #"{"providers":[{"provider":"apple","enabled":true,"status":"ready","actions":["login"]}],"capabilities":["apple_login"]}"#
+            )
+        }
+
+        let response = try await client.fetchAuthProviders()
+
+        XCTAssertEqual(response.providers.map(\.provider), [.apple])
+        XCTAssertEqual(requestedHosts, [
+            "benyuan.orangemoonai.cn",
+            "staging-benyuan.orangemoonai.cn"
+        ])
+    }
+
+    func testAPIClientReportsFriendlyNetworkErrorWhenFallbackAlsoFails() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "https://benyuan.orangemoonai.cn")!,
+            fallbackBaseURL: URL(string: "https://staging-benyuan.orangemoonai.cn")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { _ in
+            throw URLError(.secureConnectionFailed)
+        }
+
+        do {
+            _ = try await client.fetchAuthProviders() as BenyuanAuthProvidersResponse
+            XCTFail("Expected network error")
+        } catch let error as BenyuanAPIError {
+            XCTAssertEqual(
+                error.errorDescription,
+                "暂时连接不上本源服务器，请稍后再试。"
+            )
+        }
+    }
+
     @MainActor
     func testHomeExplorationRequiresFormalLogin() throws {
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
@@ -899,8 +957,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
             "archetype": {
               "name": "月下观察者",
               "english_name": "Lunar Witness",
-              "personalized_name": "海信守夜人",
-              "personalized_subtitle": "把退潮与未说出口的愿望收进一条轨道",
+              "personalized_name": "月岸守望者",
+              "personalized_subtitle": "把海天、旧窗与暗金边界收进轨道",
               "core_essence": "在退潮处辨认自己的真实愿望。",
               "visual_prompt": "deep moon field"
             },
@@ -947,8 +1005,10 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(response.archetypeImageUrl, "/generated/test.png")
         XCTAssertEqual(generate.constellationId, "const_test")
         XCTAssertEqual(generate.psycheConstellation.archetype.name, "月下观察者")
-        XCTAssertEqual(generate.psycheConstellation.archetype.displayName, "海信守夜人")
-        XCTAssertEqual(generate.psycheConstellation.archetype.displaySubtitle, "把退潮与未说出口的愿望收进一条轨道")
+        XCTAssertEqual(generate.psycheConstellation.archetype.displayName, "月下观察者")
+        XCTAssertEqual(generate.psycheConstellation.archetype.displaySubtitle, "Lunar Witness")
+        XCTAssertEqual(generate.psycheConstellation.archetype.personalizedName, "月岸守望者")
+        XCTAssertEqual(generate.psycheConstellation.archetype.personalizedSubtitle, "把海天、旧窗与暗金边界收进轨道")
     }
 
     func testPart1HistoryRecordDecodesSavedAnswersAndUploadedAssets() throws {
@@ -1797,7 +1857,8 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertEqual(model.stage, .constellation)
         XCTAssertEqual(model.constellation?.psycheConstellation.archetype.name, "远潮观月者")
-        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.displayName, "远潮边的守信者")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.displayName, "远潮观月者")
+        XCTAssertEqual(model.constellation?.psycheConstellation.archetype.personalizedName, "远潮边的守信者")
         XCTAssertFalse(model.constellation?.psycheConstellation.sevenDimensions.isEmpty ?? true)
     }
 

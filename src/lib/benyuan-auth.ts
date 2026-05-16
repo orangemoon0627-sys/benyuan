@@ -570,8 +570,13 @@ export async function verifyPhoneOtpAndCreateSession(input: { phone?: string; co
 export async function readAuthFromRequest(request: Request): Promise<BenyuanAuthContext | null> {
   const header = request.headers.get("authorization") ?? "";
   const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match) return null;
-  return (await getAuthSessionByToken(match[1].trim())) ?? null;
+  if (match) return (await getAuthSessionByToken(match[1].trim())) ?? null;
+
+  const url = new URL(request.url);
+  const queryToken = url.searchParams.get("auth_token")?.trim();
+  if (queryToken) return (await getAuthSessionByToken(queryToken)) ?? null;
+
+  return null;
 }
 
 export function allowBenyuanLocalAuthFallback() {

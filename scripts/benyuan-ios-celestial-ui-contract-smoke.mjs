@@ -12,6 +12,7 @@ const theater = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/Be
 const constellation = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeConstellationView.swift", "utf8");
 const models = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeModels.swift", "utf8");
 const renderer = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanConstellationImageRenderer.swift", "utf8");
+const actions = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeConstellationActions.swift", "utf8");
 const flowModel = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeFlowModel.swift", "utf8");
 const rootView = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellRootView.swift", "utf8");
 const home = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeHomeView.swift", "utf8");
@@ -96,11 +97,13 @@ assert.doesNotMatch(home, /先选择身份|登录后再开始探索|选择身份
 
 assert.match(auth, /BenyuanRevealedStack/, "native auth view must use staged entrance motion");
 assert.match(auth, /BenyuanDeepCelestialBody/, "native auth view must use the shared dynamic moon field");
+assert.match(auth, /其实在宇宙大爆炸的那一瞬间/, "native auth fallback should share the current landing slogan");
 assert.match(auth, /\.foregroundStyle\(BenyuanColor\.bgVoid\)/, "native Apple login label must use dark text on its light capsule");
 assert.match(auth, /BenyuanAppleAuthCoordinator/, "native Apple login must use an explicit authorization coordinator instead of a transparent system-button overlay");
 assert.match(auth, /startAppleLogin/, "native Apple login must have a real SwiftUI button action that opens Apple authorization");
 assert.doesNotMatch(auth, /\.opacity\(0\.001\)/, "native Apple login must not rely on a nearly transparent system button that can miss taps on device");
 assert.doesNotMatch(auth, /soon|SOON/, "native auth view should not show soon badges on login options");
+assert.doesNotMatch(auth, /进入你的私人月相档案|先完成登录，再开始探索|PRIVATE MOON FIELD/, "native auth view should not expose stale pre-build-17 landing copy");
 assert.doesNotMatch(auth, /先以访客进入|可先以访客进入/, "native auth view must not expose guest exploration before login");
 
 assert.match(collect, /BenyuanQuestionSignalField/, "native collect view must include per-question signal motion");
@@ -143,7 +146,8 @@ assert.doesNotMatch(theater, /ACT I|ACT II|ACT III|EPILOGUE/, "native theater sh
 assert.match(theater, /act1ReadingPage\(availableHeight:/, "native theater act1 must use a full-screen scrollable reading page");
 assert.match(theater, /BenyuanNativePrimaryButton\(title:\s*"进入这一幕"[\s\S]*?model\.enterAct2\(\)/, "native theater act1 fixed bottom action must remain unchanged");
 assert.match(theater, /private func theaterLensCardHeight\(_ title:\s*String\)/, "native theater narrative lens should size from text instead of reserving a large empty portal");
-assert.match(theater, /\.frame\(height:\s*cardHeight,\s*alignment:\s*\.topLeading\)/, "native theater narrative lens must keep the text vertically tight in the capsule");
+assert.match(theater, /\.frame\(minHeight:\s*cardHeight,\s*alignment:\s*\.topLeading\)/, "native theater narrative lens must expand instead of clipping generated scene text");
+assert.match(theater, /\.onChange\(of:\s*model\.theaterChoiceIndex\)/, "native theater must scroll each Act2 round back to the scene text after advancing");
 assert.doesNotMatch(theater, /Text\(stage\.label\)|TheaterStage\(|theaterStageRail|theaterStageChip|model\.revisitTheaterPhase\(stage\.phase\)/, "native theater must not show the removed top stage capsule rail");
 for (const label of ["入场", "分岔", "追问", "星图", "镜面"]) {
   assert.doesNotMatch(theater, new RegExp(`TheaterStage\\(label:\\s*"${label}"`), `native theater top stage rail must not expose ${label}`);
@@ -159,20 +163,24 @@ assert.match(primitives, /\.padding\(\.vertical,\s*8\)/, "native option capsules
 assert.match(constellation, /BenyuanDeepCelestialBody/, "native constellation view must use the shared dynamic celestial body");
 assert.match(models, /let personalizedName:\s*String\?/, "native constellation DTO must decode personalized_name separately from the canonical archetype name");
 assert.match(models, /let personalizedSubtitle:\s*String\?/, "native constellation DTO must decode personalized_subtitle separately from the canonical archetype name");
-assert.match(models, /var displayName:\s*String/, "native constellation DTO must expose a display name that can prefer the personal label");
-assert.match(models, /var displaySubtitle:\s*String/, "native constellation DTO must expose a display subtitle that can prefer the personal label");
+assert.match(models, /var displayName:\s*String/, "native constellation DTO may keep a legacy displayName accessor for decoding compatibility");
+assert.match(models, /var displaySubtitle:\s*String/, "native constellation DTO may keep a legacy displaySubtitle accessor for decoding compatibility");
 assert.match(models, /canonicalizedForNativeDisplay/, "native constellation DTO must expose a final canonicalization pass for stale server or history labels");
 assert.match(nativeArchetypes, /月背寻光者/, "native archetype registry must recognize the retired moon-back seeker label from older builds");
+assert.match(nativeArchetypes, /月门潜航者/, "native archetype registry must recognize the retired moon-gate navigator label from older builds");
+assert.match(nativeArchetypes, /目光拾亡者/, "native archetype registry must recognize the retired gaze label from older builds");
 assert.match(nativeArchetypes, /事件视界沉潜者/, "native archetype registry must keep the official event-horizon label");
 assert.match(nativeArchetypes, /The Far-Tide Moon Watcher/, "native archetype registry must not leave 远潮观月者 with the old Moonlit Seeker subtitle");
 assert.match(nativeArchetypes, /sanitizedPersonalizedName/, "native archetype registry must sanitize stale personalized names before display");
 assert.match(nativeArchetypes, /containsOfficialOrRetiredLabel/, "native archetype registry must reject retired or official labels as personalized display names");
+assert.match(nativeArchetypes, /retiredPersonalizedLabels/, "native archetype registry must keep an explicit retired-personalized-label denylist");
 assert.match(constellation, /Text\(data\.archetype\.name\)[\s\S]*?\.font\(\.system\(size:\s*42,\s*weight:\s*\.semibold\)\)/, "native constellation hero must use the fixed canonical 10-label archetype as the main title");
 assert.match(constellation, /Text\(data\.archetype\.englishName\)/, "native constellation hero must keep the English archetype name as a secondary label");
-assert.match(constellation, /Text\("\\\(data\.archetype\.displayName\)：\\\(data\.archetype\.displaySubtitle\)"\)/, "native constellation hero must move personalized naming into the explanatory annotation below the fixed label");
+assert.doesNotMatch(constellation, /Text\("\\\(data\.archetype\.displayName\)：\\\(data\.archetype\.displaySubtitle\)"\)/, "native constellation hero must not render personalized naming as a second visible tag");
 assert.doesNotMatch(constellation, /Text\(data\.archetype\.displayName\)[\s\S]*?\.font\(\.system\(size:\s*4[0-9],/, "native constellation hero must not let personalized labels replace the official archetype heading");
 assert.match(renderer, /drawWrapped\(data\.archetype\.name/, "native constellation share image must render the canonical archetype label as the title");
-assert.match(renderer, /archetype\.displayName[\s\S]*?archetype\.displaySubtitle/, "native constellation share image may include personalized naming only as supporting annotation");
+assert.doesNotMatch(renderer, /archetype\.displayName[\s\S]*?archetype\.displaySubtitle/, "native constellation share image must not render personalized naming as a second visible tag");
+assert.doesNotMatch(actions, /本次显影|archetype\.displayName|archetype\.displaySubtitle/, "native share text must not expose personalized naming as a second visible tag");
 assert.match(renderer, /drawDimensionOrbitChart/, "native constellation share image must render 七维轨道 as an orbital web chart");
 assert.doesNotMatch(renderer, /drawDimensionBars|星际谱系|drawLineageBlock/, "native constellation share image must remove the old bar-score and lineage block");
 assert.match(renderer, /userName/, "native constellation share image must include a user-name slot");

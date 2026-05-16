@@ -277,6 +277,22 @@ export async function saveAuthUserAndSession(user: BenyuanUser, session: Benyuan
   });
 }
 
+export async function updateAuthUserDisplayName(userId: string, displayName: string) {
+  return withStoreWrite((store) => {
+    const user = store.users[userId];
+    if (!user) return undefined;
+    const cleaned = displayName.replace(/\s+/g, " ").trim().slice(0, 32);
+    if (!cleaned) return undefined;
+    const updated: BenyuanUser = {
+      ...storedBenyuanDataScope(user),
+      display_name: cleaned,
+      updated_at: new Date().toISOString(),
+    };
+    store.users[userId] = updated;
+    return updated;
+  });
+}
+
 export async function getAuthSessionByToken(token: string) {
   const store = await readBenyuanV3Store();
   const session = store.auth_sessions[token];
@@ -1183,6 +1199,7 @@ export async function saveConstellationRecord(record: ConstellationRecord) {
     const scoped = withBenyuanDataScope({
       ...record,
       ...scopeFromPart1(store.part1_records[record.part1_id]),
+      psyche_constellation: normalizePsycheConstellation(record.psyche_constellation),
     });
     store.constellations[record.constellation_id] = scoped;
     return scoped;

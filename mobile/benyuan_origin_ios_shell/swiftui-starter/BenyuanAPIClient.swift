@@ -3,6 +3,7 @@ import Foundation
 enum BenyuanAPIError: Error, LocalizedError, Equatable {
     case invalidImage
     case invalidResponse
+    case network(code: Int, message: String)
     case server(status: Int, message: String)
 
     var errorDescription: String? {
@@ -11,6 +12,8 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
             return "图片暂时无法处理。"
         case .invalidResponse:
             return "服务器返回了无法识别的结果。"
+        case .network:
+            return "暂时连接不上本源服务器，请稍后再试。"
         case .server(let status, let message):
             if status == 404 && message == "html_not_found" {
                 return "这份历史档案还没有同步到当前服务器，请先刷新或重新生成。"
@@ -93,6 +96,12 @@ final class BenyuanAPIClient {
 
     func fetchCurrentAccount() async throws -> BenyuanAuthResponse {
         try await get("/api/auth/me")
+    }
+
+    func updateDisplayName(_ displayName: String) async throws -> BenyuanAuthResponse {
+        try await patch("/api/auth/me", body: [
+            "display_name": .string(displayName)
+        ])
     }
 
     func fetchAccountHistory() async throws -> BenyuanAccountHistoryResponse {
@@ -290,6 +299,15 @@ final class BenyuanAPIClient {
         return try await send(request)
     }
 
+    private func patch<Response: Decodable>(_ path: String, body: [String: BenyuanJSONValue], timeout: TimeInterval? = nil) async throws -> Response {
+        var request = URLRequest(url: url(path: path), timeoutInterval: timeout ?? defaultTimeout)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyAuth(to: &request)
+        request.httpBody = try JSONEncoder.benyuan.encode(body)
+        return try await send(request)
+    }
+
     private func delete<Response: Decodable>(_ path: String) async throws -> Response {
         var request = URLRequest(url: url(path: path))
         request.httpMethod = "DELETE"
@@ -310,12 +328,13 @@ final class BenyuanAPIClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            Self.logNetworkFailure(error, request: request, phase: "primary")
             guard
                 Self.shouldRetryWithFallback(error),
                 let fallbackBaseURL,
                 let fallbackRequest = request.rewritingBaseURL(from: baseURL, to: fallbackBaseURL)
             else {
-                throw error
+                throw Self.networkError(from: error)
             }
             NSLog(
                 "[BenyuanShell] primary network request failed, retrying fallback host=%@ path=%@ error=%@",
@@ -323,7 +342,17 @@ final class BenyuanAPIClient {
                 fallbackRequest.url?.path ?? "unknown",
                 String(describing: error)
             )
-            (data, response) = try await session.data(for: fallbackRequest)
+            do {
+                (data, response) = try await session.data(for: fallbackRequest)
+                NSLog(
+                    "[BenyuanShell] fallback network request succeeded host=%@ path=%@",
+                    fallbackRequest.url?.host ?? "unknown",
+                    fallbackRequest.url?.path ?? "unknown"
+                )
+            } catch {
+                Self.logNetworkFailure(error, request: fallbackRequest, phase: "fallback")
+                throw Self.networkError(from: error)
+            }
         }
 
         guard let http = response as? HTTPURLResponse else {
@@ -398,24 +427,28 @@ final class BenyuanAPIClient {
 
     private static func shouldRetryWithFallback(_ error: Error) -> Bool {
         let urlError = error as? URLError ?? (error as NSError).underlyingURLError
-        guard let urlError else { return false }
-        switch urlError.code {
-        case .secureConnectionFailed,
-             .serverCertificateHasBadDate,
-             .serverCertificateUntrusted,
-             .serverCertificateHasUnknownRoot,
-             .serverCertificateNotYetValid,
-             .cannotLoadFromNetwork,
-             .cannotFindHost,
-             .cannotConnectToHost,
-             .dnsLookupFailed,
-             .networkConnectionLost,
-             .notConnectedToInternet,
-             .timedOut:
-            return true
-        default:
-            return false
-        }
+        return urlError != nil
+    }
+
+    private static func logNetworkFailure(_ error: Error, request: URLRequest, phase: String) {
+        let nsError = error as NSError
+        let urlError = error as? URLError ?? nsError.underlyingURLError
+        NSLog(
+            "[BenyuanShell] %@ network request failed host=%@ path=%@ domain=%@ code=%d urlCode=%d error=%@",
+            phase,
+            request.url?.host ?? "unknown",
+            request.url?.path ?? "unknown",
+            nsError.domain,
+            nsError.code,
+            urlError?.errorCode ?? 0,
+            String(describing: error)
+        )
+    }
+
+    private static func networkError(from error: Error) -> BenyuanAPIError {
+        let nsError = error as NSError
+        let urlError = error as? URLError ?? nsError.underlyingURLError
+        return .network(code: urlError?.errorCode ?? nsError.code, message: nsError.localizedDescription)
     }
 
     private func makeMultipartBody(questionId: String, images: [BenyuanImagePayload], origin: String, boundary: String) -> Data {

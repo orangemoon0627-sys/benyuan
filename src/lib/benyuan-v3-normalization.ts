@@ -10,6 +10,44 @@ function fingerprint(value: string) {
   return cleanText(value).toLocaleLowerCase("zh-CN").replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
+const RETIRED_ARCHETYPE_LABELS = [
+  "远潮观月者",
+  "星图筑序者",
+  "月港栖岸者",
+  "存在游牧者",
+  "雨窗抒写者",
+  "事件视界沉潜者",
+  "星云织梦者",
+  "日冕引燃者",
+  "类地栖居者",
+  "深空锚定者",
+  "月门潜航者",
+  "月背寻光者",
+  "深月观测者",
+  "暮潮拾光者",
+  "暮海寻光者",
+  "暮海守光者",
+  "目光拾亡者",
+  "事件视界潜行者",
+  "日冕燃心者",
+  "孤独求索者",
+  "理性建构者",
+  "温柔守护者",
+  "The Moonlit Seeker",
+  "Moonlit Seeker",
+  "The Event Horizon Voyager",
+  "Event Horizon Voyager",
+];
+
+function containsOfficialOrRetiredArchetypeLabel(value: string | null | undefined) {
+  const key = fingerprint(value ?? "");
+  if (!key) return false;
+  return RETIRED_ARCHETYPE_LABELS.some((label) => {
+    const labelKey = fingerprint(label);
+    return labelKey.length > 0 && key.includes(labelKey);
+  });
+}
+
 function sanitizeArchetypeName(value: string | null | undefined) {
   const cleaned = cleanText(value);
   if (!cleaned) return "";
@@ -36,6 +74,7 @@ function sanitizePersonalizedLabel(value: string | null | undefined, fallback?: 
   const cleaned = cleanText(value);
   if (cleaned.length > maxLength) return cleanText(fallback) || undefined;
   if (isSuspiciousPersonalizedLabel(cleaned)) return cleanText(fallback) || undefined;
+  if (containsOfficialOrRetiredArchetypeLabel(cleaned)) return cleanText(fallback) || undefined;
   return cleaned;
 }
 

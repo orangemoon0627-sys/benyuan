@@ -49,6 +49,11 @@ struct BenyuanNativeTheaterView: View {
                                     scrollProxy.scrollTo(theaterScrollTopAnchor, anchor: .top)
                                 }
                             }
+                            .onChange(of: model.theaterChoiceIndex) { _, _ in
+                                withAnimation(.easeOut(duration: 0.18)) {
+                                    scrollProxy.scrollTo(theaterScrollTopAnchor, anchor: .top)
+                                }
+                            }
                         }
                     }
                 }
@@ -230,7 +235,7 @@ struct BenyuanNativeTheaterView: View {
                     .padding(.vertical, BenyuanSpacing.x3)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: cardHeight, alignment: .topLeading)
+            .frame(minHeight: cardHeight, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 34, style: .continuous)
@@ -286,9 +291,10 @@ struct BenyuanNativeTheaterView: View {
     }
 
     private func theaterLensCardHeight(_ title: String) -> CGFloat {
-        if title.count > 110 { return 224 }
-        if title.count > 64 { return 190 }
-        if title.count > 24 { return 172 }
+        if title.count > 150 { return 286 }
+        if title.count > 110 { return 246 }
+        if title.count > 64 { return 206 }
+        if title.count > 24 { return 176 }
         return 132
     }
 
