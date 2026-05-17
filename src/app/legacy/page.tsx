@@ -1,5 +1,5 @@
-import { LandingSequence } from "@/archive/legacy-mvp-20260309/components/landing-sequence";
+import { redirect } from "next/navigation";
 
 export default function LegacyPage() {
-  return <LandingSequence />;
+  redirect("/");
 }

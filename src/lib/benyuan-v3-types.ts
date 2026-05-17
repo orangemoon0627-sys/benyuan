@@ -42,6 +42,20 @@ export type MusicAnalysis = {
   era_distribution: Record<string, number>;
   language_diversity: string[];
   personality_signals: Record<string, string>;
+  recognized_tracks?: Array<{
+    title: string;
+    artist?: string;
+    confidence?: "high" | "medium" | "low";
+  }>;
+  public_metadata?: {
+    lookup_status: "not_requested" | "matched" | "partial" | "failed";
+    sources: string[];
+    genres: string[];
+    artists: string[];
+    eras: string[];
+    mood_keywords: string[];
+    notes: string;
+  };
 };
 
 export type SocialPostAnalysis = {

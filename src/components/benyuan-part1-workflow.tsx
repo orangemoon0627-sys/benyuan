@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, FlaskConical, Images, UploadCloud, X } from "lucide-react";
 import { BottomActionBar, DetailCard, GlassPanel, ImmersiveTopBar, MetaPill, MicroSwitch, SecondaryButton, SectionTitle, TextField } from "@/components/framework-primitives";
@@ -318,25 +318,32 @@ function QuestionBlock({
       : `至少 ${uploadMin} 张${uploadMax > uploadMin ? ` · 最多 ${uploadMax} 张` : ""}`;
 
   return (
-    <section
-      className={cx(
-        "relative mx-auto flex min-h-[calc(100svh_-_11rem)] w-full max-w-full flex-col justify-start px-0 pb-4 pt-[clamp(1.15rem,4.5svh,3rem)] md:min-h-[calc(100svh_-_11.5rem)] md:max-w-[30rem] md:py-5",
-      )}
-    >
-      <div className="postmodern-question-stage relative mx-auto w-full max-w-full text-left md:max-w-[30rem]">
-        <div className="postmodern-question-kicker">
+    <section className="benyuan-web-test-stage" data-question-kind={question.kind}>
+      <div className="benyuan-web-test-cosmos" aria-hidden>
+        <span />
+        <i />
+        <b />
+      </div>
+
+      <div className="benyuan-web-test-copy">
+        <div className="postmodern-question-kicker benyuan-web-test-kicker">
           <span>{questionStep}</span>
           <span>{moduleShortLabels[moduleKey]}</span>
         </div>
-        <h3 className={cx("postmodern-question-title mt-4 max-w-[20.75rem] text-[var(--text-primary)] md:mt-5 md:max-w-[26rem]", questionPromptClass(question.prompt))}>{question.prompt}</h3>
-        {showHelperText ? <p className="mt-4 max-w-[22rem] text-sm leading-7 text-[var(--text-secondary)] md:max-w-[26rem]">{question.helperText}</p> : null}
+        <p className="benyuan-web-test-module">{moduleTitles[moduleKey]}</p>
+        <h3 className={cx("postmodern-question-title benyuan-web-test-title text-[var(--text-primary)]", questionPromptClass(question.prompt))}>{question.prompt}</h3>
+        {showHelperText || question.kind === "upload" ? <p className="benyuan-web-test-helper">{question.helperText}</p> : null}
+        <div className="benyuan-web-test-meta">
+          <span>{question.title}</span>
+          <span>{question.kind === "multi" ? `至少选择 ${question.minSelections ?? 1} 项` : question.kind === "distribution" ? "比例总和 100%" : question.kind === "upload" ? uploadCountLine : "选择后自动推进"}</span>
+        </div>
         {question.kind === "upload" ? (
-          <p className="mt-4 text-xs font-semibold tracking-[0.12em] text-[var(--text-tertiary)]">{uploadCountLine}</p>
+          <p className="benyuan-web-test-upload-count">{uploadCountLine}</p>
         ) : null}
       </div>
 
       {question.kind === "single" ? (
-        <div className="mx-auto mt-3 grid max-h-[47svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
+        <div className="benyuan-web-test-answer">
           {question.options?.map((option, index) => {
             const active = value === option.id;
             return (
@@ -345,7 +352,7 @@ function QuestionBlock({
                 type="button"
                 onClick={() => onSingle(option.id)}
                 data-active={active ? "true" : "false"}
-                className={cx(benyuanUiRecipes.interactiveCard(active, "accent"), "group min-h-[4.1rem] cursor-pointer px-4 py-3.5 text-left md:min-h-[4.35rem] md:px-5 md:py-4")}
+                className={cx("benyuan-web-option postmodern-choice-card", active && "is-active")}
               >
                 <div className="flex items-center gap-4">
                   <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
@@ -359,7 +366,7 @@ function QuestionBlock({
       ) : null}
 
       {question.kind === "multi" ? (
-        <div className="mx-auto mt-3 grid max-h-[47svh] w-full max-w-full gap-2.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-5 md:max-h-[42svh] md:max-w-[30rem]">
+        <div className="benyuan-web-test-answer">
           {question.options?.map((option, index) => {
             const selected = Array.isArray(value) && value.includes(option.id);
             return (
@@ -368,7 +375,7 @@ function QuestionBlock({
                 type="button"
                 onClick={() => onToggleMulti(option.id)}
                 data-active={selected ? "true" : "false"}
-                className={cx(benyuanUiRecipes.interactiveCard(selected, "accent"), "min-h-[4.1rem] cursor-pointer px-4 py-3.5 text-left md:min-h-[4.35rem] md:px-5 md:py-4")}
+                className={cx("benyuan-web-option postmodern-choice-card", selected && "is-active")}
               >
                 <div className="flex items-center gap-4">
                   <span className="postmodern-option-index" aria-hidden>{optionIndexLabel(index)}</span>
@@ -382,7 +389,7 @@ function QuestionBlock({
       ) : null}
 
       {question.kind === "distribution" ? (
-        <div className="mx-auto mt-5 grid w-full max-w-full gap-3 md:grid-cols-3">
+        <div className="benyuan-web-test-answer benyuan-web-test-answer--distribution">
           {question.distributionKeys?.map((item) => {
             const distribution = isRecord(value) ? (value as { past: number; present: number; future: number }) : { past: 34, present: 33, future: 33 };
             return (
@@ -395,7 +402,7 @@ function QuestionBlock({
       ) : null}
 
       {question.kind === "upload" ? (
-        <div className="mx-auto mt-5 flex w-full max-w-full flex-col gap-3.5 md:mt-6 md:max-w-[30rem]">
+        <div className="benyuan-web-test-answer benyuan-web-test-answer--upload">
           <div className="space-y-4">
             <input
               id={uploadInputId}
@@ -665,6 +672,9 @@ export function BenyuanPart1Workflow({
   const runtimeAvailabilityLabel = formatRuntimeAvailability(runtimeStatus);
   const showDebugPanels = showAuxiliaryPanels && !moduleFilter;
   const primaryActionDisabled = submitting || Boolean(uploadingQuestionId) || packLoadingId !== null;
+  const currentModuleTotal = benyuanQuestionsByModule[activeModule].length;
+  const activeModulePercent = Math.round((moduleProgress[activeModule] / Math.max(currentModuleTotal, 1)) * 100);
+  const activeModulePosition = Math.max(1, Math.min(currentModuleTotal, ritualQuestionIndex + 1));
   const primaryAction = buildCollectPrimaryActionModel({
     moduleFilter,
     allModulesComplete,
@@ -947,14 +957,17 @@ export function BenyuanPart1Workflow({
   }
 
   return (
-    <div className={benyuanUiRecipes.immersiveFlow}>
+    <div className="benyuan-web-test-shell">
       <ImmersiveTopBar
         backHref={moduleFilter ? "/collect" : "/"}
+        label="WEB TEST RUN"
+        title={`${moduleTitles[activeModule]} · ${activeModulePosition}/${currentModuleTotal}`}
         progressValue={overallProgressPercent}
+        progressText={`${overallProgressPercent}%`}
       />
 
       {!moduleFilter ? (
-        <div className="-mt-1 flex justify-center">
+        <div className="benyuan-web-test-switch">
           <MicroSwitch
             items={moduleOrder.map((module) => {
               const total = benyuanQuestionsByModule[module].length;
@@ -974,6 +987,20 @@ export function BenyuanPart1Workflow({
           />
         </div>
       ) : null}
+
+      <div className="benyuan-web-test-overview">
+        <div>
+          <p>当前航段</p>
+          <strong>{moduleTitles[activeModule]}</strong>
+        </div>
+        <div>
+          <p>本段进度</p>
+          <strong>{moduleProgress[activeModule]} / {currentModuleTotal}</strong>
+        </div>
+        <div className="benyuan-web-test-overview-meter" style={{ "--segment-progress": `${activeModulePercent}%` } as CSSProperties}>
+          <span />
+        </div>
+      </div>
 
       {ritualQuestion ? (
         <QuestionBlock
@@ -1007,15 +1034,17 @@ export function BenyuanPart1Workflow({
       )}
 
       {errors.length > 0 ? (
-        <div className="rounded-[1.5rem] border border-[rgba(240,238,244,0.16)] bg-[rgba(240,238,244,0.045)] px-5 py-4 text-sm leading-7 text-[var(--text-primary)]">
+        <div className="benyuan-web-test-errors">
           {errors.map((error) => (
             <div key={error}>{error}</div>
           ))}
         </div>
       ) : null}
 
-      <BottomActionBar className="bottom-1 px-1 py-3 md:px-4">
-        <div className="mx-auto grid w-full max-w-full grid-cols-[5.7rem_minmax(0,1fr)] gap-1.5 rounded-full border border-[rgba(225,230,255,0.12)] bg-[rgba(4,5,14,0.72)] p-1.5 shadow-[0_18px_52px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[30px] md:min-w-[20rem] md:max-w-[30rem] md:grid-cols-[7.8rem_minmax(0,1fr)]">
+      {status ? <p className="benyuan-web-test-status">{status}</p> : null}
+
+      <BottomActionBar className="benyuan-web-test-dock">
+        <div className="benyuan-web-test-dock-inner">
           <button
             type="button"
             onClick={() => {
@@ -1023,7 +1052,7 @@ export function BenyuanPart1Workflow({
               setRitualQuestionIndex((current) => Math.max(0, current - 1));
             }}
             disabled={ritualQuestionIndex === 0}
-            className={cx(benyuanUiRecipes.secondaryLink, "w-full disabled:opacity-40")}
+            className="benyuan-web-test-back disabled:opacity-40"
           >
             上一题
           </button>
@@ -1031,7 +1060,7 @@ export function BenyuanPart1Workflow({
             type="button"
             onClick={handlePrimaryAction}
             disabled={primaryAction.disabled}
-            className={cx(benyuanUiRecipes.primaryLink, "w-full pr-14 disabled:opacity-40")}
+            className="benyuan-web-test-next disabled:opacity-40"
           >
             {submitting ? "正在显影" : primaryAction.label}
           </button>

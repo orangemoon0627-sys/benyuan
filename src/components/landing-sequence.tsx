@@ -59,7 +59,7 @@ export function LandingSequence() {
     if (!hasCompleted) return;
 
     const timer = window.setTimeout(() => {
-      router.push("/test");
+      router.push("/collect");
     }, 1500);
 
     return () => window.clearTimeout(timer);
@@ -351,11 +351,11 @@ export function LandingSequence() {
             现在就让它先读你一小段。
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-stone-300/74 md:text-lg">
-            首次体验大约 10 分钟。你会经过一段轻量测试，然后进入一份更像阅读而不是被评分的结果页。
+            首次体验大约 10 分钟。你会经过完整测试，然后进入一份更像阅读而不是被评分的结果页。
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/test"
+              href="/collect"
               className="inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(233,242,255,0.95),rgba(185,215,246,0.9))] px-7 py-3 text-sm tracking-[0.16em] text-[#0b0d14] uppercase transition hover:scale-[1.01]"
             >
               开始体验

@@ -1,7 +1,7 @@
 import { benyuanQuestionsById, getQuestionOption, getQuestionOptionTags } from "@/lib/benyuan-v3-schema";
 import { getBenyuanArchetypeProfile } from "@/lib/benyuan-v3-report-profile";
 import { selectPsychoanalyticConceptsForPart1, summarizePsychoanalyticStarReading, type SelectedPsychoanalyticConcept } from "@/lib/benyuan-v3-psychoanalytic-concepts";
-import { getTheaterAct2ChoiceText, getTheaterMirrorChoiceText } from "@/lib/benyuan-v3-theater-labels";
+import { getTheaterAct2ChoiceText } from "@/lib/benyuan-v3-theater-labels";
 import type {
   AggregatedTraits,
   MusicAnalysis,
@@ -1024,17 +1024,16 @@ function choiceWeight(choiceId: string | undefined) {
 
 function buildSevenDimensionScores(record: Part1Record, part2?: Part2Record) {
   const bigFive = record.aggregated_traits.big_five;
-  const selectedMirror = part2?.act3_responses.map((item) => item.selected) ?? [];
   const selectedChoices = part2?.act2_choices.map((item) => item.selected) ?? [];
 
   return {
     openness: clampScore(bigFive.openness + (selectedChoices.includes("3D") ? 5 : 0)),
     independence: clampScore(100 - bigFive.extraversion + (selectedChoices.includes("2D") ? 6 : 0)),
     emotional_depth: clampScore(bigFive.neuroticism + (record.part1_data.narrative.social_posts_analysis ? 6 : 0)),
-    meaning_seeking: clampScore((bigFive.openness + bigFive.neuroticism) / 2 + (selectedChoices.includes("4A") ? 8 : 0) + (selectedChoices.includes("4D") ? 6 : 0) + (selectedMirror.includes("3A-5") ? 6 : selectedMirror.includes("3A-2") ? 4 : 0)),
+    meaning_seeking: clampScore((bigFive.openness + bigFive.neuroticism) / 2 + (selectedChoices.includes("4A") ? 8 : 0) + (selectedChoices.includes("4D") ? 6 : 0)),
     aesthetic_sensitivity: clampScore(bigFive.openness + (record.part1_data.narrative.precious_photo_analysis ? 8 : 0)),
     action_tendency: clampScore(42 + selectedChoices.reduce((sum, current) => sum + choiceWeight(current), 0) - (record.part1_data.philosophy.decision_style === "B2-4" ? 6 : 0)),
-    relationship_need: clampScore(bigFive.agreeableness + (selectedChoices.includes("2B") ? 9 : 0) + (selectedChoices.includes("4B") ? 6 : 0) + (selectedChoices.includes("4C") ? 4 : 0) + (selectedMirror.includes("3A-1") ? 4 : 0)),
+    relationship_need: clampScore(bigFive.agreeableness + (selectedChoices.includes("2B") ? 9 : 0) + (selectedChoices.includes("4B") ? 6 : 0) + (selectedChoices.includes("4C") ? 4 : 0)),
   };
 }
 
@@ -1239,7 +1238,6 @@ function pickPersonalizedName(archetypeHint: string, scores: Record<string, numb
   const longestPause = Math.max(
     0,
     ...(part2?.act2_choices.map((item) => item.hesitation_time ?? 0) ?? []),
-    ...(part2?.act3_responses.map((item) => item.hesitation_time ?? 0) ?? []),
   );
   const index =
     (scores.meaning_seeking >= 76 ? 1 : 0) +
@@ -1256,10 +1254,9 @@ function buildPersonalizedSubtitle(params: {
   photo: string;
   music: string;
   act2Path: string[];
-  mirrorPath: string[];
 }) {
   const topDimension = pickTopDimensionLabels(params.scores).split("、")[0] ?? "意义欲望";
-  const actTrace = params.act2Path[params.act2Path.length - 1] ?? params.act2Path[0] ?? params.mirrorPath[0] ?? "那次慢下来的选择";
+  const actTrace = params.act2Path[params.act2Path.length - 1] ?? params.act2Path[0] ?? "那次慢下来的选择";
   const socialFragment = params.socialText.length > 14 ? `${params.socialText.slice(0, 14)}...` : params.socialText;
   const photoFragment = params.photo.split("，")[0] || "一张未显影的照片";
   const actionFragment = actTrace.length > 10 ? `${actTrace.slice(0, 10)}...` : actTrace;
@@ -1283,16 +1280,14 @@ function buildDeterministicNarrativeOverview(params: {
   photoReading: string;
   socialReading: string;
   act2Path: string[];
-  mirrorPath: string[];
   longestPause: number;
   psychoanalyticConcepts: SelectedPsychoanalyticConcept[];
 }) {
-  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music, musicReading, photoReading, socialReading, act2Path, mirrorPath, longestPause, psychoanalyticConcepts } = params;
+  const { profile, scores, themes, selectedA1, selectedB1, selectedB2, selectedB5, resonanceMoments, socialText, photo, music, musicReading, photoReading, socialReading, act2Path, longestPause, psychoanalyticConcepts } = params;
   const topDimensions = pickTopDimensionLabels(scores);
   const themeSummary = formatThemeSummary(themes);
   const act2PathText = formatJoined(act2Path, "靠近、停留与回望之间的路径");
   const finalAct2Choice = act2Path[3] ?? act2Path[act2Path.length - 1] ?? "";
-  const mirrorPathText = formatJoined(mirrorPath, "把问题交还给自己");
   const starReading = summarizePsychoanalyticStarReading(psychoanalyticConcepts);
   const pauseTexture = longestPause >= 10
     ? "那一次停留明显慢了下来，像你在让身体先确认轨道是否真的贴合自己。"
@@ -1309,9 +1304,7 @@ function buildDeterministicNarrativeOverview(params: {
     `第三层线索来自你的选择：你在不确定时选择“${selectedB1}”，面对欲望时选择“${selectedB2}”。这不是随机的选择，而是一种很清楚的防御方式：你会先让行动、克制或审美替你争取时间，再决定要不要把真实愿望说出来。潜意识在这里不是神秘预言，而是你尚未清楚命名、却反复借距离、秩序和作品表达出来的需要。`,
     `第四层线索来自剧场：你没有直接穿过入口，而是先${act2PathText}${finalAct2Choice ? `；最后又把星图的入口交给“${finalAct2Choice}”` : ""}。${pauseTexture} 这个动作很关键，它把前面的问题变成了身体路线：你不是不靠近，而是要先确认光源、边界和房间的形状。这里有一种重复模式：你会先让物件、声音或距离替你说话，再决定自己是否直接出现。`,
     `把这三层线索放进精神分析式阅读里，它们更像${starReading.primaryConcept}与${starReading.secondaryConcept}交界处的运动。你在“${selectedB5}”里保留距离，在剧场里继续选择先确认轨道，这让星图显出${starReading.starMetaphor}：${starReading.safeLine}这不是缺陷，也不是冷淡，而是你让靠近变得可持续的内在秩序。你反复保护的，可能不是“孤独”，而是一个不愿被过早占用的自我位置。`,
-    mirrorPath.length > 0
-      ? `历史追问里，你又选择${mirrorPathText}。这让潜意识剥离过程更清楚：你不是只想被理解，也在寻找一种不会过早占有你的理解。温尼科特谈过“能够独处”的能力，它不是冷漠，而是在有人或无人时都不急着背叛自己；在客体关系的语言里，你要确认的是靠近不会产生被吞没感。`
-      : `这就是这张星图的潜意识剥离过程：图像保存未完成的情绪，选择显示延迟进入的防御，剧场把这种防御转成“先看光、再靠近”的动作。在客体关系的语言里，你不是没有依恋需求，而是在确认靠近不会产生被吞没感；当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
+    `这就是这张星图的潜意识剥离过程：图像保存未完成的情绪，选择显示延迟进入的防御，剧场把这种防御转成“先看光、再靠近”的动作。在客体关系的语言里，你不是没有依恋需求，而是在确认靠近不会产生被吞没感；当共鸣时刻集中在${resonanceMoments}时，你要的不是更多连接，而是更真、更稳、更能保留自我的连接。`,
     `从整张精神星图来看，你的高分维度集中在${topDimensions}，核心主题贴近${themeSummary}。这让你更容易被深层文本、象征画面、微妙氛围和难以一次说清的情绪击中；卡尔维诺式的城市、博尔赫斯式的迷宫，都会成为你辨认自己的文学参照。${profile.movementLens}`,
     `所以，${profile.archetype.name}不是一个“沉在黑暗里的人”，而是一个会靠近深处、辨认边界、再从深处带回意义的人。${profile.closingLens}${supportLine ? ` ${supportLine}` : ""}`,
   ].join("\n\n");
@@ -1336,11 +1329,9 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
   const photoReading = derivePhotoPsycheReading(part1);
   const socialReading = deriveSocialPsycheReading(part1);
   const act2Path = part2?.act2_choices.map((item) => getTheaterAct2ChoiceText(item.selected) ?? item.selected).filter(Boolean) ?? [];
-  const mirrorPath = part2?.act3_responses.map((item) => getTheaterMirrorChoiceText(item.selected) ?? item.selected).filter(Boolean) ?? [];
   const longestPause = Math.max(
     0,
     ...(part2?.act2_choices.map((item) => item.hesitation_time ?? 0) ?? []),
-    ...(part2?.act3_responses.map((item) => item.hesitation_time ?? 0) ?? []),
   );
   const personalizedName = pickPersonalizedName(primaryArchetypeHint, scores, themes, part2);
   const personalizedSubtitle = buildPersonalizedSubtitle({
@@ -1350,7 +1341,6 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
     photo,
     music,
     act2Path,
-    mirrorPath,
   });
   const psychoanalyticConcepts = selectPsychoanalyticConceptsForPart1(part1, part2);
   const recommendations = personalizeConstellationRecommendations(profile.recommendations, part1, part2);
@@ -1409,7 +1399,6 @@ export function generateDeterministicConstellation(part1: Part1Record, part2?: P
       photoReading,
       socialReading,
       act2Path,
-      mirrorPath,
       longestPause,
       psychoanalyticConcepts,
     }),

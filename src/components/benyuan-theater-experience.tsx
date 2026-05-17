@@ -307,11 +307,11 @@ export function BenyuanTheaterExperience() {
   }
 
   return (
-    <div className={benyuanUiRecipes.immersiveFlowNarrow}>
+    <div className="benyuan-web-theater-shell">
       {phase === "act1" ? (
         <GlassPanel
           data-theater-phase="act1"
-          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--opening mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel)}
+          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--opening benyuan-web-theater-stage mx-auto", benyuanUiRecipes.stagePanel)}
         >
           <div className="theater-lens-stage__inner relative flex min-h-[60vh] flex-col justify-between px-0 py-1 md:px-3 md:py-3">
             <div className="pt-3">
@@ -335,14 +335,14 @@ export function BenyuanTheaterExperience() {
       {phase === "act2" && currentChoice ? (
         <GlassPanel
           data-theater-phase="act2"
-          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--choice mx-auto min-h-[68vh] w-full max-w-[30rem]", benyuanUiRecipes.stagePanel, "px-0 py-7 md:px-4 md:py-9")}
+          className={cx("cosmic-open-stage theater-lens-stage theater-lens-stage--choice benyuan-web-theater-stage mx-auto", benyuanUiRecipes.stagePanel, "px-0 py-7 md:px-4 md:py-9")}
         >
-          <div className="theater-lens-stage__inner mx-auto flex min-h-[59vh] max-w-[25rem] flex-col justify-center md:max-w-[28rem]">
+          <div className="theater-lens-stage__inner mx-auto flex min-h-[59vh] max-w-[25rem] flex-col justify-center md:max-w-[42rem]">
             <div className="cosmic-editorial-stage theater-scene-copy pl-5 text-left">
               <p className="theater-phase-whisper">第 {choiceIndex + 1} / {requiredChoiceCount} 轮</p>
               <h3 className={cx("text-[var(--text-primary)]", theaterHeadingClass(act2SceneLine || "你要走向哪一条轨道？"))}>{act2SceneLine || "你要走向哪一条轨道？"}</h3>
             </div>
-            <div className="theater-choice-stack mt-8 grid gap-2.5">
+            <div className="theater-choice-stack benyuan-web-theater-options mt-8 grid gap-2.5">
               {currentChoice.options.slice(0, 4).map((option, index) => {
                 const active = selectedChoiceId === option.id;
                 return (

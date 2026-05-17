@@ -39,11 +39,13 @@ export function FrameworkPage({
 }
 
 export function PageScaffold({ children, phase = "collect" }: { children: ReactNode; phase?: "collect" | "processing" | "theater" | "constellation" }) {
+  const useWideMainflow = phase === "collect" || phase === "theater";
+
   return (
     <main className={cx(benyuanUiRecipes.pageShell, "benyuan-mainflow", `benyuan-phase-${phase}`)}>
       <div className={cx(benyuanUiRecipes.pageAura, `cosmic-field--${phase}`)} />
       <div className="noise-overlay pointer-events-none absolute inset-0 opacity-[0.025]" />
-      <div className={benyuanUiRecipes.pageContent}>{children}</div>
+      <div className={useWideMainflow ? "relative z-10 mx-auto flex w-full max-w-[min(calc(100vw_-_2.5rem),76rem)] flex-col gap-3 md:gap-4" : benyuanUiRecipes.pageContent}>{children}</div>
     </main>
   );
 }

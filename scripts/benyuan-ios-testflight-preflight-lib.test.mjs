@@ -26,8 +26,8 @@ targets:
           BenyuanShellProductionBaseURL: https://benyuan.orangemoonai.cn
         Release:
           BenyuanShellEnvironment: production
-          BenyuanShellStagingBaseURL: https://staging-benyuan.orangemoonai.cn
-          BenyuanShellProductionBaseURL: https://benyuan.orangemoonai.cn
+          BenyuanShellStagingBaseURL: http://120.26.126.88
+          BenyuanShellProductionBaseURL: https://staging-benyuan.orangemoonai.cn
           BENYUAN_WECHAT_APP_ID: wx1234567890abcdef
           BENYUAN_WECHAT_UNIVERSAL_LINK: https://app.orangemoonai.cn/app/benyuan/
           BENYUAN_WECHAT_ASSOCIATED_DOMAIN: applinks:app.orangemoonai.cn
@@ -40,8 +40,8 @@ targets:
     bundleId: "com.fanhao.benyuan.origin.shell",
   });
   assert.deepEqual(config.releaseConfig, {
-    stagingBaseUrl: "https://staging-benyuan.orangemoonai.cn",
-    productionBaseUrl: "https://benyuan.orangemoonai.cn",
+    stagingBaseUrl: "http://120.26.126.88",
+    productionBaseUrl: "https://staging-benyuan.orangemoonai.cn",
   });
   assert.deepEqual(config.authConfig, {
     wechatAppId: "wx1234567890abcdef",
@@ -82,6 +82,10 @@ targets:
 
 test("evaluateIosAuthReleaseReadiness separates core blockers from WeChat release warnings", () => {
   const readiness = evaluateIosAuthReleaseReadiness({
+    releaseConfig: {
+      productionBaseUrl: "https://staging-benyuan.orangemoonai.cn",
+      stagingBaseUrl: "http://120.26.126.88",
+    },
     authConfig: {
       wechatAppId: "",
       wechatUniversalLink: "",
@@ -113,6 +117,10 @@ test("evaluateIosAuthReleaseReadiness separates core blockers from WeChat releas
 
 test("evaluateIosAuthReleaseReadiness marks full auth release ready when native and runbook guards exist", () => {
   const readiness = evaluateIosAuthReleaseReadiness({
+    releaseConfig: {
+      productionBaseUrl: "https://staging-benyuan.orangemoonai.cn",
+      stagingBaseUrl: "http://120.26.126.88",
+    },
     authConfig: {
       wechatAppId: "wx1234567890abcdef",
       wechatUniversalLink: "https://app.orangemoonai.cn/app/benyuan/",
@@ -136,6 +144,35 @@ test("evaluateIosAuthReleaseReadiness marks full auth release ready when native 
   assert.equal(readiness.readyForWechatRelease, true);
   assert.deepEqual(readiness.blockers, []);
   assert.deepEqual(readiness.warnings, []);
+});
+
+test("evaluateIosAuthReleaseReadiness blocks TestFlight builds without a real network fallback", () => {
+  const readiness = evaluateIosAuthReleaseReadiness({
+    releaseConfig: {
+      productionBaseUrl: "https://staging-benyuan.orangemoonai.cn",
+      stagingBaseUrl: "https://staging-benyuan.orangemoonai.cn",
+    },
+    authConfig: {
+      wechatAppId: "wx1234567890abcdef",
+      wechatUniversalLink: "https://app.orangemoonai.cn/app/benyuan/",
+      wechatAssociatedDomain: "applinks:app.orangemoonai.cn",
+    },
+    entitlementsText: `
+<key>com.apple.developer.applesignin</key>
+<array><string>Default</string></array>
+<key>com.apple.developer.associated-domains</key>
+<array><string>$(BENYUAN_WECHAT_ASSOCIATED_DOMAIN)</string></array>
+`,
+    authRunbookPresent: true,
+    authSmokeScriptsPresent: {
+      contract: true,
+      runtime: true,
+      smsAliyun: true,
+    },
+  });
+
+  assert.equal(readiness.readyForCoreAuth, false);
+  assert.deepEqual(readiness.blockers, ["release_network_fallback_matches_primary"]);
 });
 
 test("collectTestFlightExportStatus accepts Cloud Managed Apple Distribution exports", () => {

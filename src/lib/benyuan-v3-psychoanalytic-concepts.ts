@@ -1,5 +1,5 @@
 import { getQuestionOption, getQuestionOptionTags } from "@/lib/benyuan-v3-schema";
-import { getTheaterAct2ChoiceText, getTheaterMirrorChoiceText } from "@/lib/benyuan-v3-theater-labels";
+import { getTheaterAct2ChoiceText } from "@/lib/benyuan-v3-theater-labels";
 import type { Part1Record, Part2Record } from "@/lib/benyuan-v3-types";
 
 export type PsychoanalyticConceptCard = {
@@ -319,11 +319,6 @@ function part2TextEvidence(part2?: Part2Record) {
       choice.selected,
       getTheaterAct2ChoiceText(choice.selected) ?? "",
       choice.hesitation_time && choice.hesitation_time >= 6 ? "停留 迟疑 慢下来" : "",
-    ]),
-    ...part2.act3_responses.flatMap((response) => [
-      response.selected,
-      getTheaterMirrorChoiceText(response.selected) ?? "",
-      response.hesitation_time && response.hesitation_time >= 6 ? "停留 迟疑 慢下来" : "",
     ]),
   ].filter(Boolean);
 }

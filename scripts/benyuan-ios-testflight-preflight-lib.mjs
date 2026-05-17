@@ -49,11 +49,9 @@ export function collectIosProjectConfig(projectYml) {
       bundleId: extractSettingValue(projectYml, "PRODUCT_BUNDLE_IDENTIFIER"),
     },
     releaseConfig: {
-      stagingBaseUrl: extractConfigValue(
-        stagingBlock,
-        "BenyuanShellStagingBaseURL",
-        "INFOPLIST_KEY_BenyuanShellStagingBaseURL",
-      ),
+      stagingBaseUrl:
+        extractConfigValue(releaseBlock, "BenyuanShellStagingBaseURL", "INFOPLIST_KEY_BenyuanShellStagingBaseURL") ??
+        extractConfigValue(stagingBlock, "BenyuanShellStagingBaseURL", "INFOPLIST_KEY_BenyuanShellStagingBaseURL"),
       productionBaseUrl: extractConfigValue(
         releaseBlock,
         "BenyuanShellProductionBaseURL",
@@ -88,14 +86,45 @@ function isMissingWechatAssociatedDomain(value) {
   return !value || value === "applinks:" || !/^applinks:[a-z0-9.-]+\.[a-z]{2,}$/i.test(value);
 }
 
+function sameEndpoint(left, right) {
+  if (!left || !right) return false;
+  try {
+    const leftUrl = new URL(left);
+    const rightUrl = new URL(right);
+    return (
+      leftUrl.protocol === rightUrl.protocol &&
+      leftUrl.hostname.toLowerCase() === rightUrl.hostname.toLowerCase() &&
+      (leftUrl.port || defaultPort(leftUrl.protocol)) === (rightUrl.port || defaultPort(rightUrl.protocol))
+    );
+  } catch {
+    return left === right;
+  }
+}
+
+function defaultPort(protocol) {
+  if (protocol === "https:") return "443";
+  if (protocol === "http:") return "80";
+  return "";
+}
+
 export function evaluateIosAuthReleaseReadiness(input) {
   const blockers = [];
   const warnings = [];
   const authSmokeScriptsPresent = input.authSmokeScriptsPresent ?? {};
   const entitlementsText = String(input.entitlementsText ?? "");
+  const releaseConfig = input.releaseConfig ?? {};
 
   if (!entitlementsText.includes("com.apple.developer.applesignin")) {
     blockers.push("apple_sign_in_entitlement_missing");
+  }
+  if (!releaseConfig.productionBaseUrl) {
+    blockers.push("release_production_base_url_missing");
+  }
+  if (!releaseConfig.stagingBaseUrl) {
+    blockers.push("release_fallback_base_url_missing");
+  }
+  if (sameEndpoint(releaseConfig.productionBaseUrl, releaseConfig.stagingBaseUrl)) {
+    blockers.push("release_network_fallback_matches_primary");
   }
   if (!input.authRunbookPresent) {
     blockers.push("auth_runbook_missing");

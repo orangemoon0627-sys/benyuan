@@ -183,6 +183,14 @@ final class BenyuanAPIClient {
         if let displayName {
             body["display_name"] = .string(displayName)
         }
+        NSLog(
+            "[BenyuanShell] apple auth submit primary=%@ fallback=%@ tokenChars=%d codeChars=%d build=%@",
+            baseURL.absoluteString,
+            fallbackBaseURL?.absoluteString ?? "none",
+            identityToken?.count ?? 0,
+            authorizationCode?.count ?? 0,
+            Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
+        )
         return try await post("/api/auth/apple", body: body)
     }
 
@@ -360,6 +368,13 @@ final class BenyuanAPIClient {
         }
         guard (200..<300).contains(http.statusCode) else {
             let message = Self.serverErrorMessage(from: data)
+            NSLog(
+                "[BenyuanShell] server request failed host=%@ path=%@ status=%d message=%@",
+                request.url?.host ?? "unknown",
+                request.url?.path ?? "unknown",
+                http.statusCode,
+                message
+            )
             throw BenyuanAPIError.server(status: http.statusCode, message: message)
         }
         return try JSONDecoder.benyuan.decode(Response.self, from: data)

@@ -17,9 +17,10 @@ registerHooks({
   },
 });
 
-const { buildAnalystUserPrompt, buildDirectorUserPrompt, buildFastAnalystUserPrompt } = await import("../src/lib/benyuan-v3-prompts.ts");
+const { buildAnalystUserPrompt, buildDirectorUserPrompt, buildFastAnalystUserPrompt, buildFastDirectorUserPrompt, buildMultimodalUserPrompt } = await import("../src/lib/benyuan-v3-prompts.ts");
 const { generateDeterministicConstellation } = await import("../src/lib/benyuan-v3-engine.ts");
 const { getBenyuanArchetypeProfile } = await import("../src/lib/benyuan-v3-report-profile.ts");
+const { buildPsycheMetadataDossier } = await import("../src/lib/benyuan-v3-psyche-metadata.ts");
 const agentModule = await import("../src/lib/benyuan-v3-agent.ts");
 const { normalizeConstellation, mergeFastConstellationSeed } = agentModule;
 
@@ -149,6 +150,9 @@ test("director prompt includes readable A/B/C evidence and multimodal summaries"
 test("director prompt requires continuous theater motifs instead of generic isolated questions", () => {
   const prompt = buildDirectorUserPrompt(createPart1Record());
 
+  assert.match(prompt, /精神元数据剖面/u);
+  assert.match(prompt, /原始证据只用于核验/u);
+  assert.ok(prompt.indexOf("精神元数据剖面") < prompt.indexOf("证据档案"), "director prompt should present psyche metadata before raw evidence");
   assert.match(prompt, /上传素材不是素材库，而是反复母题/);
   assert.match(prompt, /同一段声音、同一句话、同一张照片里的构图，必须在 Act1 与 Act2 四轮中改变形态后再次出现/);
   assert.match(prompt, /Act2 是四轮连续剧场题：第一轮进入，第二轮改变距离，第三轮触碰或放下，第四轮把前三轮选择补成动机、边界、时间感或行动确认/);
@@ -158,6 +162,62 @@ test("director prompt requires continuous theater motifs instead of generic isol
   assert.match(prompt, /禁止让 Act2 四轮 choice 互相独立/);
   assert.match(prompt, /第四轮必须问不同的心理动作/);
   assert.match(prompt, /禁止重复使用同一句可见问题/);
+});
+
+test("psyche metadata dossier standardizes raw answers and multimodal clues before theater generation", () => {
+  const dossier = buildPsycheMetadataDossier(createPart1Record());
+
+  assert.match(dossier, /精神元数据剖面/u);
+  assert.match(dossier, /13 题是第一层精神向量采集/u);
+  assert.match(dossier, /音乐\/歌单允许用公开作品元数据做联网补全/u);
+  assert.match(dossier, /社交动态与私人照片不进行公网搜索/u);
+  assert.match(dossier, /标准精神信号/u);
+  assert.match(dossier, /object_distance|boundary_integrity|desire_structure|projection_symbolic_sensitivity|meaning_orientation/u);
+  assert.match(dossier, /剧场补采样目标/u);
+  assert.match(dossier, /前 13 题与多模态尚未采足/u);
+  assert.match(dossier, /剧场生成指令/u);
+  assert.match(dossier, /小说情节必须从精神元数据生长/u);
+  assert.match(dossier, /不要把 13 题答案、歌单、社交文字或照片描述逐项搬进可见文本/u);
+  assert.match(dossier, /旧版字段隔离区/u);
+  assert.match(dossier, /旧版 Act3 \/ act3_responses \/ mirror_questions \/ mirror_final_words 只用于历史档案兼容/u);
+  assert.match(dossier, /旧版 Act3 \/ 镜面追问只作为历史兼容字段，不参与新版剧场生成/u);
+});
+
+test("fast director prompt also prioritizes psyche metadata over raw multimodal fragments", () => {
+  const part1 = createPart1Record();
+  const fallback = {
+    user_id: part1.user_id,
+    generated_at: "2026-05-08T00:00:00.000Z",
+    personalization_summary: { core_archetype: "远潮观月者", aesthetic_style: "深月场", emotional_tone: "低频", key_themes: ["意义"] },
+    act1: { scene_description: "", visual_prompt: "", ambient_sound: "", duration: 30 },
+    act2: { choices: [] },
+    act3: { scene_description: "", mirror_questions: [], mirror_final_words: "" },
+    epilogue: { scene_description: "", closing_text: "", transition_prompt: "", transition_animation: "" },
+  };
+  const prompt = buildFastDirectorUserPrompt(part1, fallback);
+
+  assert.match(prompt, /精神元数据剖面/u);
+  assert.match(prompt, /原始片段只作核验/u);
+  assert.match(prompt, /剧场四轮的核心任务/u);
+  assert.match(prompt, /补足前 13 题和多模态之后仍不够清楚的精神向量/u);
+  assert.match(prompt, /不要照搬.*填空式素材摘要/u);
+  assert.match(prompt, /mirror_questions 仅保留兼容，必须写 \[\]/u);
+  assert.match(prompt, /"mirror_questions": \[\]/u);
+  assert.ok(prompt.indexOf("精神元数据剖面") < prompt.indexOf("原始片段"), "fast director should see psyche metadata before raw fragments");
+});
+
+test("multimodal prompt extracts music lookup seeds while keeping private materials off public search", () => {
+  const prompt = buildMultimodalUserPrompt({
+    music_inputs: [{ visible_text: "Some playlist screenshot" }],
+    social_post_inputs: [{ visible_text: "深夜的海像一封没有寄出的信。" }],
+    precious_photo_input: { description: "low light sea horizon" },
+  });
+
+  assert.match(prompt, /recognized_tracks/u);
+  assert.match(prompt, /后端会用公开音乐元数据做联网补全/u);
+  assert.match(prompt, /社交动态和私人照片禁止联网搜索/u);
+  assert.match(prompt, /标准化精神信号/u);
+  assert.match(prompt, /desire_structure|defense_style|projection_symbolic_sensitivity|object_distance|boundary_integrity/u);
 });
 
 test("analyst prompt includes theater choices as readable trajectory evidence", () => {
@@ -174,6 +234,25 @@ test("analyst prompt includes theater choices as readable trajectory evidence", 
   assert.match(prompt, /ios-native/);
   assert.match(prompt, /精神分析、哲学与文艺旁证/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);
+});
+
+test("legacy act3 responses are isolated from analyst evidence and part2 json payload", () => {
+  const part1 = createPart1Record();
+  const part2 = {
+    ...createPart2Record(),
+    act3_responses: [
+      { question_id: 1, selected: "3A-1", hesitation_time: 9.9, timestamp: "2026-05-08T00:05:00.000Z" },
+    ],
+  };
+  const fallback = generateDeterministicConstellation(part1, part2);
+  const prompt = buildAnalystUserPrompt(part1, part2, fallback);
+
+  assert.match(prompt, /旧版 Act3 \/ 镜面追问记录 1 条/u);
+  assert.match(prompt, /legacy isolation/u);
+  assert.match(prompt, /legacy_act3_response_count/u);
+  assert.doesNotMatch(prompt, /act3_mirror_responses/u);
+  assert.doesNotMatch(prompt, /3A-1/);
+  assert.doesNotMatch(prompt, /被真正听懂|急着解释/u);
 });
 
 test("deterministic constellation keeps canonical archetype and adds personal title fields", () => {
@@ -246,6 +325,32 @@ test("normalizeConstellation rejects sluggy or noisy personal labels", () => {
   assert.equal(normalized.archetype.personalized_subtitle, fallback.archetype.personalized_subtitle);
   assert.doesNotMatch(normalized.archetype.personalized_name ?? "", /post-rock|abandoned|_/i);
   assert.doesNotMatch(normalized.archetype.personalized_subtitle ?? "", /undetermined|no_visible|_/i);
+});
+
+test("normalizeConstellation rejects retired visible labels as personal labels", () => {
+  assert.equal(typeof normalizeConstellation, "function");
+
+  const fallback = generateDeterministicConstellation(createPart1Record(), createPart2Record());
+  const normalized = normalizeConstellation(
+    {
+      psyche_constellation: {
+        ...fallback,
+        archetype: {
+          ...fallback.archetype,
+          personalized_name: "月门潜航者",
+          personalized_subtitle: "暗潮守月人：夜城相机与远海，守住暗金边界",
+        },
+      },
+    },
+    fallback,
+  );
+
+  assert.ok(normalized);
+  assert.equal(normalized.archetype.name, fallback.archetype.name);
+  assert.equal(normalized.archetype.personalized_name, fallback.archetype.personalized_name);
+  assert.equal(normalized.archetype.personalized_subtitle, fallback.archetype.personalized_subtitle);
+  assert.doesNotMatch(normalized.archetype.personalized_name ?? "", /月门潜航者|暗潮守月人|夜城相机/u);
+  assert.doesNotMatch(normalized.archetype.personalized_subtitle ?? "", /月门潜航者|暗潮守月人|夜城相机/u);
 });
 
 test("fast constellation seed merges personalized label while preserving canonical archetype", () => {

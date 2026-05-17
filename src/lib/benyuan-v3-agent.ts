@@ -7,6 +7,7 @@ import {
   generateDeterministicTheaterScript,
   personalizeConstellationRecommendations,
 } from "@/lib/benyuan-v3-engine";
+import { enrichMusicAnalysisWithPublicMetadata } from "@/lib/benyuan-music-metadata";
 import {
   ANALYST_SYSTEM_PROMPT,
   buildAnalystUserPrompt,
@@ -25,6 +26,7 @@ import {
   type BenyuanMultimodalStageKind,
 } from "@/lib/benyuan-multimodal-cache";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
+import { isSuspiciousGeneratedLabel, sanitizeGeneratedPersonalizedLabel } from "@/lib/benyuan-v3-legacy-isolation";
 import { dedupeMirrorQuestions } from "@/lib/benyuan-v3-theater-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { readBenyuanAgentRuntime } from "@/lib/benyuan-server-runtime";
@@ -161,11 +163,14 @@ const STREAM_ONLY_MULTIMODAL_SYSTEM_PROMPT = [
   "Top-level keys must be music_analysis, social_posts_analysis, social_posts_overall_pattern, precious_photo_analysis.",
   "Never use null; keep every required array/object present.",
   "Infer conservatively from visible evidence and keep wording compact.",
+  "Use standardized psyche signals where possible: desire_structure, defense_style, projection_symbolic_sensitivity, object_distance, boundary_integrity, meaning_orientation, relationship_mirror_need, repression_container, repetition_loop, solitude_capacity, transitional_space.",
+  "Do not browse or identify private social accounts or private photo sources.",
 ].join(" ");
 
 const STREAM_ONLY_MULTIMODAL_USER_PROMPT = [
   "Analyze the labeled playlist screenshot, social post screenshot, and precious photo.",
-  "music_analysis => primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}.",
+  "music_analysis => primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}, recognized_tracks[].",
+  "recognized_tracks should list visible public song/artist candidates for later public music metadata lookup; do not lookup private social/photo sources.",
   "social_posts_analysis => array of {post_id,text_content,emotional_tone,themes[],expression_style,self_presentation,time_clue,psychological_signals[]}.",
   "social_posts_overall_pattern => {dominant_emotion,core_themes[],expression_authenticity}.",
   "precious_photo_analysis => {visual_content,composition,lighting,color_mood,symbolic_elements[],psychological_interpretation:{core_themes[],emotional_tone,self_concept,existential_stance,traits[]}}.",
@@ -181,7 +186,9 @@ const MULTIMODAL_STAGE_SYSTEM_PROMPTS: Record<BenyuanMultimodalStageKind, string
     "Return JSON only.",
     "Analyze only the playlist or music screenshot.",
     "Top-level key must be music_analysis.",
-    "music_analysis => primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}.",
+    "music_analysis => primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}, recognized_tracks[].",
+    "recognized_tracks should extract visible song title/artist candidates for later public music metadata lookup; do not fabricate.",
+    "Use standardized psyche signals in personality_signals: desire_structure, defense_style, projection_symbolic_sensitivity, object_distance, boundary_integrity, meaning_orientation, relationship_mirror_need, repression_container, repetition_loop, solitude_capacity, transitional_space.",
     "Never use null; infer conservatively from visible evidence.",
   ].join(" "),
   social: [
@@ -190,6 +197,7 @@ const MULTIMODAL_STAGE_SYSTEM_PROMPTS: Record<BenyuanMultimodalStageKind, string
     "Top-level keys must be social_posts_analysis and social_posts_overall_pattern.",
     "social_posts_analysis => array of {post_id,text_content,emotional_tone,themes[],expression_style,self_presentation,time_clue,psychological_signals[]}.",
     "social_posts_overall_pattern => {dominant_emotion,core_themes[],expression_authenticity}.",
+    "Use standardized psyche signals in psychological_signals. Do not browse, identify social accounts, or search private text online.",
     "Never use null; infer conservatively from visible evidence.",
   ].join(" "),
   photo: [
@@ -197,6 +205,7 @@ const MULTIMODAL_STAGE_SYSTEM_PROMPTS: Record<BenyuanMultimodalStageKind, string
     "Analyze only the precious photo.",
     "Top-level key must be precious_photo_analysis.",
     "precious_photo_analysis => {visual_content,composition,lighting,color_mood,symbolic_elements[],psychological_interpretation:{core_themes[],emotional_tone,self_concept,existential_stance,traits[]}}.",
+    "Use standardized psyche signals in traits/core_themes where possible. Do not reverse-image-search or identify private photo sources.",
     "Never use null; infer conservatively from visible evidence.",
   ].join(" "),
 };
@@ -212,7 +221,18 @@ function buildMultimodalStageUserPrompt(kind: BenyuanMultimodalStageKind, input:
       : kind === "social"
         ? { social_post_inputs: input.social_post_inputs ?? [] }
         : { precious_photo_input: input.precious_photo_input };
-  return `请严格根据以下 ${kind} 多模态输入输出 JSON。\n\n输入数据：\n${JSON.stringify(payload)}\n\n只输出最终 JSON 对象。`;
+  return `请严格根据以下 ${kind} 多模态输入输出 JSON。
+
+输入数据：
+${JSON.stringify(payload)}
+
+分析边界：
+- 13 题会在本地转成固定精神向量；你只处理当前上传材料，把它转成另一组审美/精神向量。
+- music 阶段要尽量输出 recognized_tracks，后端会用歌曲/艺术家这种公开作品信息做联网补全。
+- social/photo 阶段禁止联网搜索、禁止反向搜图、禁止识别账号或私人图片来源，只能基于可见内容保守分析。
+- 标准化精神信号优先使用 desire_structure、defense_style、projection_symbolic_sensitivity、object_distance、boundary_integrity、meaning_orientation、relationship_mirror_need、repression_container、repetition_loop、solitude_capacity、transitional_space。
+
+只输出最终 JSON 对象。`;
 }
 
 async function readSsePayload(response: Response) {
@@ -1398,16 +1418,8 @@ function mergeFastTheaterSeed(fallback: TheaterScript, seed: FastTheaterSeed): T
     },
     act3: {
       ...fallback.act3,
-      mirror_questions: fallback.act3.mirror_questions.map((question, index) => {
-        const liveQuestion = seed.mirror_questions[index];
-        if (!liveQuestion) return question;
-        return {
-          ...question,
-          dialogue: liveQuestion.dialogue ?? question.dialogue,
-          question: liveQuestion.question ?? question.question,
-        };
-      }),
-      mirror_final_words: seed.closing_line ?? fallback.act3.mirror_final_words,
+      mirror_questions: fallback.act3.mirror_questions,
+      mirror_final_words: fallback.act3.mirror_final_words,
     },
     epilogue: {
       ...fallback.epilogue,
@@ -1525,17 +1537,12 @@ function cleanSeedText(value: unknown, maxLength = 180) {
 }
 
 function isSuspiciousPersonalizedLabel(value: string | undefined) {
-  if (!value) return true;
-  if (value.length < 3 || value.length > 80) return true;
-  if (/[_<>]/u.test(value)) return true;
-  if (/\b(undetermined|no[_\s-]*visible|ocr|unknown|abandoned|post[_\s-]*rope|raw)\b/iu.test(value)) return true;
-  if (/^[a-z0-9_\-\s]+$/i.test(value)) return true;
-  return false;
+  return isSuspiciousGeneratedLabel(value);
 }
 
 function cleanPersonalizedLabel(value: unknown, maxLength = 44) {
   const cleaned = cleanSeedText(value, maxLength);
-  return cleaned && !isSuspiciousPersonalizedLabel(cleaned) ? cleaned : undefined;
+  return sanitizeGeneratedPersonalizedLabel(cleaned, undefined, maxLength);
 }
 
 function cleanSeedStringArray(value: unknown, limit: number, maxLength = 140) {
@@ -1850,6 +1857,35 @@ function stringRecord(value: unknown, fallback: Record<string, string>) {
 
 function normalizeMusicAnalysis(candidate: unknown, fallback: MusicAnalysis): MusicAnalysis {
   if (!isRecord(candidate)) return fallback;
+  type RecognizedTrack = NonNullable<MusicAnalysis["recognized_tracks"]>[number];
+  const recognizedTracks = Array.isArray(candidate.recognized_tracks)
+    ? candidate.recognized_tracks
+        .filter(isRecord)
+        .map<RecognizedTrack | null>((item) => {
+          const title = typeof item.title === "string" ? item.title.trim() : "";
+          const artist = typeof item.artist === "string" ? item.artist.trim() : undefined;
+          const confidence = item.confidence === "high" || item.confidence === "medium" || item.confidence === "low" ? item.confidence : undefined;
+          return title ? { title, artist, confidence } : null;
+        })
+        .filter((item): item is RecognizedTrack => Boolean(item))
+    : fallback.recognized_tracks;
+  const publicMetadata = isRecord(candidate.public_metadata)
+    ? {
+        lookup_status:
+          candidate.public_metadata.lookup_status === "matched" ||
+          candidate.public_metadata.lookup_status === "partial" ||
+          candidate.public_metadata.lookup_status === "failed" ||
+          candidate.public_metadata.lookup_status === "not_requested"
+            ? candidate.public_metadata.lookup_status
+            : fallback.public_metadata?.lookup_status ?? "not_requested",
+        sources: stringArray(candidate.public_metadata.sources, fallback.public_metadata?.sources ?? []),
+        genres: stringArray(candidate.public_metadata.genres, fallback.public_metadata?.genres ?? []),
+        artists: stringArray(candidate.public_metadata.artists, fallback.public_metadata?.artists ?? []),
+        eras: stringArray(candidate.public_metadata.eras, fallback.public_metadata?.eras ?? []),
+        mood_keywords: stringArray(candidate.public_metadata.mood_keywords, fallback.public_metadata?.mood_keywords ?? []),
+        notes: typeof candidate.public_metadata.notes === "string" ? candidate.public_metadata.notes : fallback.public_metadata?.notes ?? "",
+      }
+    : fallback.public_metadata;
 
   return {
     primary_genres: stringArray(candidate.primary_genres, fallback.primary_genres),
@@ -1862,6 +1898,8 @@ function normalizeMusicAnalysis(candidate: unknown, fallback: MusicAnalysis): Mu
     era_distribution: numberRecord(candidate.era_distribution, fallback.era_distribution),
     language_diversity: stringArray(candidate.language_diversity, fallback.language_diversity),
     personality_signals: stringRecord(candidate.personality_signals, fallback.personality_signals),
+    recognized_tracks: recognizedTracks,
+    public_metadata: publicMetadata,
   };
 }
 
@@ -2236,6 +2274,9 @@ export async function runMultimodalStageAnalysis(
 
   const normalized = normalizeMultimodalStageResult(kind, request.data, fallback);
   const result = normalized ?? stageFallbackResult(kind, fallback);
+  const enrichedResult = kind === "music" && "music_analysis" in result
+    ? { music_analysis: await enrichMusicAnalysisWithPublicMetadata(result.music_analysis, input.music_inputs ?? []) }
+    : result;
   const requestRuntime = request.runtime as AgentRuntimeResult;
   const stageRuntime = normalized
     ? requestRuntime
@@ -2252,12 +2293,12 @@ export async function runMultimodalStageAnalysis(
       assetHash,
       provider: runtime.providerName,
       model: runtime.model,
-      result,
+      result: enrichedResult,
       runtime: stageRuntime,
     });
   }
 
-  return { kind, result, runtime: stageRuntime, cacheHit: false } as MultimodalStageResult;
+  return { kind, result: enrichedResult, runtime: stageRuntime, cacheHit: false } as MultimodalStageResult;
 }
 
 async function runParallelMultimodalAnalysis(

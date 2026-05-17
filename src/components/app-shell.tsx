@@ -10,6 +10,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const showHeader =
     pathname !== "/" &&
+    pathname !== "/about" &&
     pathname !== "/legacy" &&
     !immersiveRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`)) &&
     !platformRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));

@@ -850,8 +850,8 @@ export function ReportExperience({ report }: { report: ReportPayload }) {
                   <ReportActions report={report} />
                 </div>
                 <div className="mt-8 flex flex-col gap-4 pt-2 text-center sm:flex-row sm:items-center sm:justify-center">
-                  <Link href="/test" className="inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(239,246,255,0.96),rgba(192,220,249,0.92))] px-7 py-3 text-sm tracking-[0.2em] text-[#0b0d14] uppercase transition hover:scale-[1.01]">
-                    再次进入
+                  <Link href="/collect" className="inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(239,246,255,0.96),rgba(192,220,249,0.92))] px-7 py-3 text-sm tracking-[0.2em] text-[#0b0d14] uppercase transition hover:scale-[1.01]">
+                    再次进入完整测试
                   </Link>
                   <Link href="/" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm tracking-[0.18em] text-stone-300/86 uppercase transition hover:text-stone-100">
                     回到序章

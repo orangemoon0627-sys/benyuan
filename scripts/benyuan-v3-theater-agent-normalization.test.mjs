@@ -211,6 +211,30 @@ test("normalizeTheaterScript repairs saved legacy three-round theater scripts", 
   assert.equal(normalized.act2.choices[3].options.length, 4);
 });
 
+test("fast theater seed cannot overwrite legacy act3 mirror compatibility copy", () => {
+  const fallback = generateDeterministicTheaterScript(createPart1Record());
+  const normalized = normalizeTheaterScript(
+    {
+      theater_seed: {
+        core_archetype: "安静观测者",
+        motifs: ["低光", "海面"],
+        act1_lens: "入口处只有一束很低的光。",
+        act2_lenses: ["靠近第一束光", "停在门外", "把手放到栏杆上", "确认自己为何停下"],
+        mirror_questions: [
+          { dialogue: "旧镜面试图回来。", question: "让镜面停在哪个方向？" },
+        ],
+        closing_line: "星图开始显影。",
+      },
+    },
+    fallback,
+  );
+
+  assert.ok(normalized);
+  assert.deepEqual(normalized.act3.mirror_questions, fallback.act3.mirror_questions);
+  assert.equal(normalized.act3.mirror_final_words, fallback.act3.mirror_final_words);
+  assert.doesNotMatch(collectVisibleTheaterText(normalized), /旧镜面试图回来|让镜面停在哪个方向/u);
+});
+
 test("part2 submit rejects incomplete four-round theater choice logs", () => {
   const route = readFileSync("src/app/api/part2/submit/route.ts", "utf8");
 

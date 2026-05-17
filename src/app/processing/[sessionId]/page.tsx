@@ -360,10 +360,10 @@ export default function ProcessingPage() {
                   重试分析
                 </button>
                 <Link
-                  href="/test"
+                  href="/collect"
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-3 text-sm tracking-[0.18em] text-stone-300 uppercase transition hover:text-stone-100"
                 >
-                  回到问题流
+                  回到完整测试
                   <ArrowUpRight className="h-4 w-4" strokeWidth={1.4} />
                 </Link>
               </div>

@@ -153,6 +153,7 @@ async function main() {
   const { displayName, marketingVersion, buildNumber, bundleId } = projectConfig.shell;
   const { stagingBaseUrl: stagingUrl, productionBaseUrl: releaseUrl } = projectConfig.releaseConfig;
   const authRelease = evaluateIosAuthReleaseReadiness({
+    releaseConfig: projectConfig.releaseConfig,
     authConfig: projectConfig.authConfig,
     entitlementsText,
     authRunbookPresent: await fileExists(path.join(root, "docs", "benyuan-auth-wechat-sms-runbook-2026-05-08.md")),

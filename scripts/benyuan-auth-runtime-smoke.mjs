@@ -45,6 +45,16 @@ function requireOption(schema, questionId, index = 0) {
   return option.id;
 }
 
+function fixtureAct2Choices() {
+  return Array.from({ length: 4 }, (_, index) => ({
+    choice_id: index + 1,
+    selected: `runtime_act2_choice_${index + 1}`,
+    hesitation_time: 1.4 + index * 0.2,
+    hover_sequence: [`runtime_act2_choice_${index + 1}`],
+    timestamp: new Date(Date.now() + index * 1000).toISOString(),
+  }));
+}
+
 const providers = await request("/api/auth/providers");
 assert.equal(providers.response.status, 200, "providers route should be reachable");
 assert.equal(providers.data.providers.find((item) => item.provider === "apple")?.enabled, true);
@@ -300,15 +310,7 @@ const ownerPart2 = await post(
   {
     part1_id: submit.data.part1_id,
     theater_script_id: ownerTheater.data.theater_script_id,
-    act2_choices: [
-      {
-        choice_id: 1,
-        selected: "runtime_act2_choice",
-        hesitation_time: 1.4,
-        hover_sequence: ["runtime_act2_choice"],
-        timestamp: new Date().toISOString(),
-      },
-    ],
+    act2_choices: fixtureAct2Choices(),
     act3_responses: [
       {
         question_id: 1,
@@ -326,7 +328,7 @@ const ownerPart2 = await post(
 );
 assert.equal(ownerPart2.response.status, 200, "owner should submit Part2 theater choices");
 assert.ok(ownerPart2.data.part2_id, "Part2 submit should return a record id");
-assert.equal(ownerPart2.data.act2_choice_count, 1);
+assert.equal(ownerPart2.data.act2_choice_count, 4);
 assert.equal(ownerPart2.data.act3_response_count, 1);
 
 const unauthenticatedPart2Detail = await request(`/api/account/history/${submit.data.part1_id}/part2?part2_id=${ownerPart2.data.part2_id}`);
@@ -346,7 +348,12 @@ assert.equal(ownerPart2Detail.response.status, 200, "owner should read saved Par
 assert.equal(ownerPart2Detail.data.part2_id, ownerPart2.data.part2_id);
 assert.equal(ownerPart2Detail.data.part1_id, submit.data.part1_id);
 assert.equal(ownerPart2Detail.data.theater_script_id, ownerTheater.data.theater_script_id);
-assert.deepEqual(ownerPart2Detail.data.act2_choices.map((item) => item.selected), ["runtime_act2_choice"]);
+assert.deepEqual(ownerPart2Detail.data.act2_choices.map((item) => item.selected), [
+  "runtime_act2_choice_1",
+  "runtime_act2_choice_2",
+  "runtime_act2_choice_3",
+  "runtime_act2_choice_4",
+]);
 assert.deepEqual(ownerPart2Detail.data.act3_responses.map((item) => item.selected), ["runtime_mirror_choice"]);
 assert.equal(ownerPart2Detail.data.metadata.phase_durations.act3, 5.5);
 

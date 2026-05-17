@@ -5,11 +5,10 @@ import { usePathname } from "next/navigation";
 import { benyuanUiRecipes } from "@/config/benyuan-ui-recipes";
 
 const links = [
-  { href: "/collect", label: "Part 1" },
-  { href: "/theater", label: "Part 2" },
-  { href: "/constellation", label: "Part 3" },
-  { href: "/legacy", label: "Legacy" },
-  { href: "/about", label: "方法边界" },
+  { href: "/", label: "官网" },
+  { href: "/collect", label: "完整测试" },
+  { href: "/constellation", label: "精神星图" },
+  { href: "/about", label: "下载" },
 ];
 
 export function SiteHeader() {
@@ -19,7 +18,7 @@ export function SiteHeader() {
     <header className={benyuanUiRecipes.header}>
       <div className={benyuanUiRecipes.headerWrap}>
         <Link href="/" className={benyuanUiRecipes.headerBrand}>
-          本源 v3
+          本源
         </Link>
         <nav className={benyuanUiRecipes.headerNav}>
           {links.map((link) => {
