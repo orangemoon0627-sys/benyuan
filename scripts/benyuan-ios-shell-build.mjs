@@ -8,6 +8,7 @@ import {
   chooseSimulatorDevice,
   extractInstalledSimulatorSdkVersion,
 } from "./benyuan-ios-native-smoke-lib.mjs";
+import { collectIosArtifactProvenance } from "./benyuan-ios-artifact-provenance.mjs";
 
 const root = process.cwd();
 const shellProjectDir = path.join(root, "mobile", "benyuan_origin_ios_shell");
@@ -101,6 +102,7 @@ async function main() {
       bundleId: buildSettings.PRODUCT_BUNDLE_IDENTIFIER ?? null,
       product: buildSettings.FULL_PRODUCT_NAME ?? null,
       targetBuildDir: buildSettings.TARGET_BUILD_DIR ?? null,
+      provenance: await collectIosArtifactProvenance(root),
     };
 
     await writeFile(outputPath, `${JSON.stringify(summary, null, 2)}\n`);

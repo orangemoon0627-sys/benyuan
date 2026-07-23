@@ -4,6 +4,7 @@ struct BenyuanLaunchOverlay: View {
     let context: BenyuanShellRouteContext
     let baseURL: URL
     let showsDebug: Bool
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var breathes = false
 
     var body: some View {
@@ -33,7 +34,10 @@ struct BenyuanLaunchOverlay: View {
                 VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
                     BenyuanBlackMoonMark(size: 172, breathes: breathes)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .animation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true), value: breathes)
+                        .animation(
+                            accessibilityReduceMotion ? nil : .easeInOut(duration: 2.8).repeatForever(autoreverses: true),
+                            value: breathes
+                        )
 
                     Text("本源")
                         .font(.system(size: 82, weight: .black, design: .default))
@@ -93,9 +97,9 @@ struct BenyuanLaunchOverlay: View {
                     .padding(.bottom, BenyuanSpacing.x6)
             }
         }
-        .transition(.opacity.combined(with: .scale(scale: 0.985)))
+        .transition(accessibilityReduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.985)))
         .onAppear {
-            breathes = true
+            breathes = !accessibilityReduceMotion
         }
     }
 }

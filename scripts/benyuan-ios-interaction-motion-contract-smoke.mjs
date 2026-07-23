@@ -28,8 +28,8 @@ assert.match(flowModel, /var currentQuestionIsAnswered: Bool/, "collect flow mus
 assert.match(collectActions, /guard isAnswered\(question\) else \{[\s\S]*?pulseCollectValidation\(collectRequirementHint\(for:\s*question\)\)/, "collect next navigation must not silently skip an incomplete current question");
 assert.match(collectActions, /func continueCollectOrSubmit\(\) async[\s\S]*?guard isAnswered\(question\) else/, "collect primary CTA must validate the current question before advancing");
 assert.match(collectActions, /func collectRequirementHint\(for question:\s*BenyuanQuestion\) -> String/, "collect flow must provide question-specific completion hints");
-assert.match(collect, /collectCompletionHint\(question\)/, "collect view must render a visible completion or requirement hint after the question body");
-assert.match(collect, /struct BenyuanCollectValidationPulse/, "collect view must expose a momentary validation pulse for incomplete taps");
+assert.doesNotMatch(collect, /collectCompletionHint\(question\)|struct BenyuanCollectValidationPulse|完成后再进入下一段，避免线索漏收/, "collect view must not keep a persistent instructional capsule below the question");
+assert.match(collectActions, /func pulseCollectValidation\(_ message:\s*String\)[\s\S]*?showToast\(message\)/, "incomplete taps must still receive concise transient feedback");
 assert.match(collect, /primaryCollectTitle/, "collect primary CTA title must be derived from current completion state");
 for (const title of ["完成当前线索", "继续收集", "进入剧场生成"]) {
   assert.match(collect, new RegExp(title), `collect primary CTA title must include ${title}`);

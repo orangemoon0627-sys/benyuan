@@ -3,12 +3,20 @@ import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import {
+  collectIosArchiveIdentity,
+  collectIosArtifactProvenance,
+  resolveIosArtifactPath,
+} from "./benyuan-ios-artifact-provenance.mjs";
 
 const root = process.cwd();
 const shellProjectDir = path.join(root, "mobile", "benyuan_origin_ios_shell");
 const projectPath = path.join(shellProjectDir, "BenyuanOriginShell.xcodeproj");
 const outputDir = path.join(root, "output");
-const archivePath = process.env.BENYUAN_IOS_ARCHIVE_PATH ?? path.join(outputDir, "BenyuanOriginShell.xcarchive");
+const archivePath = resolveIosArtifactPath(
+  root,
+  process.env.BENYUAN_IOS_ARCHIVE_PATH ?? path.join(outputDir, "BenyuanOriginShell.xcarchive"),
+);
 const outputPath = path.join(outputDir, "benyuan-ios-shell-archive.json");
 const configuration = process.env.BENYUAN_IOS_CONFIGURATION ?? "Release";
 const scheme = "BenyuanOriginShell";
@@ -60,11 +68,13 @@ async function main() {
   }
 
   run("xcodebuild", archiveArgs, { cwd: shellProjectDir });
+  const archiveIdentity = await collectIosArchiveIdentity(archivePath);
 
   const summary = {
     generatedAt: new Date().toISOString(),
     configuration,
-    archivePath,
+    archivePath: archiveIdentity.archivePath,
+    archiveIdentity,
     scheme,
     bundleId: settings.PRODUCT_BUNDLE_IDENTIFIER ?? null,
     marketingVersion: settings.MARKETING_VERSION ?? null,
@@ -73,6 +83,7 @@ async function main() {
       mode: teamId ? "automatic" : "unsigned",
       teamId,
     },
+    provenance: await collectIosArtifactProvenance(root),
   };
 
   await writeFile(outputPath, `${JSON.stringify(summary, null, 2)}\n`);

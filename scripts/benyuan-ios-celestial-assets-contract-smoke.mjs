@@ -52,6 +52,7 @@ assert.match(backdrop, /enum BenyuanCelestialAssetCatalog/, "SwiftUI must expose
 assert.match(backdrop, /BenyuanCelestialAssetCatalog\.isAvailable\(assetName\)/, "celestial body must prefer local raster assets when installed");
 assert.match(backdrop, /BenyuanReferenceCelestialBackdrop/, "celestial body may use only a transparent signal backdrop behind the full-strength subject");
 assert.match(backdrop, /BenyuanLocalCelestialAssetCore/, "celestial body must have a lightweight local asset renderer");
+assert.match(backdrop, /particlesName:\s*nil/, "empty extracted raster particle layers must stay out of the live render chain; native motion owns particles");
 assert.match(backdrop, /else\s*\{[\s\S]*?BenyuanSpectralParticleField/, "missing assets must fall back to procedural SwiftUI visuals");
 assert.match(backdrop, /var usesReferenceArtworkRender:\s*Bool/, "official celestial labels must use reference artwork as the high-fidelity visual base");
 

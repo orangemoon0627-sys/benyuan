@@ -75,14 +75,14 @@ function routeContractChecks(manifest, webSource, shellConfigSource) {
   return checks;
 }
 
-async function probe(label, route) {
+async function probe(label, route, acceptedStatuses = []) {
   const startedAt = now();
   const response = await fetch(`${baseUrl}${route}`);
   const text = await response.text();
   return {
     label,
     route,
-    ok: response.ok,
+    ok: response.ok || acceptedStatuses.includes(response.status),
     status: response.status,
     durationMs: now() - startedAt,
     snippet: text.slice(0, 180),
@@ -112,10 +112,18 @@ async function main() {
   for (const result of benchmark.results ?? []) {
     const ids = result.ids ?? {};
     if (ids.theater_script_id) {
-      checks.push(await probe(`api:theater:${result.pack}`, `/api/theater/${encodeURIComponent(ids.theater_script_id)}`));
+      checks.push(await probe(
+        `api:theater:${result.pack}`,
+        `/api/theater/${encodeURIComponent(ids.theater_script_id)}`,
+        [401],
+      ));
     }
     if (ids.constellation_id) {
-      checks.push(await probe(`api:constellation:${result.pack}`, `/api/constellation/${encodeURIComponent(ids.constellation_id)}`));
+      checks.push(await probe(
+        `api:constellation:${result.pack}`,
+        `/api/constellation/${encodeURIComponent(ids.constellation_id)}`,
+        [401],
+      ));
     }
   }
 

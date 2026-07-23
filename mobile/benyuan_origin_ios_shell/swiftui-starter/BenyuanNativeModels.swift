@@ -369,7 +369,9 @@ struct PsycheArchetype: Codable, Equatable {
     }
 
     var canonicalizedForNativeDisplay: PsycheArchetype {
-        let profile = BenyuanNativeArchetypeRegistry.profile(for: self)
+        guard let profile = BenyuanNativeArchetypeRegistry.profile(for: self) else {
+            return self
+        }
         return PsycheArchetype(
             name: profile.name,
             englishName: profile.englishName,
@@ -378,6 +380,13 @@ struct PsycheArchetype: Codable, Equatable {
             coreEssence: coreEssence,
             visualPrompt: profile.visualPrompt
         )
+    }
+
+    func validatedForNativeDisplay() throws -> PsycheArchetype {
+        guard BenyuanNativeArchetypeRegistry.profile(for: self) != nil else {
+            throw BenyuanAPIError.invalidResponse
+        }
+        return canonicalizedForNativeDisplay
     }
 }
 
@@ -450,6 +459,19 @@ struct PsycheConstellation: Codable, Equatable {
             recommendations: recommendations
         )
     }
+
+    func validatedForNativeDisplay() throws -> PsycheConstellation {
+        PsycheConstellation(
+            userId: userId,
+            generatedAt: generatedAt,
+            archetype: try archetype.validatedForNativeDisplay(),
+            sevenDimensions: sevenDimensions,
+            narrativeOverview: narrativeOverview,
+            coreTensions: coreTensions,
+            growthSuggestions: growthSuggestions,
+            recommendations: recommendations
+        )
+    }
 }
 
 struct ConstellationGenerateResponse: Codable, Equatable {
@@ -462,6 +484,14 @@ struct ConstellationGenerateResponse: Codable, Equatable {
             constellationId: constellationId,
             runtime: runtime,
             psycheConstellation: psycheConstellation.canonicalizedForNativeDisplay
+        )
+    }
+
+    func validatedForNativeDisplay() throws -> ConstellationGenerateResponse {
+        ConstellationGenerateResponse(
+            constellationId: constellationId,
+            runtime: runtime,
+            psycheConstellation: try psycheConstellation.validatedForNativeDisplay()
         )
     }
 }
@@ -529,10 +559,48 @@ struct BenyuanUser: Codable, Equatable {
     let createdAt: String
     let updatedAt: String
     let displayName: String?
+    let avatarSymbol: String?
+    let profileStatus: String?
+    let birthYear: Int?
+    let gender: String?
+    let profileBio: String?
+    let registeredAt: String?
     let primaryProvider: BenyuanAuthProvider
     let providers: [String: String]
     let phoneBound: Bool?
     let wechatBound: Bool?
+
+    init(
+        userId: String,
+        createdAt: String,
+        updatedAt: String,
+        displayName: String?,
+        primaryProvider: BenyuanAuthProvider,
+        providers: [String: String],
+        phoneBound: Bool?,
+        wechatBound: Bool?,
+        avatarSymbol: String? = nil,
+        profileStatus: String? = nil,
+        birthYear: Int? = nil,
+        gender: String? = nil,
+        profileBio: String? = nil,
+        registeredAt: String? = nil
+    ) {
+        self.userId = userId
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.displayName = displayName
+        self.avatarSymbol = avatarSymbol
+        self.profileStatus = profileStatus
+        self.birthYear = birthYear
+        self.gender = gender
+        self.profileBio = profileBio
+        self.registeredAt = registeredAt
+        self.primaryProvider = primaryProvider
+        self.providers = providers
+        self.phoneBound = phoneBound
+        self.wechatBound = wechatBound
+    }
 }
 
 struct BenyuanAuthSession: Codable, Equatable {
@@ -614,8 +682,12 @@ struct BenyuanAccountHistoryItem: Codable, Identifiable, Equatable {
     var id: String { part1Id }
 
     var canonicalArchetypeNameForDisplay: String? {
-        let raw = [archetypeName ?? "", title, subtitle].joined(separator: " ")
-        return BenyuanNativeArchetypeRegistry.canonicalNameForLegacyDisplay(raw)
+        for raw in [archetypeName, title, subtitle].compactMap({ $0 }) where !raw.isEmpty {
+            if let canonical = BenyuanNativeArchetypeRegistry.canonicalNameForLegacyDisplay(raw) {
+                return canonical
+            }
+        }
+        return nil
     }
 
     var titleForNativeDisplay: String {
@@ -626,7 +698,9 @@ struct BenyuanAccountHistoryItem: Codable, Identifiable, Equatable {
     }
 
     var subtitleForNativeDisplay: String {
-        subtitle.replacingInternalTraitSlugsForNativeDisplay
+        BenyuanNativeArchetypeRegistry
+            .removingArchetypeLabelPrefix(from: subtitle)
+            .replacingInternalTraitSlugsForNativeDisplay
     }
 }
 

@@ -39,6 +39,9 @@ enum BenyuanAPIError: Error, LocalizedError, Equatable {
             if message == "auth_required" {
                 return "登录状态已过期，请重新进入。"
             }
+            if message == "provider_already_bound" {
+                return "这个登录方式已绑定到另一份本源档案。请先退出当前账号，再用该方式登录。"
+            }
             if message.isEmpty {
                 return "请求失败（HTTP \(status)）。"
             }
@@ -102,6 +105,29 @@ final class BenyuanAPIClient {
         try await patch("/api/auth/me", body: [
             "display_name": .string(displayName)
         ])
+    }
+
+    func updateUserProfile(
+        displayName: String,
+        avatarSymbol: String?,
+        birthYear: Int?,
+        gender: String?,
+        profileBio: String?
+    ) async throws -> BenyuanAuthResponse {
+        var body: [String: BenyuanJSONValue] = [
+            "display_name": .string(displayName)
+        ]
+        if let avatarSymbol {
+            body["avatar_symbol"] = .string(avatarSymbol)
+        }
+        body["birth_year"] = birthYear.map { .number(Double($0)) } ?? .null
+        if let gender {
+            body["gender"] = .string(gender)
+        }
+        if let profileBio {
+            body["profile_bio"] = .string(profileBio)
+        }
+        return try await patch("/api/auth/me", body: body)
     }
 
     func fetchAccountHistory() async throws -> BenyuanAccountHistoryResponse {
@@ -527,6 +553,13 @@ private extension URLRequest {
         guard let url else { return nil }
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
         guard let fallbackComponents = URLComponents(url: fallbackBaseURL, resolvingAgainstBaseURL: false) else { return nil }
+        guard fallbackComponents.scheme?.lowercased() == "https", fallbackComponents.host?.isEmpty == false else { return nil }
+
+        let method = (httpMethod ?? "GET").uppercased()
+        guard method == "GET" || method == "HEAD" else { return nil }
+        guard value(forHTTPHeaderField: "Authorization") == nil else { return nil }
+        let sensitiveQueryNames = Set(["auth_token", "token", "code"])
+        guard components.queryItems?.contains(where: { sensitiveQueryNames.contains($0.name.lowercased()) }) != true else { return nil }
 
         if
             let originalHost = originalBaseURL.host,

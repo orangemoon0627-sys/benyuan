@@ -9,6 +9,7 @@ import {
   chooseSimulatorDevice,
   extractInstalledSimulatorSdkVersion,
 } from './benyuan-ios-native-smoke-lib.mjs';
+import { collectIosArtifactProvenance } from './benyuan-ios-artifact-provenance.mjs';
 
 const desiredDeviceName = process.env.BENYUAN_SIM_DEVICE ?? 'iPhone 17';
 const baseUrl = process.env.BENYUAN_BASE_URL ?? 'http://127.0.0.1:3015';
@@ -193,6 +194,7 @@ async function main() {
     fixtureName,
     appPath,
     runs,
+    provenance: await collectIosArtifactProvenance(process.cwd()),
   };
 
   await writeFile(jsonPath, `${JSON.stringify(summary, null, 2)}\n`);

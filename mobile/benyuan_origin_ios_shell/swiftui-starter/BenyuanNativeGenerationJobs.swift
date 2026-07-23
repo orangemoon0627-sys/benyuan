@@ -133,7 +133,7 @@ extension BenyuanNativeFlowModel {
                 throw BenyuanAPIError.invalidResponse
             }
             let record = try await client.fetchConstellationRecord(constellationId: constellationId)
-            constellation = record.generateResponse(constellationId: constellationId).canonicalizedForNativeDisplay
+            constellation = try record.generateResponse(constellationId: constellationId).validatedForNativeDisplay()
             session.constellationId = constellationId
             persist()
             logNativeE2E("constellation_generated constellation_id=\(constellationId)")

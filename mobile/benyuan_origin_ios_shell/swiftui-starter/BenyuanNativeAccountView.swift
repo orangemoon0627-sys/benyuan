@@ -2,8 +2,12 @@ import SwiftUI
 
 struct BenyuanNativeAccountView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @ObservedObject private var wechatAuth = BenyuanWechatAuthClient.shared
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
+    @State private var bindingPhone = ""
+    @State private var bindingCode = ""
     private let accountCardCornerRadius: CGFloat = 28
     private let accountDockHeight: CGFloat = 92
 
@@ -17,6 +21,7 @@ struct BenyuanNativeAccountView: View {
                         ScrollView(showsIndicators: false) {
                             VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
                                 accountIdentityPanel
+                                profileSummarySection
                                 bindingOrbitSection
                                 historyTimelineSection
                             }
@@ -49,16 +54,23 @@ struct BenyuanNativeAccountView: View {
                 }
             }
 
+            if model.isProfileEditorPresented {
+                accountOverlay {
+                    profileEditor
+                }
+            }
+
             if isEditingDisplayName {
                 accountOverlay {
                     displayNameEditor
                 }
             }
         }
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: model.isDeleteHistoryConfirmationPresented)
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: model.activeBindingProvider)
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: model.isFeedbackComposerPresented)
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: isEditingDisplayName)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: model.isDeleteHistoryConfirmationPresented)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: model.activeBindingProvider)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: model.isFeedbackComposerPresented)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: model.isProfileEditorPresented)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: isEditingDisplayName)
     }
 
     private var accountIdentityPanel: some View {
@@ -104,11 +116,6 @@ struct BenyuanNativeAccountView: View {
                 .buttonStyle(.plain)
             }
 
-            Text("身份摘要会跟随你的探索、剧场选择和星图记录一起保存。")
-                .font(.system(size: 14, weight: .regular))
-                .lineSpacing(5)
-                .foregroundStyle(BenyuanColor.textSecondary)
-
             HStack(spacing: BenyuanSpacing.x2) {
                 identityStat("探索", value: "\(model.accountHistory.count)")
                 identityStat("身份", value: sessionProviderDisplayLabel)
@@ -134,6 +141,67 @@ struct BenyuanNativeAccountView: View {
             return "我的本源档案"
         }
         return value
+    }
+
+    private var profileAvatarOptions: [(symbol: String, label: String)] {
+        [
+            ("moon.stars.fill", "月相"),
+            ("sparkles", "星芒"),
+            ("circle.hexagongrid.fill", "星网"),
+            ("scope", "观测"),
+            ("sun.max.fill", "日冕"),
+            ("circle.dashed.inset.filled", "轨道")
+        ]
+    }
+
+    private var profileGenderOptions: [(value: String, label: String)] {
+        [
+            ("undisclosed", "不透露"),
+            ("female", "女性"),
+            ("male", "男性"),
+            ("nonbinary", "非二元")
+        ]
+    }
+
+    private var currentProfileAvatarSymbol: String {
+        let symbol = model.session.user?.avatarSymbol?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return profileAvatarOptions.contains { $0.symbol == symbol } ? symbol : "moon.stars.fill"
+    }
+
+    private var profileStatusLabel: String {
+        model.requiresProfileCompletion(model.session.user) ? "待补全" : "已完成"
+    }
+
+    private var profileBirthLabel: String {
+        guard let year = model.session.user?.birthYear else { return "未填" }
+        return "\(year)"
+    }
+
+    private var profileBioStatusLabel: String {
+        let value = model.session.user?.profileBio?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? "未填" : "已写入"
+    }
+
+    private var profileCanSave: Bool {
+        let name = model.profileDraft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !profilePlaceholderNames.contains(name), !name.isEmpty else { return false }
+        let yearText = model.profileDraft.birthYearText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if yearText.isEmpty { return true }
+        guard let year = Int(yearText) else { return false }
+        return year >= 1900 && year <= Calendar.current.component(.year, from: Date())
+    }
+
+    private var profilePlaceholderNames: Set<String> {
+        ["Apple 用户", "微信用户", "手机用户", "访客", "我的本源档案"]
+    }
+
+    private func genderDisplayName(_ value: String?) -> String {
+        switch value {
+        case "female": return "女性"
+        case "male": return "男性"
+        case "nonbinary": return "非二元"
+        default: return "不透露"
+        }
     }
 
     private var latestAccountArchetypeName: String? {
@@ -163,7 +231,7 @@ struct BenyuanNativeAccountView: View {
         case "深空锚定者":
             return .deepSpaceAnchor
         default:
-            return .constellation
+            return .deepSpace
         }
     }
 
@@ -184,6 +252,84 @@ struct BenyuanNativeAccountView: View {
         .background(Capsule().fill(BenyuanColor.bgVoid.opacity(0.44)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72))))
     }
 
+    private var profileSummarySection: some View {
+        Button {
+            model.presentProfileEditor()
+        } label: {
+            VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
+                HStack(alignment: .center, spacing: BenyuanSpacing.x3) {
+                    profileAvatar(size: 56, symbol: currentProfileAvatarSymbol)
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: BenyuanSpacing.x2) {
+                            Text("注册资料")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(BenyuanColor.textPrimary)
+                            Text(profileStatusLabel)
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .foregroundStyle(model.requiresProfileCompletion(model.session.user) ? BenyuanColor.bgVoid : BenyuanColor.accentGold)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(
+                                    Capsule()
+                                        .fill(model.requiresProfileCompletion(model.session.user) ? BenyuanColor.accentGold : BenyuanColor.glassFill)
+                                        .overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.72)))
+                                )
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(BenyuanColor.textTertiary)
+                }
+
+                HStack(spacing: BenyuanSpacing.x2) {
+                    profileMetaPill("性别", value: genderDisplayName(model.session.user?.gender))
+                    profileMetaPill("年份", value: profileBirthLabel)
+                    profileMetaPill("简介", value: profileBioStatusLabel)
+                }
+            }
+            .padding(BenyuanSpacing.x4)
+            .background(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(BenyuanColor.glassFill.opacity(0.76))
+                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.82)))
+            )
+        }
+        .buttonStyle(BenyuanPressableMotionStyle(scale: 0.976, glow: 0.08, haptic: .light))
+    }
+
+    private func profileAvatar(size: CGFloat, symbol: String) -> some View {
+        ZStack {
+            Circle()
+                .fill(BenyuanColor.bgVoid.opacity(0.62))
+                .overlay(Circle().stroke(BenyuanColor.accentGold.opacity(0.22), lineWidth: 1))
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.34, weight: .semibold))
+                .foregroundStyle(BenyuanColor.textPrimary)
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func profileMetaPill(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .foregroundStyle(BenyuanColor.textTertiary)
+            Text(value)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(BenyuanColor.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, BenyuanSpacing.x3)
+        .padding(.vertical, 9)
+        .background(Capsule().fill(BenyuanColor.bgVoid.opacity(0.42)).overlay(Capsule().stroke(BenyuanColor.glassStroke.opacity(0.70))))
+    }
+
     private var bindingOrbitSection: some View {
         Button {
             model.showBindingInfo(.anonymous)
@@ -198,15 +344,9 @@ struct BenyuanNativeAccountView: View {
                         .foregroundStyle(BenyuanColor.accentGold)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("档案设置")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("管理恢复方式和当前身份，不打断主探索。")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(BenyuanColor.textSecondary)
-                        .lineLimit(2)
-                }
+                Text("档案设置")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
 
                 Spacer(minLength: 0)
 
@@ -234,14 +374,9 @@ struct BenyuanNativeAccountView: View {
     private var historyTimelineSection: some View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
             HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("探索历史")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("按时间收纳草稿、剧场和星图。")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundStyle(BenyuanColor.textSecondary)
-                }
+                Text("探索历史")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
                 Spacer()
                 Button {
                     Task { await model.refreshAccountHistory() }
@@ -273,10 +408,6 @@ struct BenyuanNativeAccountView: View {
             Text("还没有封存的探索")
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(BenyuanColor.textPrimary)
-            Text("完成 Part 1 后，这里会出现你的草稿；生成星图后，它会变成一份可回看的结果档案。")
-                .font(.system(size: 13, weight: .semibold))
-                .lineSpacing(5)
-                .foregroundStyle(BenyuanColor.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(BenyuanSpacing.x4)
@@ -446,6 +577,16 @@ struct BenyuanNativeAccountView: View {
         }
     }
 
+    private var isWechatBindingReady: Bool {
+        model.isWechatAuthReady && wechatAuth.authState == .ready
+    }
+
+    private var canSubmitPhoneBinding: Bool {
+        model.isPhoneAuthReady &&
+        !bindingPhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !bindingCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private func hasProvider(_ provider: BenyuanAuthProvider) -> Bool {
         model.session.user?.providers[provider.rawValue] != nil || model.session.authSession?.provider == provider
     }
@@ -471,6 +612,20 @@ struct BenyuanNativeAccountView: View {
 
     private var totalHistoryAssets: Int {
         model.accountHistory.reduce(0) { $0 + $1.assetCount }
+    }
+
+    private func startAccountWechatBinding() async {
+        guard isWechatBindingReady else {
+            model.showToast("微信登录还在接入开放平台，请先用 Apple 登录。")
+            return
+        }
+
+        do {
+            let code = try await wechatAuth.requestCode()
+            await model.bindWechatToCurrentAccount(code: code)
+        } catch {
+            model.showToast(error.localizedDescription)
+        }
     }
 
     private var feedbackStateLabel: String {
@@ -540,8 +695,132 @@ struct BenyuanNativeAccountView: View {
 
             content()
                 .padding(BenyuanSpacing.x6)
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                .transition(accessibilityReduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
         }
+    }
+
+    private var profileEditor: some View {
+        VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
+            HStack(alignment: .top) {
+                Text("完善本源档案")
+                    .font(.system(size: 24, weight: .black))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                Spacer()
+                Button {
+                    model.dismissProfileEditor()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(model.requiresProfileCompletion(model.session.user) ? BenyuanColor.textTertiary.opacity(0.42) : BenyuanColor.textSecondary)
+                        .frame(width: 34, height: 34)
+                        .background(Circle().fill(BenyuanColor.glassFill).overlay(Circle().stroke(BenyuanColor.glassStroke)))
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
+                Text("头像")
+                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                    .foregroundStyle(BenyuanColor.textTertiary)
+
+                HStack(spacing: BenyuanSpacing.x2) {
+                    ForEach(profileAvatarOptions, id: \.symbol) { option in
+                        Button {
+                            model.profileDraft.avatarSymbol = option.symbol
+                        } label: {
+                            profileAvatar(size: 44, symbol: option.symbol)
+                                .overlay(
+                                    Circle()
+                                        .stroke(model.profileDraft.avatarSymbol == option.symbol ? BenyuanColor.accentGold : Color.clear, lineWidth: 1.4)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(option.label)
+                    }
+                }
+            }
+
+            TextField("你的名称", text: $model.profileDraft.displayName)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(BenyuanColor.textPrimary)
+                .padding(.horizontal, BenyuanSpacing.x4)
+                .frame(height: 54)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(BenyuanColor.bgVoid.opacity(0.92))
+                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke))
+                )
+
+            HStack(spacing: BenyuanSpacing.x2) {
+                TextField("出生年份", text: $model.profileDraft.birthYearText)
+                    .keyboardType(.numberPad)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                    .padding(.horizontal, BenyuanSpacing.x4)
+                    .frame(height: 48)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(BenyuanColor.bgVoid.opacity(0.82))
+                            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(BenyuanColor.glassStroke))
+                    )
+
+                Menu {
+                    ForEach(profileGenderOptions, id: \.value) { option in
+                        Button(option.label) {
+                            model.profileDraft.gender = option.value
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(genderDisplayName(model.profileDraft.gender))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(BenyuanColor.bgVoid.opacity(0.82))
+                            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(BenyuanColor.glassStroke))
+                    )
+                }
+            }
+
+            TextField("一句话介绍自己，可留空", text: $model.profileDraft.profileBio, axis: .vertical)
+                .lineLimit(2...3)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(BenyuanColor.textPrimary)
+                .padding(BenyuanSpacing.x4)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(BenyuanColor.bgVoid.opacity(0.88))
+                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke))
+                )
+
+            Button {
+                Task {
+                    await model.completeUserProfile()
+                }
+            } label: {
+                Text(model.isProfileUpdating ? "保存中" : "保存资料")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(profileCanSave && !model.isProfileUpdating ? BenyuanColor.bgVoid : BenyuanColor.textTertiary)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(Capsule().fill(profileCanSave && !model.isProfileUpdating ? BenyuanColor.textPrimary : BenyuanColor.glassFill))
+                    .overlay(Capsule().stroke(profileCanSave && !model.isProfileUpdating ? Color.clear : BenyuanColor.glassStroke))
+            }
+            .buttonStyle(.plain)
+            .disabled(!profileCanSave || model.isProfileUpdating)
+        }
+        .padding(BenyuanSpacing.x6)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(BenyuanColor.bgSurface.opacity(0.97))
+                .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.86)))
+        )
     }
 
     private var displayNameEditor: some View {
@@ -575,11 +854,6 @@ struct BenyuanNativeAccountView: View {
                         .fill(BenyuanColor.bgVoid.opacity(0.92))
                         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke))
                 )
-
-            Text("这个名称会用于你的本源档案和后续保存图。")
-                .font(.system(size: 13, weight: .regular))
-                .lineSpacing(5)
-                .foregroundStyle(BenyuanColor.textSecondary)
 
             Button {
                 Task {
@@ -650,14 +924,9 @@ struct BenyuanNativeAccountView: View {
     private func bindingInfo(_ provider: BenyuanAuthProvider) -> some View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("档案设置")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("当前可恢复方式")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(BenyuanColor.textSecondary)
-                }
+                Text("档案设置")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
                 Spacer()
                 Button {
                     model.dismissBindingInfo()
@@ -678,10 +947,28 @@ struct BenyuanNativeAccountView: View {
                 bindingRow(provider: .anonymous, title: "访客", systemImage: "moonphase.waxing.crescent", bound: isProviderBound(.anonymous), detail: isProviderBound(.anonymous) ? "当前可用" : "未使用")
             }
 
-            Text(bindingDetail(provider))
-                .font(.system(size: 13, weight: .regular))
-                .lineSpacing(5)
-                .foregroundStyle(BenyuanColor.textSecondary)
+            if provider == .wechat, !isProviderBound(.wechat) {
+                Button {
+                    Task { await startAccountWechatBinding() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "message.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("绑定微信")
+                    }
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(isWechatBindingReady ? BenyuanColor.primaryCTAText : BenyuanColor.textTertiary)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(Capsule().fill(isWechatBindingReady ? BenyuanColor.textPrimary : BenyuanColor.glassFill))
+                    .overlay(Capsule().stroke(isWechatBindingReady ? Color.clear : BenyuanColor.glassStroke))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isWechatBindingReady)
+            }
+
+            if provider == .phone, !isProviderBound(.phone) {
+                phoneBindingPanel
+            }
 
             Button {
                 model.dismissBindingInfo()
@@ -699,6 +986,65 @@ struct BenyuanNativeAccountView: View {
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(BenyuanColor.glassFillStrong)
                 .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(BenyuanColor.glassStroke))
+        )
+    }
+
+    private var phoneBindingPanel: some View {
+        VStack(spacing: BenyuanSpacing.x3) {
+            HStack(spacing: BenyuanSpacing.x2) {
+                TextField("手机号", text: $bindingPhone)
+                    .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                    .padding(.horizontal, BenyuanSpacing.x4)
+                    .frame(minHeight: 46)
+                    .background(Capsule().fill(BenyuanColor.bgVoid.opacity(0.62)).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
+
+                Button("取码") {
+                    Task { await model.requestPhoneCode(phone: bindingPhone) }
+                }
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(model.isPhoneAuthReady ? BenyuanColor.primaryCTAText : BenyuanColor.textTertiary)
+                .frame(width: 74, height: 46)
+                .background(Capsule().fill(model.isPhoneAuthReady ? BenyuanColor.textPrimary : BenyuanColor.glassFill))
+                .buttonStyle(.plain)
+                .disabled(!model.isPhoneAuthReady)
+            }
+
+            HStack(spacing: BenyuanSpacing.x2) {
+                TextField("验证码", text: $bindingCode)
+                    .keyboardType(.numberPad)
+                    .textContentType(.oneTimeCode)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
+                    .padding(.horizontal, BenyuanSpacing.x4)
+                    .frame(minHeight: 46)
+                    .background(Capsule().fill(BenyuanColor.bgVoid.opacity(0.62)).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
+
+                Button("绑定") {
+                    Task {
+                        await model.bindPhoneToCurrentAccount(phone: bindingPhone, code: bindingCode)
+                        if isProviderBound(.phone) {
+                            bindingPhone = ""
+                            bindingCode = ""
+                        }
+                    }
+                }
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(canSubmitPhoneBinding ? BenyuanColor.primaryCTAText : BenyuanColor.textTertiary)
+                .frame(width: 74, height: 46)
+                .background(Capsule().fill(canSubmitPhoneBinding ? BenyuanColor.accentGold : BenyuanColor.glassFill))
+                .buttonStyle(.plain)
+                .disabled(!canSubmitPhoneBinding)
+                .accessibilityLabel("绑定手机号")
+            }
+        }
+        .padding(BenyuanSpacing.x3)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(BenyuanColor.bgVoid.opacity(0.46))
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(BenyuanColor.glassStroke.opacity(0.76)))
         )
     }
 
@@ -749,14 +1095,9 @@ struct BenyuanNativeAccountView: View {
     private var feedbackComposer: some View {
         VStack(alignment: .leading, spacing: BenyuanSpacing.x4) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("问题收集")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(BenyuanColor.textPrimary)
-                    Text("描述一个具体问题，提交后只返回记录编号。")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(BenyuanColor.textSecondary)
-                }
+                Text("问题收集")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(BenyuanColor.textPrimary)
                 Spacer()
                 Button {
                     model.dismissFeedbackComposer()
@@ -879,25 +1220,4 @@ struct BenyuanNativeAccountView: View {
         .shadow(color: BenyuanColor.bgVoid.opacity(0.72), radius: 34, y: 20)
     }
 
-    private func bindingTitle(_ provider: BenyuanAuthProvider) -> String {
-        switch provider {
-        case .anonymous: return "访客档案"
-        case .apple: return "Apple 身份"
-        case .wechat: return "微信绑定"
-        case .phone: return "手机号绑定"
-        }
-    }
-
-    private func bindingDetail(_ provider: BenyuanAuthProvider) -> String {
-        switch provider {
-        case .anonymous:
-            return isProviderBound(.anonymous) ? "访客状态已写入当前档案；需要跨设备恢复时，可在登录入口接入其他方式。" : "访客状态还没有建立，可以回到登录页先进入。"
-        case .apple:
-            return isProviderBound(.apple) ? "Apple 已连接到当前档案。" : "Apple 登录可在入口页接入，成功后会合并到当前本源档案。"
-        case .wechat:
-            return isProviderBound(.wechat) ? "微信已绑定到当前档案。" : "微信登录入口已经预留，开放平台资料配置完成后会在这里变成可绑定。"
-        case .phone:
-            return isProviderBound(.phone) ? "手机号已绑定到当前档案。" : "短信网关和签名模板配置完成后，这里会开放手机号绑定。"
-        }
-    }
 }

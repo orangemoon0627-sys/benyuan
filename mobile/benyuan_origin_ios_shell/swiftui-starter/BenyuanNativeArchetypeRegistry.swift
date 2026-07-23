@@ -13,7 +13,7 @@ enum BenyuanNativeArchetypeRegistry {
             name: "远潮观月者",
             englishName: "The Far-Tide Moon Watcher",
             visualPrompt: "far tide moon, silver lunar body, black sea horizon, restrained gold tide",
-            fingerprints: ["远潮观月者", "月门潜航者", "月背寻光者", "深月观测者", "暮潮拾光者", "暮海寻光者", "暮海守光者", "目光拾亡者", "moonlit seeker", "moonlitseeker", "far tide", "fartide", "观月", "月门", "月背", "暮潮", "暮海", "寻光", "守光", "拾光"]
+            fingerprints: ["远潮观月者", "月门潜航者", "月背寻光者", "深月观测者", "暮潮拾光者", "暮海寻光者", "暮海守光者", "目光拾亡者", "月岸守望者", "暗潮守月人", "moonlit seeker", "moonlitseeker", "far tide", "fartide", "观月", "月门", "月背", "暮潮", "暮海", "寻光", "守光", "拾光"]
         ),
         BenyuanNativeArchetypeProfile(
             name: "星图筑序者",
@@ -43,7 +43,7 @@ enum BenyuanNativeArchetypeRegistry {
             name: "事件视界沉潜者",
             englishName: "The Event Horizon Diver",
             visualPrompt: "black hole event horizon, antique gold accretion rim, gravitational lens",
-            fingerprints: ["事件视界沉潜者", "事件视界潜行者", "event horizon diver", "eventhorizondiver", "black hole", "blackhole", "黑洞", "事件视界"]
+            fingerprints: ["事件视界沉潜者", "事件视界潜行者", "The Event Horizon Voyager", "Event Horizon Voyager", "event horizon diver", "eventhorizondiver", "black hole", "blackhole", "黑洞", "事件视界"]
         ),
         BenyuanNativeArchetypeProfile(
             name: "星云织梦者",
@@ -71,28 +71,33 @@ enum BenyuanNativeArchetypeRegistry {
         )
     ]
 
-    static func profile(for archetype: PsycheArchetype) -> BenyuanNativeArchetypeProfile {
-        let visualNormalized = normalize(archetype.visualPrompt)
-        if let visualProfile = profileForDominantVisualPrompt(visualNormalized) {
-            return visualProfile
+    static func profile(for archetype: PsycheArchetype) -> BenyuanNativeArchetypeProfile? {
+        let identities = [archetype.name, archetype.englishName]
+            .map(normalize)
+            .filter { !$0.isEmpty }
+
+        if let canonical = profiles.first(where: { profile in
+            identities.contains(normalize(profile.name)) || identities.contains(normalize(profile.englishName))
+        }) {
+            return canonical
         }
 
-        let raw = [
-            archetype.name,
-            archetype.englishName,
-            archetype.personalizedName ?? "",
-            archetype.personalizedSubtitle ?? "",
-            archetype.visualPrompt
-        ].joined(separator: " ")
-        let normalized = normalize(raw)
+        if let legacy = profiles.first(where: { profile in
+            profile.fingerprints.contains { fingerprint in
+                identities.contains(normalize(fingerprint))
+            }
+        }) {
+            return legacy
+        }
 
-        for profile in profiles {
-            if profile.fingerprints.contains(where: { normalized.contains(normalize($0)) }) {
-                return profile
+        let rawIdentities = [archetype.name, archetype.englishName]
+        return profiles.first { profile in
+            rawIdentities.contains { identity in
+                ([profile.name, profile.englishName] + profile.fingerprints)
+                    .filter { $0.count >= 4 }
+                    .contains { label in hasDelimitedLegacyPrefix(identity, label: label) }
             }
         }
-
-        return profiles[0]
     }
 
     static func canonicalNameForLegacyDisplay(_ value: String) -> String? {
@@ -106,26 +111,19 @@ enum BenyuanNativeArchetypeRegistry {
         return nil
     }
 
-    private static func profileForDominantVisualPrompt(_ normalizedVisualPrompt: String) -> BenyuanNativeArchetypeProfile? {
-        let dominantSignals: [(name: String, signals: [String])] = [
-            ("事件视界沉潜者", ["blackhole", "eventhorizon", "gravitationallens", "accretion", "黑洞", "事件视界", "引力透镜", "吸积"]),
-            ("星云织梦者", ["nebula", "星云"]),
-            ("日冕引燃者", ["solarcorona", "corona", "darksun", "sun", "日冕", "太阳", "暗日"]),
-            ("类地栖居者", ["terrestrial", "earthlike", "earth", "类地", "地球"]),
-            ("深空锚定者", ["deepspaceanchor", "anchor", "锚定"]),
-            ("雨窗抒写者", ["rainwindow", "rainlitwindow", "雨窗"]),
-            ("月港栖岸者", ["moonharbor", "harbor", "docklamp", "月港", "港"]),
-            ("星图筑序者", ["starmap", "coordinate", "grid", "星图", "坐标"]),
-            ("存在游牧者", ["existentialnomad", "movinghorizon", "nomad", "游牧"]),
-            ("远潮观月者", ["fartidemoon", "lunarbody", "blackseahorizon", "远潮", "观月"])
-        ]
-
-        for signal in dominantSignals {
-            if signal.signals.contains(where: { normalizedVisualPrompt.contains(normalize($0)) }) {
-                return profiles.first { $0.name == signal.name }
+    static func removingArchetypeLabelPrefix(from value: String) -> String {
+        let labels = profiles.flatMap { [$0.name, $0.englishName] + $0.fingerprints }
+            .filter { $0.count >= 4 }
+            .sorted { $0.count > $1.count }
+        for label in labels {
+            let escaped = NSRegularExpression.escapedPattern(for: label.trimmingCharacters(in: .whitespacesAndNewlines))
+            let pattern = #"^\s*"# + escaped + #"\s*(?:：|:|·|•|\||/|—|–|-)\s*"#
+            guard let range = value.range(of: pattern, options: [.regularExpression, .caseInsensitive]) else {
+                continue
             }
+            return String(value[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        return nil
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func sanitizedPersonalizedName(_ value: String?, for profile: BenyuanNativeArchetypeProfile) -> String? {
@@ -140,6 +138,15 @@ enum BenyuanNativeArchetypeRegistry {
         value
             .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: Locale(identifier: "zh_CN"))
             .replacingOccurrences(of: #"[\s\p{P}\p{S}_-]+"#, with: "", options: .regularExpression)
+    }
+
+    private static func hasDelimitedLegacyPrefix(_ value: String, label: String) -> Bool {
+        let escaped = NSRegularExpression.escapedPattern(for: label.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard !escaped.isEmpty else { return false }
+        return value.range(
+            of: #"^\s*"# + escaped + #"\s*(?:：|:|—|–|-)\s*\S"#,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil
     }
 
     private static func sanitizedPersonalizedValue(_ value: String?, for profile: BenyuanNativeArchetypeProfile, maximumCount: Int) -> String? {
@@ -167,7 +174,11 @@ enum BenyuanNativeArchetypeRegistry {
         "暮海寻光者",
         "暮海守光者",
         "目光拾亡者",
+        "月岸守望者",
+        "暗潮守月人",
         "事件视界潜行者",
+        "The Event Horizon Voyager",
+        "Event Horizon Voyager",
         "日冕燃心者",
         "孤独求索者",
         "理性建构者",

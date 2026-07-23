@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 
 const root = process.cwd();
+const motionRuntime = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanMotionRuntime.swift`, "utf8");
 const primitives = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeDesignPrimitives.swift`, "utf8");
 const rootView = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellRootView.swift`, "utf8");
 const model = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeFlowModel.swift`, "utf8");
@@ -13,9 +14,12 @@ const constellation = readFileSync(`${root}/mobile/benyuan_origin_ios_shell/swif
 
 assert.match(primitives, /struct BenyuanFlowTransitionLayer/, "native flow must expose a shared second-layer transition field");
 assert.match(primitives, /struct BenyuanQuestionStepMotion/, "native flow must expose question step motion for Part1 progression");
-assert.match(primitives, /struct BenyuanProcessingPhaseCurrent/, "native flow must expose a processing current layer");
+assert.doesNotMatch(primitives, /struct BenyuanProcessingPhaseCurrent/, "native flow must not retain the removed atom-like processing current");
 assert.match(primitives, /struct BenyuanFlowOrbitTrail/, "native flow must expose a reusable orbit trail for theater/result continuity");
-assert.match(primitives, /TimelineView\(\.animation\(minimumInterval:\s*1\.0\s*\/\s*30\.0\)/, "second-layer motion must be animation-driven at 30fps where visible");
+assert.match(motionRuntime, /benyuanMotionPhase/, "native motion runtime must publish one inherited phase for nested vector layers");
+assert.match(motionRuntime, /if let inheritedPhase[\s\S]*?content\(inheritedPhase\)/, "nested vector layers must reuse their parent timeline");
+assert.match(motionRuntime, /else if !motionActive \|\| reduceMotion[\s\S]*?content\(0\)/, "inactive and reduce-motion states must render a static frame without a timer");
+assert.doesNotMatch(primitives, /TimelineView/, "native design primitives must use the shared motion runtime instead of starting independent timelines");
 assert.match(primitives, /accessibilityReduceMotion/, "second-layer motion must respect reduce motion");
 
 assert.match(model, /var flowMotionProgress: Double/, "native model must expose stage-level flow progress");
@@ -30,12 +34,18 @@ assert.match(rootView, /\.allowsHitTesting\(false\)/, "second-layer flow field m
 assert.match(collect, /BenyuanQuestionStepMotion/, "collect view must apply question step motion");
 assert.match(collect, /questionMotionDirection/, "collect view must use forward/back direction in transitions");
 assert.match(collect, /questionMotionToken/, "collect view must animate repeated question transitions");
+assert.match(collect, /@Environment\(\\\.accessibilityReduceMotion\)[\s\S]*?if accessibilityReduceMotion[\s\S]*?scrollProxy\.scrollTo/, "collect question changes must scroll without animation when Reduce Motion is enabled");
+assert.match(collect, /\.animation\(accessibilityReduceMotion \? nil : \.easeOut\(duration:\s*0\.24\), value:\s*assets\.map\(\\\.assetId\)\)/, "upload layout changes must disable implicit animation when Reduce Motion is enabled");
 assert.match(primitives, /BenyuanStarTransitModifier/, "native question transitions must use a logical star-transit layer instead of a hard cut");
 assert.match(primitives, /struct BenyuanQuestionStepMotion[\s\S]*?BenyuanStarTransitModifier/, "question step motion must include star transit through the view during page changes");
+assert.match(primitives, /@State private var settleTask:[\s\S]*?settleTask\?\.cancel\(\)[\s\S]*?guard !Task\.isCancelled/, "rapid question changes must cancel the previous transit cleanup task");
+assert.match(primitives, /private func settle\(\)[\s\S]*?if accessibilityReduceMotion[\s\S]*?isSettled = true[\s\S]*?isTransitActive = false[\s\S]*?return/, "question changes must settle immediately without opacity or scale animation under Reduce Motion");
 assert.match(primitives, /struct BenyuanNovaSelectionBurst[\s\S]*?duration = accessibilityReduceMotion \? 0\.01 : 0\.86/, "option selection burst should linger long enough to feel like falling game particles");
 assert.match(primitives, /try\? await Task\.sleep\(nanoseconds:\s*UInt64\(accessibilityReduceMotion \? 40_000_000 : 920_000_000\)\)/, "option selection burst lifetime should cover the full falling-star animation");
 assert.match(primitives, /struct BenyuanClueOrbitField/, "collect flow must have a reusable clue-orbit field identity");
-assert.match(primitives, /struct BenyuanQuestionSignalField[\s\S]*?BenyuanClueOrbitField/, "question signal field must use the clue-orbit identity instead of a generic module ornament");
+assert.match(primitives, /struct BenyuanRevealedStack[\s\S]*?accessibilityReduceMotion[\s\S]*?if accessibilityReduceMotion/, "staged reveals must render statically when Reduce Motion is enabled");
+assert.match(primitives, /struct BenyuanQuestionSignalField[\s\S]*?BenyuanCompactAccretionField/, "question signal field must use the compact realistic accretion field instead of a line-orbit ornament");
+assert.match(primitives, /struct BenyuanCompactAccretionField[\s\S]*?BenyuanAccretionParticleField[\s\S]*?Image\("BenyuanProcessingBlackHole"\)/, "compact question black hole must combine real artwork with inward particle motion");
 assert.match(collect, /BenyuanUploadCelestialPortal/, "collect upload state must use a dedicated celestial portal while assets change");
 assert.match(primitives, /struct BenyuanUploadCelestialPortal[\s\S]*?BenyuanClueOrbitField/, "upload portal must use the clue-orbit identity inside its art panel");
 assert.match(primitives, /struct BenyuanUploadCelestialPortal[\s\S]*?ForEach\(0\.\.<3[\s\S]*?Ellipse\(\)[\s\S]*?ForEach\(0\.\.<11/, "upload portal must keep closed orbit and particle language while assets change");
@@ -50,16 +60,20 @@ assert.match(primitives, /let bodySize = min\(width,\s*height\) \* 0\.42/, "stan
 assert.doesNotMatch(primitives, /struct BenyuanUploadCelestialPortal[\s\S]*?Circle\(\)\s*[\r\n\s]*\.trim/, "upload portal must not use trimmed circular arcs; orbit rings must be complete closed paths");
 assert.match(primitives, /BenyuanUploadCompleteProgressOrbit/, "upload portal must render progress as a complete closed orbit ring");
 
-assert.match(processing, /BenyuanProcessingPhaseCurrent/, "processing view must include the second-layer current around generation progress");
-assert.match(processing, /processingProgress/, "processing current must be driven by actual processing progress");
+assert.doesNotMatch(processing, /BenyuanProcessingPhaseCurrent/, "processing view must not stack an atom-like current over the black-hole artwork");
+assert.match(processing, /private func processingArtwork\(size:\s*CGFloat\)[\s\S]*?BenyuanDeepCelestialBody/, "processing artwork must keep the animated black-hole body as its single visual system");
+assert.doesNotMatch(processing, /BenyuanFlowOrbitTrail/, "processing view must not add a second large orbit system around the black-hole body");
+assert.match(processing, /processingProgress/, "processing artwork must be driven by actual processing progress");
 assert.match(processing, /generationPhaseRail/, "processing view must expose a visible cloud-stage rail during long generation waits");
+assert.match(processing, /\.frame\(width:\s*geometry\.size\.width,\s*height:\s*geometry\.size\.height\)/, "processing root must constrain oversized celestial artwork to the real screen center");
 for (const phase of ["接收线索", "多模态读取", "剧场折射", "星图显影"]) {
   assert.match(processing, new RegExp(phase), `processing cloud-stage rail must include ${phase}`);
 }
-assert.match(processing, /processingPhaseHint/, "processing view must derive a human-readable waiting hint from current progress");
+assert.doesNotMatch(processing, /processingPhaseHint|可以切出 App|云端生成已接管|答案 \/ 图片|影像情绪|连续剧情|精神报告/, "processing view must avoid explanatory helper copy and duplicate stage subtitles");
 assert.match(processing, /phaseState\(_ phase:\s*GenerationPhase\)/, "processing phase rail must derive active/done states from displayed progress");
 
-assert.match(theater, /BenyuanFlowOrbitTrail/, "theater view must use the shared orbit trail for act continuity");
+assert.match(theater, /BenyuanTheaterAtmosphereLayer/, "theater view must use the dedicated cinematic atmosphere for act continuity");
+assert.doesNotMatch(theater, /BenyuanFlowOrbitTrail/, "theater view must not stack a line-art orbit system over the cinematic atmosphere");
 assert.match(theater, /theaterProgress/, "theater orbit trail must be driven by theater progress");
 assert.doesNotMatch(theater, /theaterStageRail|theaterStageChip|Text\(stage\.label\)|TheaterStage\(/, "native theater should not show or keep the removed top stage capsule rail");
 assert.match(theater, /act1ReadingPage/, "theater act1 must render as a full-screen scrollable reading page");
@@ -89,5 +103,6 @@ assert.match(constellation, /BenyuanFlowOrbitTrail/, "constellation result must 
 assert.match(constellation, /leadingConstellationProgress/, "constellation orbit trail must be driven by real constellation dimensions");
 assert.match(constellation, /\.frame\(height:\s*392\)/, "constellation seven-dimensional orbit map should be visually large enough to read as a graph");
 assert.match(constellation, /firstViewportReserve:\s*96/, "constellation first viewport should hint at the seven-dimensional orbit without letting it collide with the bottom dock");
+assert.match(constellation, /struct BenyuanDimensionResonanceGraph[\s\S]*?@Environment\(\\\.accessibilityReduceMotion\)[\s\S]*?\.animation\(accessibilityReduceMotion \? nil : \.easeOut/, "seven-dimensional node selection must disable implicit animation under Reduce Motion");
 
 console.log("ios-flow-motion-layer-contract:ok");

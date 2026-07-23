@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BenyuanNativeTheaterView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var novaBurstToken = 0
     @State private var novaBurstOptionId: String?
     @State private var selectedTheaterResponse: String?
@@ -16,10 +17,6 @@ struct BenyuanNativeTheaterView: View {
                         .frame(height: max(260, proxy.size.height * 0.44))
                         .padding(.top, proxy.size.height * 0.10)
                         .allowsHitTesting(false)
-                    BenyuanFlowOrbitTrail(progress: theaterProgress, intensity: 0.46, tilt: -8)
-                        .frame(height: max(260, proxy.size.height * 0.46))
-                        .padding(.top, proxy.size.height * 0.11)
-                        .allowsHitTesting(false)
                     BenyuanMomentaryChoiceFeedback(isActive: model.isTheaterChoiceFeedbackVisible)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         .allowsHitTesting(false)
@@ -27,7 +24,7 @@ struct BenyuanNativeTheaterView: View {
                     if model.theaterPhase == .act1 {
                         act1ReadingPage(availableHeight: proxy.size.height)
                             .id(model.theaterPhase)
-                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            .transition(theaterTransition)
                     } else {
                         ScrollViewReader { scrollProxy in
                             ScrollView(showsIndicators: false) {
@@ -37,7 +34,7 @@ struct BenyuanNativeTheaterView: View {
 
                                 phaseContent
                                     .id(model.theaterPhase)
-                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                    .transition(theaterTransition)
                                     .frame(minHeight: max(560, proxy.size.height - BenyuanSpacing.x4), alignment: .top)
                                     .padding(.horizontal, BenyuanSpacing.x4)
                                     .padding(.top, BenyuanSpacing.x4)
@@ -45,13 +42,21 @@ struct BenyuanNativeTheaterView: View {
                             }
                             .id("theater-scroll-\(model.theaterPhase)")
                             .onChange(of: model.theaterPhase) { _, _ in
-                                withAnimation(.easeOut(duration: 0.18)) {
+                                if accessibilityReduceMotion {
                                     scrollProxy.scrollTo(theaterScrollTopAnchor, anchor: .top)
+                                } else {
+                                    withAnimation(.easeOut(duration: 0.18)) {
+                                        scrollProxy.scrollTo(theaterScrollTopAnchor, anchor: .top)
+                                    }
                                 }
                             }
                             .onChange(of: model.theaterChoiceIndex) { _, _ in
-                                withAnimation(.easeOut(duration: 0.18)) {
+                                if accessibilityReduceMotion {
                                     scrollProxy.scrollTo(theaterScrollTopAnchor, anchor: .top)
+                                } else {
+                                    withAnimation(.easeOut(duration: 0.18)) {
+                                        scrollProxy.scrollTo(theaterScrollTopAnchor, anchor: .top)
+                                    }
                                 }
                             }
                         }
@@ -62,6 +67,9 @@ struct BenyuanNativeTheaterView: View {
     }
 
     private var theaterScrollTopAnchor: String { "benyuan-theater-scroll-top" }
+    private var theaterTransition: AnyTransition {
+        accessibilityReduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom))
+    }
 
     @ViewBuilder
     private var phaseContent: some View {
@@ -134,7 +142,7 @@ struct BenyuanNativeTheaterView: View {
             BenyuanRevealedStack(spacing: BenyuanSpacing.x4) {
                 theaterLensCard(
                     title: displayText(choice.scene, fallback: "这一幕正在显影。"),
-                    detail: selectedTheaterResponse ?? "选项会改变这座剧场的下一层光线。",
+                    detail: selectedTheaterResponse,
                     mode: .deepSpace,
                     progress: theaterProgress
                 )
@@ -150,35 +158,28 @@ struct BenyuanNativeTheaterView: View {
                         .disabled(model.hasAnsweredCurrentTheaterChoice || model.isTheaterConstellationEntrySubmitting)
                         .overlay(BenyuanSelectionPulseLayer(isActive: model.selectedTheaterOptionId == option.id, cornerRadius: 24))
                         .overlay(BenyuanNovaSelectionBurst(trigger: novaBurstOptionId == option.id ? novaBurstToken : 0))
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .transition(theaterTransition)
                     }
                 }
                 .padding(.top, BenyuanSpacing.x1)
 
                 if model.canEnterConstellationGenerationFromTheater {
-                    VStack(alignment: .leading, spacing: BenyuanSpacing.x2) {
-                        Text("四轮选择已经收束。")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(BenyuanColor.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        BenyuanNativePrimaryButton(
-                            title: model.isTheaterConstellationEntrySubmitting ? "正在进入星图" : "进入生成星图",
-                            disabled: model.isTheaterConstellationEntrySubmitting
-                        ) {
-                            Task {
-                                await model.enterConstellationGenerationFromTheater()
-                            }
+                    BenyuanNativePrimaryButton(
+                        title: model.isTheaterConstellationEntrySubmitting ? "正在进入星图" : "进入生成星图",
+                        disabled: model.isTheaterConstellationEntrySubmitting
+                    ) {
+                        Task {
+                            await model.enterConstellationGenerationFromTheater()
                         }
                     }
                     .padding(.top, BenyuanSpacing.x2)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .transition(theaterTransition)
                 }
 
                 Spacer()
             }
             .id("act2-\(model.theaterChoiceIndex)")
-            .onChange(of: model.theaterChoiceIndex) { _ in
+            .onChange(of: model.theaterChoiceIndex) { _, _ in
                 selectedTheaterResponse = nil
             }
         }
@@ -186,16 +187,22 @@ struct BenyuanNativeTheaterView: View {
 
     private func theaterLensCard(
         title: String,
-        detail: String,
+        detail: String?,
         mode: BenyuanDeepCelestialBody.Mode,
         progress: Double
     ) -> some View {
-        let cardHeight = theaterLensCardHeight(title)
-
         return VStack(alignment: .leading, spacing: BenyuanSpacing.x3) {
-            ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 34, style: .continuous)
-                    .fill(
+            Text(title)
+                .font(.system(size: theaterTitleSize(title), weight: .semibold))
+                .lineSpacing(4)
+                .foregroundStyle(BenyuanColor.textPrimary)
+                .minimumScaleFactor(0.76)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: 116, alignment: .topLeading)
+                .padding(.horizontal, BenyuanSpacing.x4)
+                .padding(.vertical, BenyuanSpacing.x3)
+                .background {
+                    ZStack {
                         LinearGradient(
                             colors: [
                                 BenyuanColor.bgVoid.opacity(0.88),
@@ -205,37 +212,25 @@ struct BenyuanNativeTheaterView: View {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
-                    )
 
-                BenyuanTheaterScenePortal(progress: progress, mode: mode)
-                    .frame(height: cardHeight)
-                    .opacity(0.42)
-                    .clipped()
-                    .allowsHitTesting(false)
+                        BenyuanTheaterScenePortal(progress: progress, mode: mode)
+                            .opacity(0.42)
+                            .clipped()
+                            .allowsHitTesting(false)
 
-                LinearGradient(
-                    colors: [
-                        BenyuanColor.bgVoid.opacity(0.94),
-                        BenyuanColor.bgVoid.opacity(0.74),
-                        BenyuanColor.bgVoid.opacity(0.28)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .allowsHitTesting(false)
-
-                Text(title)
-                    .font(.system(size: theaterTitleSize(title), weight: .semibold))
-                    .lineSpacing(4)
-                    .foregroundStyle(BenyuanColor.textPrimary)
-                    .minimumScaleFactor(0.76)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, BenyuanSpacing.x4)
-                    .padding(.vertical, BenyuanSpacing.x3)
-            }
+                        LinearGradient(
+                            colors: [
+                                BenyuanColor.bgVoid.opacity(0.94),
+                                BenyuanColor.bgVoid.opacity(0.74),
+                                BenyuanColor.bgVoid.opacity(0.28)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .allowsHitTesting(false)
+                    }
+                }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: cardHeight, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 34, style: .continuous)
@@ -247,7 +242,7 @@ struct BenyuanNativeTheaterView: View {
         }
     }
 
-    private func theaterEchoPanel(_ detail: String) -> some View {
+    private func theaterEchoPanel(_ detail: String?) -> some View {
         HStack(alignment: .top, spacing: BenyuanSpacing.x3) {
             ZStack {
                 Circle()
@@ -259,14 +254,17 @@ struct BenyuanNativeTheaterView: View {
             .frame(width: 22, height: 22)
             .padding(.top, 1)
 
-            Text(detail)
+            Text(detail ?? "")
                 .font(.system(size: 14, weight: .regular))
                 .lineSpacing(5)
                 .foregroundStyle(BenyuanColor.textSecondary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.86)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(BenyuanSpacing.x4)
+        .frame(height: 76, alignment: .top)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(BenyuanColor.glassFill.opacity(0.82))
@@ -275,6 +273,8 @@ struct BenyuanNativeTheaterView: View {
                         .stroke(BenyuanColor.glassStroke.opacity(0.72), lineWidth: 1)
                 )
         )
+        .opacity(detail == nil ? 0 : 1)
+        .accessibilityHidden(detail == nil)
     }
 
     private func theaterTitleSize(_ value: String) -> CGFloat {
@@ -288,14 +288,6 @@ struct BenyuanNativeTheaterView: View {
         if value.count > 360 { return 25 }
         if value.count > 260 { return 27 }
         return 29
-    }
-
-    private func theaterLensCardHeight(_ title: String) -> CGFloat {
-        if title.count > 150 { return 286 }
-        if title.count > 110 { return 246 }
-        if title.count > 64 { return 206 }
-        if title.count > 24 { return 176 }
-        return 132
     }
 
     private func displayText(_ value: String?, fallback: String) -> String {
@@ -353,26 +345,19 @@ private struct BenyuanTheaterScenePortal: View {
                     )
                     .blendMode(.screen)
 
-                    BenyuanFlowOrbitTrail(progress: clamped, intensity: mode == .deepSpace ? 0.72 : 0.52, tilt: mode.tilt, preferredFramesPerSecond: 16)
-                        .frame(width: width * 1.18, height: height * 0.92)
-                        .position(x: width * 0.52, y: height * 0.46)
-                        .opacity(mode == .deepSpace ? 0.96 : 0.84)
+                    BenyuanCinematicSpaceField(
+                        progress: clamped,
+                        intensity: mode == .deepSpace ? 0.74 : 0.56,
+                        velocity: 0.26 + clamped * 0.42,
+                        focalPoint: UnitPoint(x: center.x / width, y: center.y / height),
+                        preferredFramesPerSecond: 24
+                    )
+                    .frame(width: width * 1.12, height: height * 1.06)
+                    .position(x: width * 0.50, y: height * 0.50)
 
                     BenyuanDeepCelestialBody(size: bodySize, progress: clamped, mode: mode)
-                        .scaleEffect(mode == .deepSpace ? 0.88 + CGFloat(clamped) * 0.28 : 0.96 + pulse * 0.03)
+                        .scaleEffect(mode == .deepSpace ? 0.84 + CGFloat(clamped) * 0.24 : 0.94 + pulse * 0.025)
                         .position(center)
-
-                    ForEach(0..<13, id: \.self) { index in
-                        let angle = phase * (0.10 + Double(index) * 0.006) + Double(index) * .pi * 2 / 13
-                        let radiusX = width * (0.22 + CGFloat(index % 4) * 0.055)
-                        let radiusY = height * (0.14 + CGFloat(index % 3) * 0.038)
-                        Circle()
-                            .fill(index.isMultiple(of: 5) ? BenyuanColor.accentGold.opacity(0.30) : BenyuanColor.textPrimary.opacity(0.12))
-                            .frame(width: index.isMultiple(of: 5) ? 3.5 : 2.0, height: index.isMultiple(of: 5) ? 3.5 : 2.0)
-                            .position(x: center.x + cos(angle) * radiusX, y: center.y + sin(angle) * radiusY)
-                            .blur(radius: index.isMultiple(of: 5) ? 0.2 : 0.7)
-                    }
-
                 }
             }
         }

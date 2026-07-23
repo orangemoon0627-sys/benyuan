@@ -8,8 +8,17 @@ import {
   collectIosProjectConfig,
   collectTestFlightExportStatus,
   evaluateIosAuthReleaseReadiness,
+  evaluateIosReleaseArtifactSet,
+  evaluateRequestedIosArchive,
   evaluateTestFlightExportFreshness,
+  resolveTestFlightDistributionSummaryPath,
 } from "./benyuan-ios-testflight-preflight-lib.mjs";
+import {
+  canonicalizeIosArtifactPath,
+  collectIosArchiveIdentity,
+  collectIosArtifactProvenance,
+  resolveIosArtifactPath,
+} from "./benyuan-ios-artifact-provenance.mjs";
 
 const root = process.cwd();
 const outputDir = path.join(root, "output");
@@ -28,7 +37,7 @@ const shellBuildPath = path.join(outputDir, "benyuan-ios-shell-build.json");
 const nativeSmokePath = path.join(outputDir, "benyuan-ios-native-smoke.json");
 const archivePath = path.join(outputDir, "benyuan-ios-shell-archive.json");
 const exportSummaryPath = path.join(outputDir, "benyuan-ios-shell-export.json");
-const distributionSummaryPath = path.join(outputDir, "testflight-export", "DistributionSummary.plist");
+const defaultDistributionSummaryPath = path.join(outputDir, "testflight-export", "DistributionSummary.plist");
 
 function isPlaceholderReleaseUrl(raw) {
   if (!raw) return true;
@@ -56,6 +65,11 @@ async function fileExists(filePath) {
   } catch {
     return false;
   }
+}
+
+async function normalizeRecordedPath(filePath) {
+  if (!filePath) return filePath;
+  return canonicalizeIosArtifactPath(root, filePath).catch(() => resolveIosArtifactPath(root, filePath));
 }
 
 function readPlistJson(filePath) {
@@ -135,19 +149,57 @@ async function main() {
   const shellBuild = await readJsonIfPresent(shellBuildPath);
   const nativeSmoke = await readJsonIfPresent(nativeSmokePath);
   const archive = await readJsonIfPresent(archivePath);
-  const archiveDistribution = await collectArchiveDistributionStatus(archive);
+  const requestedArchiveInputPath = resolveIosArtifactPath(
+    root,
+    process.env.BENYUAN_IOS_ARCHIVE_PATH ?? archive?.archivePath ?? path.join(outputDir, "BenyuanOriginShell.xcarchive"),
+  );
+  const requestedArchiveIdentity = await collectIosArchiveIdentity(requestedArchiveInputPath).catch(() => null);
+  const requestedArchivePath = requestedArchiveIdentity?.archivePath ?? requestedArchiveInputPath;
+  const normalizedArchive = archive?.archivePath
+    ? {
+        ...archive,
+        archivePath: await normalizeRecordedPath(archive.archiveIdentity?.archivePath ?? archive.archivePath),
+      }
+    : archive;
+  const requestedArchiveCheck = evaluateRequestedIosArchive({
+    archive: normalizedArchive,
+    requestedArchivePath,
+    requestedIdentity: requestedArchiveIdentity,
+  });
+  const archiveDistribution = await collectArchiveDistributionStatus(normalizedArchive);
   const exportSummary = await readJsonIfPresent(exportSummaryPath);
+  const normalizedExportSummary = exportSummary
+    ? {
+        ...exportSummary,
+        archivePath: await normalizeRecordedPath(exportSummary.archivePath),
+        exportDir: await normalizeRecordedPath(exportSummary.exportDir),
+        ipaPath: await normalizeRecordedPath(exportSummary.ipaPath),
+      }
+    : exportSummary;
+  const currentProvenance = await collectIosArtifactProvenance(root);
+  const distributionSummaryPath = resolveTestFlightDistributionSummaryPath(
+    defaultDistributionSummaryPath,
+    normalizedExportSummary,
+  );
   const distributionSummaryExists = await fileExists(distributionSummaryPath);
   const exportDistribution = distributionSummaryExists
-    ? collectTestFlightExportStatus(readPlistJson(distributionSummaryPath), exportSummary)
+    ? collectTestFlightExportStatus(readPlistJson(distributionSummaryPath), normalizedExportSummary)
     : null;
-  const ipaExists = exportSummary?.ipaPath ? await fileExists(exportSummary.ipaPath) : false;
+  const ipaExists = normalizedExportSummary?.ipaPath ? await fileExists(normalizedExportSummary.ipaPath) : false;
   const exportFreshness = evaluateTestFlightExportFreshness({
-    archive,
-    exportSummary,
+    archive: normalizedArchive,
+    exportSummary: normalizedExportSummary,
     exportDistribution,
     distributionSummaryExists,
     ipaExists,
+  });
+  const artifactSetFreshness = evaluateIosReleaseArtifactSet({
+    currentProvenance,
+    shellBuild,
+    nativeSmoke,
+    archive: normalizedArchive,
+    exportSummary: normalizedExportSummary,
+    now: new Date().toISOString(),
   });
   const projectConfig = collectIosProjectConfig(projectYml);
   const { displayName, marketingVersion, buildNumber, bundleId } = projectConfig.shell;
@@ -190,7 +242,9 @@ async function main() {
   if (!nativeSmoke) {
     blockers.push("native_smoke_artifact_missing");
   }
+  blockers.push(...artifactSetFreshness.blockers);
   blockers.push(...authRelease.blockers);
+  blockers.push(...requestedArchiveCheck.blockers);
   const hasFreshReadyExport = exportFreshness.readyForAppStoreConnect === true;
   if (!archive) {
     blockers.push("release_archive_missing");
@@ -203,6 +257,7 @@ async function main() {
     blockers.push(...exportFreshness.blockers);
   }
 
+  const uniqueBlockers = [...new Set(blockers)];
   const summary = {
     generatedAt: new Date().toISOString(),
     shell: {
@@ -231,6 +286,8 @@ async function main() {
       iconMissing,
     },
     verificationArtifacts: {
+      currentSource: currentProvenance,
+      artifactSetFreshness,
       shellBuild: shellBuild
         ? {
             generatedAt: shellBuild.generatedAt ?? null,
@@ -243,22 +300,26 @@ async function main() {
             configuration: nativeSmoke.configuration ?? null,
           }
         : null,
-      archive: archive
+      archive: normalizedArchive
         ? {
-            generatedAt: archive.generatedAt ?? null,
-            configuration: archive.configuration ?? null,
-            archivePath: archive.archivePath ?? null,
-            signing: archive.signing ?? null,
+            generatedAt: normalizedArchive.generatedAt ?? null,
+            configuration: normalizedArchive.configuration ?? null,
+            archivePath: normalizedArchive.archivePath ?? null,
+            archiveIdentity: normalizedArchive.archiveIdentity ?? null,
+            requestedArchivePath,
+            requestedArchiveIdentity,
+            requestedArchiveCheck,
+            signing: normalizedArchive.signing ?? null,
             distribution: archiveDistribution,
           }
         : null,
-      export: exportSummary
+      export: normalizedExportSummary
         ? {
-            generatedAt: exportSummary.generatedAt ?? null,
-            exportDir: exportSummary.exportDir ?? null,
-            ipaPath: exportSummary.ipaPath ?? null,
-            method: exportSummary.method ?? null,
-            archivePath: exportSummary.archivePath ?? null,
+            generatedAt: normalizedExportSummary.generatedAt ?? null,
+            exportDir: normalizedExportSummary.exportDir ?? null,
+            ipaPath: normalizedExportSummary.ipaPath ?? null,
+            method: normalizedExportSummary.method ?? null,
+            archivePath: normalizedExportSummary.archivePath ?? null,
             ipaExists,
             distributionSummaryExists,
             distribution: exportDistribution,
@@ -271,9 +332,9 @@ async function main() {
             freshness: exportFreshness,
           },
     },
-    blockers,
+    blockers: uniqueBlockers,
     warnings: authRelease.warnings,
-    readyForTestFlightUpload: blockers.length === 0,
+    readyForTestFlightUpload: uniqueBlockers.length === 0,
     nextManualSteps: [
       "在 Apple Developer / App Store Connect 中确认当前账号属于可发布 App 的 provider",
       "为 com.fanhao.benyuan.origin.shell 准备 Apple Distribution 证书与 App Store Connect provisioning profile",
@@ -286,7 +347,7 @@ async function main() {
   await writeFile(outputPath, `${JSON.stringify(summary, null, 2)}\n`);
   console.log(JSON.stringify(summary, null, 2));
 
-  if (blockers.length > 0) {
+  if (uniqueBlockers.length > 0) {
     process.exit(1);
   }
 }

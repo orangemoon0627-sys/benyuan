@@ -30,6 +30,14 @@ enum BenyuanUploadApplyMode: Equatable {
     case replace
 }
 
+struct BenyuanProfileDraft: Equatable {
+    var displayName: String = ""
+    var avatarSymbol: String = "moon.stars.fill"
+    var birthYearText: String = ""
+    var gender: String = "undisclosed"
+    var profileBio: String = ""
+}
+
 enum BenyuanNativeGenerationJobPresentationSource: Equatable {
     case live
     case restore
@@ -100,6 +108,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
     @Published var feedbackStatus: String?
     @Published var isFeedbackSubmitting = false
     @Published var isDisplayNameUpdating = false
+    @Published var isProfileEditorPresented = false
+    @Published var isProfileUpdating = false
+    @Published var profileDraft = BenyuanProfileDraft()
     @Published var questionMotionDirection: BenyuanQuestionMotionDirection = .reset
     @Published var questionMotionToken = UUID()
     @Published var collectValidationPulse = 0
@@ -114,6 +125,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
     var flowStartedAt = Date()
     var stageBeforeAccount: BenyuanNativeStage?
     var activeNativePreviewStage: BenyuanNativePreviewStage?
+    var beginExplorationAfterProfileCompletion = false
     private let nativeGenerationPollIntervalNanoseconds: UInt64 = 2_000_000_000
     private var lastNativeGenerationJobSnapshot: BenyuanNativeGenerationJobResponse?
     private var isPollingNativeGenerationJob = false
@@ -299,6 +311,13 @@ final class BenyuanNativeFlowModel: ObservableObject {
             return
         }
         guard await ensureCurrentAuthSession() else { return }
+        if requiresProfileCompletion(session.user) {
+            stageBeforeAccount = .home
+            stage = .account
+            presentProfileEditor(beginExplorationAfterSave: true)
+            showToast("补全名称和头像后开始探索。")
+            return
+        }
         await beginNativeExploration()
     }
 

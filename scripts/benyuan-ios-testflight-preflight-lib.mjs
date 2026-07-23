@@ -1,3 +1,5 @@
+import path from "node:path";
+
 function matchFirst(text, pattern) {
   const match = String(text ?? "").match(pattern);
   return match?.[1]?.trim() ?? null;
@@ -101,6 +103,15 @@ function sameEndpoint(left, right) {
   }
 }
 
+function isHttpsEndpoint(value) {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function defaultPort(protocol) {
   if (protocol === "https:") return "443";
   if (protocol === "http:") return "80";
@@ -122,6 +133,12 @@ export function evaluateIosAuthReleaseReadiness(input) {
   }
   if (!releaseConfig.stagingBaseUrl) {
     blockers.push("release_fallback_base_url_missing");
+  }
+  if (releaseConfig.productionBaseUrl && !isHttpsEndpoint(releaseConfig.productionBaseUrl)) {
+    blockers.push("release_production_base_url_not_https");
+  }
+  if (releaseConfig.stagingBaseUrl && !isHttpsEndpoint(releaseConfig.stagingBaseUrl)) {
+    blockers.push("release_network_fallback_not_https");
   }
   if (sameEndpoint(releaseConfig.productionBaseUrl, releaseConfig.stagingBaseUrl)) {
     blockers.push("release_network_fallback_matches_primary");
@@ -202,6 +219,76 @@ function parseTimestamp(value) {
   return Number.isFinite(time) ? time : null;
 }
 
+export const BENYUAN_IOS_RELEASE_ARTIFACT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export function evaluateIosReleaseArtifactSet(input) {
+  const blockers = [];
+  const now = parseTimestamp(input.now) ?? Date.now();
+  const maxAgeMs = input.maxAgeMs ?? BENYUAN_IOS_RELEASE_ARTIFACT_MAX_AGE_MS;
+  const current = input.currentProvenance ?? null;
+  const artifacts = [
+    ["shell_build", input.shellBuild],
+    ["native_smoke", input.nativeSmoke],
+    ["release_archive", input.archive],
+    ["app_store_connect_export", input.exportSummary],
+  ];
+
+  if (!current?.sourceHash || !current?.gitRevision) {
+    blockers.push("ios_source_provenance_unavailable");
+  } else if (current.gitDirty === true) {
+    blockers.push("ios_source_tree_dirty");
+  }
+
+  const timestamps = new Map();
+  for (const [name, artifact] of artifacts) {
+    if (!artifact) continue;
+    const artifactTime = parseTimestamp(artifact.generatedAt);
+    timestamps.set(name, artifactTime);
+    if (artifactTime === null) {
+      blockers.push(`${name}_timestamp_missing`);
+    } else if (artifactTime > now + 5 * 60 * 1000) {
+      blockers.push(`${name}_timestamp_in_future`);
+    } else if (now - artifactTime > maxAgeMs) {
+      blockers.push(`${name}_stale`);
+    }
+
+    const provenance = artifact.provenance;
+    if (!provenance?.sourceHash || !provenance?.gitRevision) {
+      blockers.push(`${name}_provenance_missing`);
+      continue;
+    }
+    if (current?.sourceHash && provenance.sourceHash !== current.sourceHash) {
+      blockers.push(`${name}_source_mismatch`);
+    }
+    if (current?.gitRevision && provenance.gitRevision !== current.gitRevision) {
+      blockers.push(`${name}_revision_mismatch`);
+    }
+    if (provenance.gitDirty === true) {
+      blockers.push(`${name}_built_from_dirty_tree`);
+    }
+  }
+
+  const buildTime = timestamps.get("shell_build");
+  const smokeTime = timestamps.get("native_smoke");
+  const archiveTime = timestamps.get("release_archive");
+  const exportTime = timestamps.get("app_store_connect_export");
+  if (buildTime !== null && archiveTime !== null && buildTime !== undefined && archiveTime !== undefined && archiveTime < buildTime) {
+    blockers.push("release_archive_predates_shell_build");
+  }
+  if (smokeTime !== null && archiveTime !== null && smokeTime !== undefined && archiveTime !== undefined && archiveTime < smokeTime) {
+    blockers.push("release_archive_predates_native_smoke");
+  }
+  if (archiveTime !== null && exportTime !== null && archiveTime !== undefined && exportTime !== undefined && exportTime < archiveTime) {
+    blockers.push("app_store_connect_export_stale");
+  }
+
+  return {
+    ready: blockers.length === 0,
+    maxAgeMs,
+    blockers: [...new Set(blockers)],
+  };
+}
+
 export function evaluateTestFlightExportFreshness(input) {
   const blockers = [];
   const archive = input.archive ?? null;
@@ -242,6 +329,43 @@ export function evaluateTestFlightExportFreshness(input) {
 
   return {
     readyForAppStoreConnect: blockers.length === 0,
+    blockers,
+  };
+}
+
+export function resolveTestFlightDistributionSummaryPath(defaultPath, exportSummary) {
+  return exportSummary?.exportDir
+    ? path.join(exportSummary.exportDir, "DistributionSummary.plist")
+    : defaultPath;
+}
+
+export function evaluateRequestedIosArchive(input) {
+  const blockers = [];
+  const archive = input.archive ?? null;
+  const requestedArchivePath = input.requestedArchivePath ?? null;
+  const requestedIdentity = input.requestedIdentity ?? null;
+  const recordedIdentity = archive?.archiveIdentity ?? null;
+
+  if (!archive?.archivePath || !requestedArchivePath || archive.archivePath !== requestedArchivePath) {
+    blockers.push("upload_archive_path_mismatch");
+  }
+  if (!recordedIdentity?.archiveSha256 || !recordedIdentity?.executableSha256) {
+    blockers.push("release_archive_identity_missing");
+  }
+  if (!requestedIdentity?.archiveSha256 || !requestedIdentity?.executableSha256) {
+    blockers.push("upload_archive_identity_unavailable");
+  } else if (recordedIdentity?.archiveSha256 && (
+    recordedIdentity.archiveSha256 !== requestedIdentity.archiveSha256 ||
+    recordedIdentity.archiveEntryCount !== requestedIdentity.archiveEntryCount ||
+    recordedIdentity.archiveByteSize !== requestedIdentity.archiveByteSize ||
+    recordedIdentity.executableSha256 !== requestedIdentity.executableSha256 ||
+    recordedIdentity.executableSize !== requestedIdentity.executableSize
+  )) {
+    blockers.push("upload_archive_binary_mismatch");
+  }
+
+  return {
+    ready: blockers.length === 0,
     blockers,
   };
 }

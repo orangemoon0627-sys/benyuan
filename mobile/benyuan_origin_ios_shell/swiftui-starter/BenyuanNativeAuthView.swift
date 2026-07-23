@@ -5,11 +5,33 @@ struct BenyuanNativeAuthView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
     @ObservedObject private var wechatAuth = BenyuanWechatAuthClient.shared
     @StateObject private var appleAuth = BenyuanAppleAuthCoordinator()
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var phone = ""
     @State private var code = ""
     @State private var showsPhonePanel = false
+    @State private var entranceProgress: CGFloat = 0
 
     var body: some View {
+        ZStack {
+            BenyuanDepthEmergenceField(reveal: Double(entranceProgress))
+                .ignoresSafeArea()
+
+            authContent
+                .scaleEffect(0.90 + entranceProgress * 0.10, anchor: .center)
+                .offset(y: (1 - entranceProgress) * 30)
+                .blur(radius: (1 - entranceProgress) * 14)
+                .rotation3DEffect(
+                    .degrees(Double(1 - entranceProgress) * 6.5),
+                    axis: (x: 1, y: 0, z: 0),
+                    anchor: .center,
+                    perspective: 0.72
+                )
+        }
+        .onAppear { revealFromDepth() }
+        .onChange(of: accessibilityReduceMotion) { _, _ in revealFromDepth() }
+    }
+
+    private var authContent: some View {
         VStack(spacing: 0) {
             Spacer(minLength: BenyuanSpacing.x8)
 
@@ -84,7 +106,7 @@ struct BenyuanNativeAuthView: View {
                     }
                     .buttonStyle(.plain)
                     Button {
-                        withAnimation(.easeInOut(duration: BenyuanMotion.base)) {
+                        withAnimation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base)) {
                             showsPhonePanel = true
                         }
                     } label: {
@@ -100,11 +122,22 @@ struct BenyuanNativeAuthView: View {
 
                 if showsPhonePanel {
                     phonePanel
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .transition(accessibilityReduceMotion ? .opacity : .opacity.combined(with: .move(edge: .bottom)))
                 }
             }
             .padding(.horizontal, BenyuanSpacing.x6)
             .padding(.bottom, BenyuanSpacing.x8)
+        }
+    }
+
+    private func revealFromDepth() {
+        guard !accessibilityReduceMotion else {
+            entranceProgress = 1
+            return
+        }
+        entranceProgress = 0
+        withAnimation(.spring(duration: 1.32, bounce: 0.08)) {
+            entranceProgress = 1
         }
     }
 
@@ -137,10 +170,11 @@ struct BenyuanNativeAuthView: View {
                     Task { await model.requestPhoneCode(phone: phone) }
                 }
                 .font(.system(size: 13, weight: .black))
-                .foregroundStyle(BenyuanColor.primaryCTAText)
+                .foregroundStyle(model.isPhoneAuthReady ? BenyuanColor.primaryCTAText : BenyuanColor.textTertiary)
                 .frame(width: 74, height: 46)
-                .background(Capsule().fill(BenyuanColor.textPrimary))
+                .background(Capsule().fill(model.isPhoneAuthReady ? BenyuanColor.textPrimary : BenyuanColor.glassFill))
                 .buttonStyle(.plain)
+                .disabled(!model.isPhoneAuthReady)
             }
 
             HStack(spacing: BenyuanSpacing.x2) {
@@ -153,7 +187,7 @@ struct BenyuanNativeAuthView: View {
                     .frame(minHeight: 46)
                     .background(Capsule().fill(BenyuanColor.glassFill).overlay(Capsule().stroke(BenyuanColor.glassStroke)))
 
-                Button("绑定") {
+                Button("登录") {
                     Task { await model.continueWithPhone(phone: phone, code: code) }
                 }
                 .font(.system(size: 13, weight: .black))
@@ -164,17 +198,19 @@ struct BenyuanNativeAuthView: View {
             }
 
             HStack {
-                Text(model.isPhoneAuthReady ? "手机号会绑定到当前本源档案。" : "短信验证码登录还在接入中。")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(BenyuanColor.textTertiary)
                 Spacer()
-                Button("收起") {
-                    withAnimation(.easeInOut(duration: BenyuanMotion.base)) {
+                Button {
+                    withAnimation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base)) {
                         showsPhonePanel = false
                     }
+                } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(BenyuanColor.accentGold)
+                        .frame(width: 32, height: 28)
                 }
-                .font(.system(size: 11, weight: .black))
-                .foregroundStyle(BenyuanColor.accentGold)
+                .buttonStyle(.plain)
+                .accessibilityLabel("收起手机号码登录")
             }
         }
         .padding(BenyuanSpacing.x3)

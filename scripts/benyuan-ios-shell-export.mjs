@@ -3,15 +3,25 @@ import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import {
+  canonicalizeIosArtifactPath,
+  collectIosArtifactProvenance,
+  resolveIosArtifactPath,
+} from "./benyuan-ios-artifact-provenance.mjs";
 
 const root = process.cwd();
 const outputDir = path.join(root, "output");
-const archivePath = process.env.BENYUAN_IOS_ARCHIVE_PATH ?? path.join(outputDir, "BenyuanOriginShell.xcarchive");
+const requestedArchivePath = resolveIosArtifactPath(
+  root,
+  process.env.BENYUAN_IOS_ARCHIVE_PATH ?? path.join(outputDir, "BenyuanOriginShell.xcarchive"),
+);
 const method = process.env.BENYUAN_IOS_EXPORT_METHOD ?? "debugging";
 const teamId = process.env.BENYUAN_IOS_DEVELOPMENT_TEAM ?? "CY3DD3J5CU";
-const exportDir =
+const exportDir = resolveIosArtifactPath(
+  root,
   process.env.BENYUAN_IOS_EXPORT_PATH ??
-  path.join(outputDir, method === "app-store-connect" ? "testflight-export" : "development-export");
+    path.join(outputDir, method === "app-store-connect" ? "testflight-export" : "development-export"),
+);
 const exportOptionsPath = path.join(outputDir, `ExportOptions-${method}.plist`);
 const summaryPath = path.join(outputDir, "benyuan-ios-shell-export.json");
 
@@ -62,8 +72,10 @@ function exportOptionsPlist() {
 }
 
 async function main() {
+  const archivePath = await canonicalizeIosArtifactPath(root, requestedArchivePath);
   await mkdir(outputDir, { recursive: true });
   await mkdir(exportDir, { recursive: true });
+  const canonicalExportDir = await canonicalizeIosArtifactPath(root, exportDir);
   await writeFile(exportOptionsPath, exportOptionsPlist());
 
   run("xcodebuild", [
@@ -71,7 +83,7 @@ async function main() {
     "-archivePath",
     archivePath,
     "-exportPath",
-    exportDir,
+    canonicalExportDir,
     "-exportOptionsPlist",
     exportOptionsPath,
     "-allowProvisioningUpdates",
@@ -80,11 +92,12 @@ async function main() {
   const summary = {
     generatedAt: new Date().toISOString(),
     archivePath,
-    exportDir,
+    exportDir: canonicalExportDir,
     exportOptionsPath,
     method,
     teamId,
-    ipaPath: path.join(exportDir, "BenyuanOriginShell.ipa"),
+    ipaPath: path.join(canonicalExportDir, "BenyuanOriginShell.ipa"),
+    provenance: await collectIosArtifactProvenance(root),
   };
 
   await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);

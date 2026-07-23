@@ -71,13 +71,8 @@ struct BenyuanNativeHomeView: View {
                 Task { await model.beginNativeExplorationFromHome() }
             } label: {
                 HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(primaryActionTitle)
-                            .font(.system(size: 16, weight: .semibold))
-                        Text("从最近一次真实反应开始。")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(BenyuanColor.textTertiary)
-                    }
+                    Text(primaryActionTitle)
+                        .font(.system(size: 16, weight: .semibold))
                     Spacer()
                     Image(systemName: "arrow.right")
                         .font(.system(size: 14, weight: .bold))
@@ -296,9 +291,14 @@ private struct BenyuanHomeOriginPortal: View {
                 let center = CGPoint(x: width * 0.50, y: height * 0.50)
 
                 ZStack {
+                    BenyuanCinematicSpaceField(
+                        progress: clamped,
+                        intensity: 0.34,
+                        velocity: 0.08,
+                        focalPoint: .center,
+                        preferredFramesPerSecond: 18
+                    )
                     BenyuanHomeSourceHaze(width: width, height: height, pulse: pulse)
-                    BenyuanHomeSourceFilaments(width: width, height: height, phase: phase, progress: clamped)
-                    BenyuanHomeCalibrationLattice(width: width, height: height, phase: phase, progress: clamped)
                     BenyuanHomeMoonEntrance(center: center, width: width, height: height, phase: phase, pulse: pulse)
                     BenyuanHomeLunarGlint(width: width, height: height, phase: phase, pulse: pulse)
                     BenyuanHomeSourceParticles(width: width, height: height, phase: phase, pulse: pulse)

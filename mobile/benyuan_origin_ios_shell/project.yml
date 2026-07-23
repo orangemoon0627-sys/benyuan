@@ -6,19 +6,19 @@ configs:
 options:
   bundleIdPrefix: com.fanhao
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "17.0"
 settings:
   base:
     SWIFT_VERSION: 5.0
     PRODUCT_BUNDLE_IDENTIFIER: com.fanhao.benyuan.origin.shell
     MARKETING_VERSION: 0.2.1
-    CURRENT_PROJECT_VERSION: 20
+    CURRENT_PROJECT_VERSION: 22
     BENYUAN_WECHAT_APP_ID: ""
     BENYUAN_WECHAT_UNIVERSAL_LINK: https://app.orangemoonai.cn/app/benyuan/
     BENYUAN_WECHAT_ASSOCIATED_DOMAIN: applinks:app.orangemoonai.cn
     GENERATE_INFOPLIST_FILE: NO
     INFOPLIST_FILE: Info.plist
-    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 targets:
   BenyuanOriginShell:
     type: application
@@ -49,7 +49,7 @@ targets:
           BenyuanShellProductionBaseURL: https://benyuan.orangemoonai.cn
         Release:
           BenyuanShellEnvironment: production
-          BenyuanShellStagingBaseURL: http://120.26.126.88
+          BenyuanShellStagingBaseURL: https://benyuan.orangemoonai.cn
           BenyuanShellProductionBaseURL: https://staging-benyuan.orangemoonai.cn
   BenyuanOriginShellTests:
     type: bundle.unit-test

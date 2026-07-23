@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BenyuanNativeCollectView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var pickingQuestion: BenyuanQuestion?
     @State private var replacesExistingUpload = false
     @State private var novaBurstOptionId: String?
@@ -27,13 +28,7 @@ struct BenyuanNativeCollectView: View {
                                 } else {
                                     questionHeader(question)
                                 }
-                                if question.kind != .upload {
-                                    collectCompletionHint(question)
-                                }
                                 questionBody(question)
-                                if question.kind == .upload {
-                                    collectCompletionHint(question)
-                                }
                             }
                         }
                         .id(model.activeQuestionIndex)
@@ -42,8 +37,12 @@ struct BenyuanNativeCollectView: View {
                         .padding(.bottom, collectBottomSafeSpace)
                     }
                     .onChange(of: model.activeQuestionIndex) { _, _ in
-                        withAnimation(.easeOut(duration: 0.18)) {
+                        if accessibilityReduceMotion {
                             scrollProxy.scrollTo(collectScrollTopAnchor, anchor: .top)
+                        } else {
+                            withAnimation(.easeOut(duration: 0.18)) {
+                                scrollProxy.scrollTo(collectScrollTopAnchor, anchor: .top)
+                            }
                         }
                     }
                 }
@@ -100,12 +99,6 @@ struct BenyuanNativeCollectView: View {
                 .padding(.top, question.kind == .distribution ? 0 : BenyuanSpacing.x2)
                 .padding(.bottom, -BenyuanSpacing.x1)
 
-            if question.kind == .upload {
-                Text(question.helperText ?? "选择图片线索，上传后会进入多模态分析。")
-                    .font(.system(size: 14, weight: .semibold))
-                    .lineSpacing(5)
-                    .foregroundStyle(BenyuanColor.textSecondary)
-            }
         }
     }
 
@@ -124,11 +117,6 @@ struct BenyuanNativeCollectView: View {
                 .foregroundStyle(BenyuanColor.textPrimary)
                 .minimumScaleFactor(0.82)
 
-            Text(question.helperText ?? "选择图片线索，上传后会进入多模态分析。")
-                .font(.system(size: 13, weight: .regular))
-                .lineSpacing(5)
-                .foregroundStyle(BenyuanColor.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -244,7 +232,7 @@ struct BenyuanNativeCollectView: View {
                 }
             }
         }
-        .animation(.easeOut(duration: 0.24), value: assets.map(\.assetId))
+        .animation(accessibilityReduceMotion ? nil : .easeOut(duration: 0.24), value: assets.map(\.assetId))
     }
 
     private struct BenyuanUploadArtPanel: View {
@@ -297,17 +285,15 @@ struct BenyuanNativeCollectView: View {
                             .foregroundStyle(hasAssets ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
                     }
 
-                    Text(hasAssets ? "图片线索已进入剧场" : isUploading ? "图片正在进入剧场" : "选择图片线索")
+                    Text(isUploading ? "正在上传" : hasAssets ? "图片线索" : "选择图片线索")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(BenyuanColor.textPrimary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
 
-                    Text(hasAssets ? "已加入 \(count) / \(maxCount) 张，还可以继续添加或逐张删除。" : "把一张场景、物品或记忆照片交给本源。")
-                        .font(.system(size: 13, weight: .regular))
-                        .lineSpacing(4)
-                        .foregroundStyle(BenyuanColor.textSecondary)
-                        .lineLimit(2)
+                    Text(hasAssets ? "\(count) / \(maxCount)" : "最多 \(maxCount) 张")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .foregroundStyle(BenyuanColor.textTertiary)
                 }
 
                 Spacer(minLength: BenyuanSpacing.x2)
@@ -336,9 +322,6 @@ struct BenyuanNativeCollectView: View {
                     .font(.system(size: 13, weight: .black, design: .monospaced))
                     .foregroundStyle(BenyuanColor.accentGold)
                 Spacer()
-                Text("点 × 删除单张")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(BenyuanColor.textTertiary)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -407,43 +390,6 @@ struct BenyuanNativeCollectView: View {
         )
     }
 
-    private func collectCompletionHint(_ question: BenyuanQuestion) -> some View {
-        let isComplete = model.isAnswered(question)
-        let pulse = model.collectValidationPulse
-        return HStack(spacing: BenyuanSpacing.x2) {
-            ZStack {
-                Circle()
-                    .fill(isComplete ? BenyuanColor.accentGold.opacity(0.18) : BenyuanColor.bgVoid.opacity(0.62))
-                Image(systemName: isComplete ? "checkmark" : "moonphase.waxing.crescent")
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(isComplete ? BenyuanColor.accentGold : BenyuanColor.textTertiary)
-            }
-            .frame(width: 28, height: 28)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(isComplete ? "这一段线索已收束" : model.collectRequirementHint(for: question))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(isComplete ? BenyuanColor.accentGold : BenyuanColor.textSecondary)
-                Text(isComplete ? nextStepCopy : "完成后再进入下一段，避免线索漏收。")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(BenyuanColor.textTertiary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, BenyuanSpacing.x4)
-        .padding(.vertical, 11)
-        .background(
-            Capsule()
-                .fill(isComplete ? BenyuanColor.glassFillStrong.opacity(0.72) : BenyuanColor.glassFill.opacity(0.58))
-                .overlay(Capsule().stroke(isComplete ? BenyuanColor.accentGold.opacity(0.24) : BenyuanColor.glassStroke.opacity(0.82), lineWidth: 1))
-        )
-        .overlay(BenyuanCollectValidationPulse(trigger: pulse, isActive: !isComplete))
-        .shadow(color: BenyuanColor.accentGold.opacity(isComplete ? 0.10 : 0.04), radius: isComplete ? 14 : 8, y: 5)
-        .animation(.easeOut(duration: 0.20), value: isComplete)
-    }
-
     private func uploadActionRow(question: BenyuanQuestion, hasAssets: Bool, canAddMore: Bool) -> some View {
         HStack(spacing: BenyuanSpacing.x2) {
             if canAddMore {
@@ -464,17 +410,6 @@ struct BenyuanNativeCollectView: View {
                 }
             }
         }
-    }
-
-    private func uploadHeroTitle(hasAssets: Bool, isUploading: Bool) -> String {
-        if isUploading { return "正在归位图片线索" }
-        return hasAssets ? "图片线索已进入剧场" : "选择图片线索"
-    }
-
-    private func uploadHeroDetail(count: Int, maxCount: Int, canAddMore: Bool) -> String {
-        if count == 0 { return "可上传最多 \(maxCount) 张，之后仍可删除、追加或重选。" }
-        if canAddMore { return "已加入 \(count) / \(maxCount) 张，还可以继续添加或逐张删除。" }
-        return "已加入 \(count) / \(maxCount) 张，可重新选择或清空后再来。"
     }
 
     private func uploadUtilityButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
@@ -568,38 +503,4 @@ struct BenyuanNativeCollectView: View {
         return "完成当前线索"
     }
 
-    private var nextStepCopy: String {
-        if model.allQuestionsAnswered { return "三组线索已齐，可以进入剧场。" }
-        return "可以继续，让下一段线索接上。"
-    }
-}
-
-private struct BenyuanCollectValidationPulse: View {
-    var trigger: Int
-    var isActive: Bool
-
-    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
-    @State private var visibleTrigger = 0
-
-    var body: some View {
-        Capsule()
-            .stroke(BenyuanColor.accentGold.opacity(visibleTrigger > 0 && isActive ? 0.52 : 0), lineWidth: 1.2)
-            .scaleEffect(visibleTrigger > 0 && isActive && !accessibilityReduceMotion ? 1.018 : 1)
-            .shadow(color: BenyuanColor.accentGold.opacity(visibleTrigger > 0 && isActive ? 0.20 : 0), radius: 16)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-            .onChange(of: trigger) { value in
-                guard value > 0, isActive else { return }
-                visibleTrigger = value
-                Task {
-                    try? await Task.sleep(nanoseconds: UInt64(accessibilityReduceMotion ? 120_000_000 : 520_000_000))
-                    await MainActor.run {
-                        if visibleTrigger == value {
-                            visibleTrigger = 0
-                        }
-                    }
-                }
-            }
-            .animation(.spring(response: accessibilityReduceMotion ? 0.10 : 0.24, dampingFraction: 0.72), value: visibleTrigger)
-    }
 }

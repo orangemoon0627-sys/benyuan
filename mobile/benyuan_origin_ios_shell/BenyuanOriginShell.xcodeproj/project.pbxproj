@@ -40,6 +40,7 @@
 		9B5C3319C1623FCB6574E292 /* BenyuanShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B40AD6C5516B6D0209AD132 /* BenyuanShareSheet.swift */; };
 		9EED86F2D24C6D42E02DCE71 /* BenyuanWebContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDA1B974999DECD2676F2DB /* BenyuanWebContainerView.swift */; };
 		A7D13CE3A5AB296691019CF4 /* BenyuanNativeCollectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C59274E886B964C57CED6EA4 /* BenyuanNativeCollectView.swift */; };
+		B0BE81B3324D6D4BF4F49E22 /* BenyuanCinematicMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE7F6410C58BBD159382E515 /* BenyuanCinematicMotion.swift */; };
 		B5C1567CADB34783BDB3F62F /* BenyuanNativeProcessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD574852514009C42EBDC31B /* BenyuanNativeProcessingView.swift */; };
 		B6B79C540A90BF0782AE35C4 /* BenyuanShellBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB9F9294A97167B2E4B0ABA8 /* BenyuanShellBackdrop.swift */; };
 		CE01ED3120172FFD474E18DE /* BenyuanShellRouteContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A29B73991BDAFFDB951B8DE /* BenyuanShellRouteContext.swift */; };
@@ -97,6 +98,7 @@
 		AD574852514009C42EBDC31B /* BenyuanNativeProcessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeProcessingView.swift; sourceTree = "<group>"; };
 		B545C1CD17D2CBE65CFF4A28 /* BenyuanNativeConstellationActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeConstellationActions.swift; sourceTree = "<group>"; };
 		BDEAD6013E8939952640CFAF /* BenyuanImagePayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanImagePayload.swift; sourceTree = "<group>"; };
+		BE7F6410C58BBD159382E515 /* BenyuanCinematicMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanCinematicMotion.swift; sourceTree = "<group>"; };
 		C59274E886B964C57CED6EA4 /* BenyuanNativeCollectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanNativeCollectView.swift; sourceTree = "<group>"; };
 		CA23BE4CD0E36EEFE0A2E2CD /* BenyuanAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanAPIClient.swift; sourceTree = "<group>"; };
 		DF8805C2203AB3A5FCAE87FD /* BenyuanDesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenyuanDesignTokens.swift; sourceTree = "<group>"; };
@@ -132,6 +134,7 @@
 			children = (
 				CA23BE4CD0E36EEFE0A2E2CD /* BenyuanAPIClient.swift */,
 				94501745749F2E4D8F87D0D5 /* BenyuanAppleAuthCoordinator.swift */,
+				BE7F6410C58BBD159382E515 /* BenyuanCinematicMotion.swift */,
 				FEF3B3536FAE7D137531D3BD /* BenyuanConstellationImageRenderer.swift */,
 				8C9327C7D6C6170B0073E1F2 /* BenyuanFlowStore.swift */,
 				BDEAD6013E8939952640CFAF /* BenyuanImagePayload.swift */,
@@ -282,6 +285,7 @@
 			files = (
 				33BDEE7FAF4D74A890B991EB /* BenyuanAPIClient.swift in Sources */,
 				5FD6D2C79383E13D478AB504 /* BenyuanAppleAuthCoordinator.swift in Sources */,
+				B0BE81B3324D6D4BF4F49E22 /* BenyuanCinematicMotion.swift in Sources */,
 				375B5C589F83091EE39EE62D /* BenyuanConstellationImageRenderer.swift in Sources */,
 				76FD0E0D00FDCB3326F22894 /* BenyuanDesignTokens.swift in Sources */,
 				3E14B7F2822912910B3B792F /* BenyuanFlowStore.swift in Sources */,
@@ -394,7 +398,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 22;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -414,7 +418,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.2.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -487,7 +491,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 22;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -501,7 +505,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.2.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -550,7 +554,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 22;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -564,7 +568,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.2.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -606,7 +610,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BenyuanShellEnvironment = production;
 				BenyuanShellProductionBaseURL = "https://staging-benyuan.orangemoonai.cn";
-				BenyuanShellStagingBaseURL = "http://120.26.126.88";
+				BenyuanShellStagingBaseURL = "https://benyuan.orangemoonai.cn";
 				CODE_SIGN_ENTITLEMENTS = BenyuanOriginShell.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -3,13 +3,24 @@ import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import {
+  canonicalizeIosArtifactPath,
+  resolveIosArtifactPath,
+} from "./benyuan-ios-artifact-provenance.mjs";
 
 const root = process.cwd();
 const outputDir = path.join(root, "output");
-const archivePath = process.env.BENYUAN_IOS_ARCHIVE_PATH ?? path.join(outputDir, "BenyuanOriginShell.xcarchive");
-const uploadPath = process.env.BENYUAN_IOS_UPLOAD_PATH ?? path.join(outputDir, "testflight-upload");
+const requestedArchivePath = resolveIosArtifactPath(
+  root,
+  process.env.BENYUAN_IOS_ARCHIVE_PATH ?? path.join(outputDir, "BenyuanOriginShell.xcarchive"),
+);
+const uploadPath = resolveIosArtifactPath(
+  root,
+  process.env.BENYUAN_IOS_UPLOAD_PATH ?? path.join(outputDir, "testflight-upload"),
+);
 const exportOptionsPath = path.join(outputDir, "ExportOptions-upload-app-store-connect.plist");
 const summaryPath = path.join(outputDir, "benyuan-ios-shell-upload.json");
+const preflightPath = path.join(root, "scripts", "benyuan-ios-testflight-preflight.mjs");
 const teamId = process.env.BENYUAN_IOS_DEVELOPMENT_TEAM ?? "CY3DD3J5CU";
 
 function run(command, args, options = {}) {
@@ -54,8 +65,15 @@ function uploadOptionsPlist() {
 }
 
 async function main() {
+  const archivePath = await canonicalizeIosArtifactPath(root, requestedArchivePath);
+  execFileSync(process.execPath, [preflightPath], {
+    cwd: root,
+    stdio: "inherit",
+    env: { ...process.env, BENYUAN_IOS_ARCHIVE_PATH: archivePath },
+  });
   await mkdir(outputDir, { recursive: true });
   await mkdir(uploadPath, { recursive: true });
+  const canonicalUploadPath = await canonicalizeIosArtifactPath(root, uploadPath);
   await writeFile(exportOptionsPath, uploadOptionsPlist());
 
   const startedAt = new Date().toISOString();
@@ -64,7 +82,7 @@ async function main() {
     "-archivePath",
     archivePath,
     "-exportPath",
-    uploadPath,
+    canonicalUploadPath,
     "-exportOptionsPlist",
     exportOptionsPath,
     "-allowProvisioningUpdates",
@@ -74,7 +92,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     startedAt,
     archivePath,
-    uploadPath,
+    uploadPath: canonicalUploadPath,
     exportOptionsPath,
     method: "app-store-connect",
     destination: "upload",

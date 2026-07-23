@@ -152,6 +152,21 @@ extension BenyuanNativeFlowModel {
         feedbackStatus = nil
     }
 
+    func presentProfileEditor(beginExplorationAfterSave: Bool = false) {
+        prepareProfileDraft()
+        beginExplorationAfterProfileCompletion = beginExplorationAfterSave
+        isProfileEditorPresented = true
+    }
+
+    func dismissProfileEditor() {
+        if requiresProfileCompletion(session.user) && beginExplorationAfterProfileCompletion {
+            showToast("先保存名称和头像，再开始探索。")
+            return
+        }
+        beginExplorationAfterProfileCompletion = false
+        isProfileEditorPresented = false
+    }
+
     func dismissAccountTransientSurfaces() {
         cancelDeleteHistoryItem()
         dismissBindingInfo()
@@ -223,6 +238,84 @@ extension BenyuanNativeFlowModel {
         }
     }
 
+    func requiresProfileCompletion(_ user: BenyuanUser?) -> Bool {
+        guard let user else { return true }
+        if user.primaryProvider == .anonymous { return false }
+        let name = normalizedProfileName(user.displayName)
+        let hasAvatar = !(user.avatarSymbol?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        if user.profileStatus == "complete", name != nil, hasAvatar {
+            return false
+        }
+        return name == nil || !hasAvatar
+    }
+
+    func prepareProfileDraft() {
+        let user = session.user
+        let existingAvatar = user?.avatarSymbol?.trimmingCharacters(in: .whitespacesAndNewlines)
+        profileDraft = BenyuanProfileDraft(
+            displayName: normalizedProfileName(user?.displayName) ?? "",
+            avatarSymbol: existingAvatar?.isEmpty == false ? existingAvatar ?? "moon.stars.fill" : "moon.stars.fill",
+            birthYearText: user?.birthYear.map(String.init) ?? "",
+            gender: user?.gender ?? "undisclosed",
+            profileBio: user?.profileBio ?? ""
+        )
+    }
+
+    func completeUserProfile() async {
+        let displayName = profileDraft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !displayName.isEmpty, normalizedProfileName(displayName) != nil else {
+            showToast("先填一个真实可用的名称。")
+            return
+        }
+        let avatarSymbol = allowedProfileAvatarSymbols.contains(profileDraft.avatarSymbol) ? profileDraft.avatarSymbol : "moon.stars.fill"
+        let birthYear: Int?
+        let birthYearText = profileDraft.birthYearText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if birthYearText.isEmpty {
+            birthYear = nil
+        } else if let value = Int(birthYearText), value >= 1900, value <= Calendar.current.component(.year, from: Date()) {
+            birthYear = value
+        } else {
+            showToast("出生年份需要在 1900 到今年之间。")
+            return
+        }
+        let gender = allowedProfileGenders.contains(profileDraft.gender) ? profileDraft.gender : "undisclosed"
+        let profileBio = String(profileDraft.profileBio.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80))
+
+        isProfileUpdating = true
+        defer { isProfileUpdating = false }
+
+        do {
+            let auth = try await client.updateUserProfile(
+                displayName: displayName,
+                avatarSymbol: avatarSymbol,
+                birthYear: birthYear,
+                gender: gender,
+                profileBio: profileBio
+            )
+            session.authSession = auth.session
+            session.user = auth.user
+            client.setAuthSession(auth.session)
+            if auth.session.provider == .apple {
+                store.saveAppleDisplayName(auth.user.displayName)
+            }
+            persist()
+            isProfileEditorPresented = false
+            showToast("资料已保存。")
+            let shouldBegin = beginExplorationAfterProfileCompletion
+            beginExplorationAfterProfileCompletion = false
+            if shouldBegin {
+                await beginNativeExploration()
+            }
+        } catch {
+            if isExpiredAuthError(error) {
+                clearLocalAuthAfterLogout()
+                showToast("登录状态已过期，请重新登录。")
+                return
+            }
+            showToast(error.localizedDescription)
+        }
+    }
+
     func continueAsGuest() async {
         stage = .processing
         processingTitle = "正在建立私人月相档案"
@@ -253,9 +346,7 @@ extension BenyuanNativeFlowModel {
                 displayName: resolvedDisplayName
             )
             store.saveAppleDisplayName(auth.user.displayName ?? resolvedDisplayName)
-            resetExplorationDraftKeepingIdentity(authSession: auth.session, user: auth.user)
-            client.setAuthSession(auth.session)
-            await beginNativeExploration()
+            await continueAfterAuthenticated(auth)
         } catch {
             stage = .home
             if case BenyuanAPIError.network = error {
@@ -298,13 +389,42 @@ extension BenyuanNativeFlowModel {
         processingProgress = 0.2
         do {
             let auth = try await client.createWechatSession(code: normalizedCode, displayName: displayName)
+            await continueAfterAuthenticated(auth)
+        } catch {
+            stage = .auth
+            showToast(error.localizedDescription)
+        }
+    }
+
+    func bindWechatToCurrentAccount(code: String) async {
+        let normalizedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard session.authSession != nil else {
+            stage = .auth
+            return
+        }
+        guard isWechatAuthReady else {
+            showToast("微信登录还在接入开放平台，请先用 Apple 登录。")
+            return
+        }
+        guard !normalizedCode.isEmpty else {
+            showToast("微信授权暂时没有返回。")
+            return
+        }
+
+        do {
+            let auth = try await client.createWechatSession(code: normalizedCode, displayName: nil)
             session.authSession = auth.session
             session.user = auth.user
             client.setAuthSession(auth.session)
             persist()
-            await beginNativeExploration()
+            activeBindingProvider = .wechat
+            showToast("微信已绑定。")
         } catch {
-            stage = .auth
+            if isExpiredAuthError(error) {
+                clearLocalAuthAfterLogout()
+                showToast("登录状态已过期，请重新登录。")
+                return
+            }
             showToast(error.localizedDescription)
         }
     }
@@ -329,13 +449,35 @@ extension BenyuanNativeFlowModel {
                 phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),
                 code: code.trimmingCharacters(in: .whitespacesAndNewlines)
             )
+            await continueAfterAuthenticated(auth)
+        } catch {
+            stage = .auth
+            showToast(error.localizedDescription)
+        }
+    }
+
+    func bindPhoneToCurrentAccount(phone: String, code: String) async {
+        guard session.authSession != nil else {
+            stage = .auth
+            return
+        }
+        do {
+            let auth = try await client.verifyPhoneCode(
+                phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),
+                code: code.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
             session.authSession = auth.session
             session.user = auth.user
             client.setAuthSession(auth.session)
             persist()
-            await beginNativeExploration()
+            activeBindingProvider = .phone
+            showToast("手机号已绑定。")
         } catch {
-            stage = .auth
+            if isExpiredAuthError(error) {
+                clearLocalAuthAfterLogout()
+                showToast("登录状态已过期，请重新登录。")
+                return
+            }
             showToast(error.localizedDescription)
         }
     }
@@ -359,5 +501,37 @@ extension BenyuanNativeFlowModel {
         client.setAuthSession(nil)
         persist()
         stage = .home
+    }
+
+    private var allowedProfileAvatarSymbols: Set<String> {
+        ["moon.stars.fill", "sparkles", "circle.hexagongrid.fill", "scope", "sun.max.fill", "circle.dashed.inset.filled"]
+    }
+
+    private var allowedProfileGenders: Set<String> {
+        ["female", "male", "nonbinary", "undisclosed"]
+    }
+
+    private func normalizedProfileName(_ value: String?) -> String? {
+        let cleaned = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let cleaned, !cleaned.isEmpty else { return nil }
+        let placeholders = ["Apple 用户", "微信用户", "手机用户", "访客", "我的本源档案"]
+        return placeholders.contains(cleaned) ? nil : cleaned
+    }
+
+    private func continueAfterAuthenticated(_ auth: BenyuanAuthResponse) async {
+        resetExplorationDraftKeepingIdentity(authSession: auth.session, user: auth.user)
+        client.setAuthSession(auth.session)
+        if auth.session.provider == .apple {
+            store.saveAppleDisplayName(auth.user.displayName)
+        }
+        if requiresProfileCompletion(auth.user) {
+            stageBeforeAccount = nil
+            stage = .account
+            presentProfileEditor(beginExplorationAfterSave: true)
+            await refreshAccountHistory()
+            showToast("补全名称和头像后开始探索。")
+            return
+        }
+        await beginNativeExploration()
     }
 }

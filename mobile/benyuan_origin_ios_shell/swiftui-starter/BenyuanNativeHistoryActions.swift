@@ -96,7 +96,7 @@ extension BenyuanNativeFlowModel {
                 }
                 processingProgress = 0.78
                 let record = try await client.fetchConstellationRecord(constellationId: constellationId)
-                constellation = record.generateResponse(constellationId: constellationId).canonicalizedForNativeDisplay
+                constellation = try record.generateResponse(constellationId: constellationId).validatedForNativeDisplay()
                 session.constellationId = constellationId
                 persist()
                 stage = .constellation

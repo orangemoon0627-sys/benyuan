@@ -16,6 +16,7 @@ const actions = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/Be
 const flowModel = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeFlowModel.swift", "utf8");
 const rootView = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanShellRootView.swift", "utf8");
 const home = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeHomeView.swift", "utf8");
+const cinematic = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanCinematicMotion.swift", "utf8");
 const nativeArchetypes = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeArchetypeRegistry.swift", "utf8");
 const localMotionOverlay = backdrop.slice(
   backdrop.indexOf("struct BenyuanLocalCelestialAssetMotionOverlay"),
@@ -34,6 +35,11 @@ assert.match(backdrop, /struct BenyuanDeepCelestialBody/, "iOS shell must expose
 assert.match(backdrop, /enum Mode[\s\S]*?case accretionBlackHole[\s\S]*?case theaterNebula[\s\S]*?case constellationMoon[\s\S]*?case solarCorona[\s\S]*?case terrestrialPlanet[\s\S]*?case deepSpace[\s\S]*?case farTideMoon[\s\S]*?case starMapArchitect[\s\S]*?case moonHarbor[\s\S]*?case existentialNomad[\s\S]*?case rainWindowScribe[\s\S]*?case eventHorizonDiver[\s\S]*?case nebulaWeaver[\s\S]*?case deepSpaceAnchor/, "deep celestial body must define official 10 archetype visual modes plus shared legacy modes");
 assert.match(backdrop, /BenyuanMotionTimeline/, "deep celestial body must be animation-driven through the shared motion runtime");
 assert.match(backdrop, /BenyuanAccretionRing/, "deep celestial body must include a richer accretion ring");
+assert.match(backdrop, /struct BenyuanProcessingAccretionDisk/, "processing must use a single-plane accretion disk instead of intersecting atomic orbit planes");
+assert.match(backdrop, /if mode == \.accretionBlackHole \{[\s\S]*?BenyuanProcessingAccretionDisk/, "processing black hole must dispatch to its dedicated accretion disk");
+assert.match(backdrop, /case \.accretionBlackHole:[\s\S]*?BenyuanProcessingBlackHoleMotionPath/, "reference black-hole artwork must still mount the dedicated rotating absorption layer");
+assert.match(backdrop, /struct BenyuanProcessingBlackHoleMotionPath[\s\S]*?BenyuanAccretionParticleField/, "processing black hole must continuously pull real particles toward the event horizon");
+assert.match(cinematic, /struct BenyuanAccretionParticleField[\s\S]*?positiveRemainder\(seed - phase \* radialSpeed\)/, "accretion particles must travel inward instead of orbiting on static line paths");
 assert.match(backdrop, /BenyuanNebulaVeil/, "deep celestial body must include a reusable nebula veil for theater scenes");
 assert.match(backdrop, /struct BenyuanNebulaCore/, "deep celestial body must include a dedicated nebula core for theater scenes");
 assert.match(backdrop, /BenyuanLunarCore/, "deep celestial body must include a reusable lunar core for constellation scenes");
@@ -84,7 +90,8 @@ assert.ok(existsSync(homeMoonAssetPath), "native home moon entrance asset must e
 assert.doesNotMatch(home, /BenyuanDeepCelestialBody[\s\S]*?mode:\s*\.(?:accretionBlackHole|farTideMoon|starMapArchitect|moonHarbor|existentialNomad|rainWindowScribe|eventHorizonDiver|nebulaWeaver|solarCorona|terrestrialPlanet|deepSpaceAnchor)/, "native home must not visually duplicate the fixed result archetype celestial bodies");
 assert.match(home, /identityGatePanel/, "native home must expose the compact Apple, WeChat, and visitor preview choices");
 assert.match(flowModel, /@Published var hasCompletedInitialHomeBoot = false/, "native flow must track first home boot before animating away from the landing screen");
-assert.match(rootView, /shouldAnimateStageTransition \? \.easeInOut\(duration:\s*BenyuanMotion\.base\) : nil/, "native root must not animate a stale stage over the first home frame");
+assert.match(rootView, /shouldAnimateStageTransition\s*&&\s*!accessibilityReduceMotion/, "native root must not animate a stale stage over the first home frame or ignore Reduce Motion");
+assert.match(rootView, /value:\s*nativeModel\.stage/, "native root stage animation must remain scoped to stage changes");
 assert.match(flowModel, /var canExploreFromHome:[\s\S]*?authSession\.provider != \.anonymous/, "native home must not let an anonymous guest session bypass the formal login gate");
 assert.match(home, /用 Apple 登录/, "native home must include an Apple login entry");
 assert.match(home, /BenyuanAppleAuthCoordinator/, "native home Apple login must use the explicit Apple authorization coordinator");
@@ -93,10 +100,13 @@ assert.doesNotMatch(home, /SignInWithAppleButton[\s\S]*?\.opacity\(0\.001\)/, "n
 assert.match(home, /微信登录/, "native home must include a WeChat login entry");
 assert.match(home, /访客预览/, "native home must include a visitor preview entry");
 assert.doesNotMatch(home, /手机号码登录/, "native home should not show phone login on the first landing surface");
-assert.doesNotMatch(home, /先选择身份|登录后再开始探索|选择身份后探索|不急着给自己下结论|REQUIRED|soon/, "native home should stay visual and avoid explanatory login labels");
+assert.doesNotMatch(home, /先选择身份|登录后再开始探索|选择身份后探索|不急着给自己下结论|从最近一次真实反应开始|REQUIRED|soon/, "native home should stay visual and avoid explanatory login labels");
+assert.doesNotMatch(account, /完成 Part 1 后，这里会出现你的草稿/, "native account empty state should not explain the product flow underneath an obvious heading");
 
 assert.match(auth, /BenyuanRevealedStack/, "native auth view must use staged entrance motion");
 assert.match(auth, /BenyuanDeepCelestialBody/, "native auth view must use the shared dynamic moon field");
+assert.match(auth, /BenyuanDepthEmergenceField[\s\S]*?scaleEffect[\s\S]*?rotation3DEffect/, "native auth must emerge from depth instead of relying on a crossfade");
+assert.match(rootView, /case \(\.home, \.auth\), \(\.auth, \.home\):[\s\S]*?return \.descent/, "home and auth transitions must use the dedicated depth descent style");
 assert.match(auth, /其实在宇宙大爆炸的那一瞬间/, "native auth fallback should share the current landing slogan");
 assert.match(auth, /\.foregroundStyle\(BenyuanColor\.bgVoid\)/, "native Apple login label must use dark text on its light capsule");
 assert.match(auth, /BenyuanAppleAuthCoordinator/, "native Apple login must use an explicit authorization coordinator instead of a transparent system-button overlay");
@@ -105,6 +115,7 @@ assert.doesNotMatch(auth, /\.opacity\(0\.001\)/, "native Apple login must not re
 assert.doesNotMatch(auth, /soon|SOON/, "native auth view should not show soon badges on login options");
 assert.doesNotMatch(auth, /进入你的私人月相档案|先完成登录，再开始探索|PRIVATE MOON FIELD/, "native auth view should not expose stale pre-build-17 landing copy");
 assert.doesNotMatch(auth, /先以访客进入|可先以访客进入/, "native auth view must not expose guest exploration before login");
+assert.doesNotMatch(auth, /手机号会绑定到当前本源档案|短信验证码登录还在接入中/, "native auth controls must not carry persistent implementation explanations");
 
 assert.match(collect, /BenyuanQuestionSignalField/, "native collect view must include per-question signal motion");
 assert.match(collect, /BenyuanQuestionSignalBridge/, "native collect view must place the gold signal bridge between the celestial capsule and the options");
@@ -118,14 +129,17 @@ assert.match(primitives, /Image\(systemName:\s*"sparkle"\)/, "native option nova
 assert.match(collect, /uploadHeader/, "native upload question must use a compact upload-specific header");
 assert.match(collect, /BenyuanUploadCelestialPortal/, "native upload question must use the dedicated deep-field upload portal");
 assert.match(collect, /uploadThumbnailStrip/, "native upload question must expose thumbnails as a first-screen manageable strip");
+assert.doesNotMatch(collect, /collectCompletionHint|完成后再进入下一段，避免线索漏收|点 × 删除单张/, "native collect view must not place persistent usage explanations below content");
 assert.match(collect, /collectBottomSafeSpace/, "native collect scroll content must reserve explicit bottom navigation clearance");
 assert.match(collect, /ScrollView\(showsIndicators:\s*false\)[\s\S]*?\.safeAreaInset\(edge:\s*\.bottom,\s*spacing:\s*0\)[\s\S]*?bottomBar/, "native collect bottom navigation must be a safe-area inset so upload thumbnails are never hidden behind the fixed dock");
 assert.doesNotMatch(collect, /\n\s*}\s*else\s*\{[\s\S]*?\n\s*}\n\s*\n\s*bottomBar\n\s*}/, "native collect bottom navigation must not be a sibling overlay that can cover scroll content");
 
 assert.match(processing, /BenyuanDeepCelestialBody/, "native processing view must use the shared dynamic celestial body");
 assert.match(processing, /mode:\s*\.accretionBlackHole/, "native processing view must use the accretion black-hole body");
-assert.match(processing, /BenyuanFlowOrbitTrail/, "native processing view must add a restrained orbit trail so the state page does not feel static");
-assert.match(processing, /processingCardCornerRadius/, "native processing card must use an explicit corner token for screenshot-stable layout");
+assert.match(processing, /BenyuanCinematicSpaceField/, "native processing view must render a cinematic deep-space field behind the neutral black-hole state");
+assert.doesNotMatch(processing, /BenyuanFlowOrbitTrail/, "native processing view must not stack a second orbit system over the animated black-hole body");
+assert.doesNotMatch(processing, /BenyuanProcessingPhaseCurrent|可以切出 App|processingPhaseHint|云端生成已接管/, "native processing view must keep one focused visual system without waiting instructions");
+assert.doesNotMatch(processing, /processingCardCornerRadius|RoundedRectangle\(cornerRadius:/, "native processing scene must remain full-bleed instead of returning to a framed card");
 assert.doesNotMatch(processing, /BenyuanBlackMoonMark\(size:\s*168/, "native processing view should not use the old flat moon mark as its hero visual");
 assert.match(processing, /processingProgress/, "native processing view must keep the real progress signal");
 
@@ -133,6 +147,7 @@ assert.match(account, /BenyuanFlowOrbitTrail/, "native account history surface m
 assert.match(account, /accountCardCornerRadius/, "native account cards must use an explicit corner token for stable visual rhythm");
 assert.match(account, /accountBottomActionDock/, "native account actions should be a compact bottom dock instead of four stacked full-width rows");
 assert.doesNotMatch(account, /Text\(title\)[\s\S]*?\.font\(\.system\(size:\s*21,\s*weight:\s*\.black\)\)/, "native account provider cards must not drift back to oversized black typography");
+assert.doesNotMatch(account, /身份摘要会跟随|管理恢复方式和当前身份|按时间收纳草稿|头像、名称和基本资料会跟随|绑定手机号后，它会成为/, "native account view must not repeat feature explanations beneath controls and headings");
 
 assert.match(theater, /BenyuanTheaterAtmosphereLayer/, "native theater view must use the merged low-frequency atmosphere layer");
 assert.doesNotMatch(theater, /BenyuanStageLens/, "native theater view must not stack the old stage lens over the theater scene");
@@ -145,8 +160,8 @@ assert.match(theater, /\.transition\(/, "native theater view must animate act tr
 assert.doesNotMatch(theater, /ACT I|ACT II|ACT III|EPILOGUE/, "native theater should not show act or branch marker capsules in the user-facing scene");
 assert.match(theater, /act1ReadingPage\(availableHeight:/, "native theater act1 must use a full-screen scrollable reading page");
 assert.match(theater, /BenyuanNativePrimaryButton\(title:\s*"进入这一幕"[\s\S]*?model\.enterAct2\(\)/, "native theater act1 fixed bottom action must remain unchanged");
-assert.match(theater, /private func theaterLensCardHeight\(_ title:\s*String\)/, "native theater narrative lens should size from text instead of reserving a large empty portal");
-assert.match(theater, /\.frame\(minHeight:\s*cardHeight,\s*alignment:\s*\.topLeading\)/, "native theater narrative lens must expand instead of clipping generated scene text");
+assert.doesNotMatch(theater, /theaterLensCardHeight|let cardHeight/, "native theater narrative lens must not reserve a guessed character-count height");
+assert.match(theater, /Text\(title\)[\s\S]*?\.fixedSize\(horizontal:\s*false,\s*vertical:\s*true\)[\s\S]*?\.frame\(maxWidth:\s*\.infinity,\s*minHeight:\s*116,\s*alignment:\s*\.topLeading\)[\s\S]*?\.background\s*\{[\s\S]*?BenyuanTheaterScenePortal/, "native theater narrative lens must derive its height from the rendered text while keeping the scene treatment behind it");
 assert.match(theater, /\.onChange\(of:\s*model\.theaterChoiceIndex\)/, "native theater must scroll each Act2 round back to the scene text after advancing");
 assert.doesNotMatch(theater, /Text\(stage\.label\)|TheaterStage\(|theaterStageRail|theaterStageChip|model\.revisitTheaterPhase\(stage\.phase\)/, "native theater must not show the removed top stage capsule rail");
 for (const label of ["入场", "分岔", "追问", "星图", "镜面"]) {
@@ -155,7 +170,7 @@ for (const label of ["入场", "分岔", "追问", "星图", "镜面"]) {
 assert.doesNotMatch(theater, /BenyuanWarpApproachField|theaterEpiloguePortal|BenyuanConstellationWarpTunnel|ForEach\(0..<68/, "native theater must not retain the removed epilogue/warp transition page");
 assert.match(theater, /choice\.options\.prefix\(4\)/, "native theater must keep the visible theater test to four options");
 assert.match(theater, /BenyuanNativeOptionButton[\s\S]*?pressScale:\s*1/, "native theater option buttons must avoid press scaling so the card stack does not jump");
-assert.match(primitives, /animation\(pressScale == 1 \? nil : \.easeOut\(duration:\s*0\.18\), value:\s*active\)/, "native option buttons must disable active-state layout animation when theater asks for fixed press scale");
+assert.match(primitives, /animation\(accessibilityReduceMotion \|\| pressScale == 1 \? nil : \.easeOut\(duration:\s*0\.18\), value:\s*active\)/, "native option buttons must disable active-state layout animation for fixed theater cards and Reduce Motion");
 assert.match(primitives, /HStack\(alignment:\s*\.center,\s*spacing:\s*BenyuanSpacing\.x4\)/, "native option capsules must center their icon, text, and selection ring vertically");
 assert.match(primitives, /\.frame\(maxWidth:\s*\.infinity,\s*minHeight:\s*34,\s*alignment:\s*\.leading\)/, "native option capsule text should keep horizontal reading alignment while the HStack centers it vertically");
 assert.match(primitives, /\.padding\(\.vertical,\s*8\)/, "native option capsules should keep tighter vertical padding instead of leaving excess top padding");
@@ -166,14 +181,21 @@ assert.match(models, /let personalizedSubtitle:\s*String\?/, "native constellati
 assert.match(models, /var displayName:\s*String/, "native constellation DTO may keep a legacy displayName accessor for decoding compatibility");
 assert.match(models, /var displaySubtitle:\s*String/, "native constellation DTO may keep a legacy displaySubtitle accessor for decoding compatibility");
 assert.match(models, /canonicalizedForNativeDisplay/, "native constellation DTO must expose a final canonicalization pass for stale server or history labels");
+assert.match(models, /func validatedForNativeDisplay\(\) throws -> ConstellationGenerateResponse/, "native constellation DTO must reject unknown labels before display or export");
 assert.match(nativeArchetypes, /月背寻光者/, "native archetype registry must recognize the retired moon-back seeker label from older builds");
 assert.match(nativeArchetypes, /月门潜航者/, "native archetype registry must recognize the retired moon-gate navigator label from older builds");
 assert.match(nativeArchetypes, /目光拾亡者/, "native archetype registry must recognize the retired gaze label from older builds");
+assert.match(nativeArchetypes, /月岸守望者/, "native archetype registry must recognize the retired moon-shore watcher label from older builds");
+assert.match(nativeArchetypes, /暗潮守月人/, "native archetype registry must recognize the retired dark-tide moon label from older builds");
 assert.match(nativeArchetypes, /事件视界沉潜者/, "native archetype registry must keep the official event-horizon label");
 assert.match(nativeArchetypes, /The Far-Tide Moon Watcher/, "native archetype registry must not leave 远潮观月者 with the old Moonlit Seeker subtitle");
 assert.match(nativeArchetypes, /sanitizedPersonalizedName/, "native archetype registry must sanitize stale personalized names before display");
 assert.match(nativeArchetypes, /containsOfficialOrRetiredLabel/, "native archetype registry must reject retired or official labels as personalized display names");
 assert.match(nativeArchetypes, /retiredPersonalizedLabels/, "native archetype registry must keep an explicit retired-personalized-label denylist");
+assert.match(models, /removingArchetypeLabelPrefix\(from:\s*subtitle\)/, "native history subtitles must remove retired second-label prefixes");
+assert.doesNotMatch(nativeArchetypes, /return profiles\[0\]/, "unknown archetypes must not silently become the moon archetype");
+assert.doesNotMatch(nativeArchetypes, /profileForDominantVisualPrompt/, "visual prompt keywords must not override an official or explicit legacy archetype name");
+assert.match(models, /guard let profile = BenyuanNativeArchetypeRegistry\.profile\(for: self\) else \{[\s\S]*?return self/, "unknown archetypes must remain visible for error handling instead of being relabeled");
 assert.match(constellation, /Text\(data\.archetype\.name\)[\s\S]*?\.font\(\.system\(size:\s*42,\s*weight:\s*\.semibold\)\)/, "native constellation hero must use the fixed canonical 10-label archetype as the main title");
 assert.match(constellation, /Text\(data\.archetype\.englishName\)/, "native constellation hero must keep the English archetype name as a secondary label");
 assert.doesNotMatch(constellation, /Text\("\\\(data\.archetype\.displayName\)：\\\(data\.archetype\.displaySubtitle\)"\)/, "native constellation hero must not render personalized naming as a second visible tag");
@@ -185,10 +207,13 @@ assert.match(renderer, /drawDimensionOrbitChart/, "native constellation share im
 assert.doesNotMatch(renderer, /drawDimensionBars|星际谱系|drawLineageBlock/, "native constellation share image must remove the old bar-score and lineage block");
 assert.match(renderer, /userName/, "native constellation share image must include a user-name slot");
 assert.match(renderer, /celestialCoreAssetName/, "native constellation share image must reuse local archetype artwork instead of a generic mark");
+assert.doesNotMatch(renderer, /default:\s*return "BenyuanCelestialFarTideMoon"/, "share rendering must not use moon artwork for an unknown archetype");
 assert.match(models, /titleForNativeDisplay/, "native account history must canonicalize stale history titles before display");
 assert.match(models, /canonicalArchetypeNameForDisplay/, "native account history must recover old labels into the fixed 10 labels");
 assert.match(constellation, /celestialMode\(for:\s*data\.archetype\)/, "native constellation hero must choose celestial mode from the archetype");
 assert.match(constellation, /private func celestialMode\(for archetype:\s*PsycheArchetype\)/, "native constellation must expose archetype-to-celestial mapping");
+assert.match(constellation, /guard let profile = BenyuanNativeArchetypeRegistry\.profile\(for:\s*archetype\) else \{[\s\S]*?return \.deepSpace/, "unknown archetypes must render as neutral deep space");
+assert.doesNotMatch(constellation, /fingerprint\.contains\("月"\)/, "an unknown label containing moon must not be coerced into the moon archetype");
 for (const [label, mode] of [
   ["远潮观月者", ".farTideMoon"],
   ["星图筑序者", ".starMapArchitect"],
@@ -278,7 +303,7 @@ assert.match(backdrop, /struct BenyuanReferenceCelestialBackdrop[\s\S]*?\.blendM
 assert.match(backdrop, /BenyuanReferenceCelestialBackdrop\(layers:\s*layerSet,\s*size:\s*size,\s*phase:\s*phase,\s*pulse:\s*pulse,\s*mode:\s*mode\)[\s\S]*?BenyuanLayeredCelestialAssetRenderer/, "signal backdrop must sit behind the transparent active subject layer");
 assert.match(
   backdrop,
-  /struct BenyuanLayeredCelestialAssetRenderer[\s\S]*?BenyuanReferenceCelestialArtwork\(assetName:\s*layers\.baseName/,
+  /struct BenyuanLayeredCelestialAssetRenderer[\s\S]*?BenyuanReferenceCelestialArtwork\(layers:\s*layers[\s\S]*?struct BenyuanReferenceCelestialArtwork[\s\S]*?Image\(layers\.baseName\)/,
   "reference artwork renderer must keep the v5 base celestial.png as the primary visual subject"
 );
 assert.doesNotMatch(
@@ -315,8 +340,8 @@ assert.doesNotMatch(
 );
 assert.match(backdrop, /Image\(assetName\)[\s\S]*?\.mask\([\s\S]*?RadialGradient/, "non-official raster fallback must use a radial edge mask when present");
 assert.match(backdrop, /Image\(assetName\)[\s\S]*?\.blendMode\(\.screen\)/, "non-official raster fallback must use screen blending to avoid a hard black rectangle");
-assert.match(backdrop, /BenyuanReferenceCelestialArtwork\(assetName:\s*layers\.baseName,\s*size:\s*size,\s*phase:\s*phase,\s*progress:\s*progress,\s*pulse:\s*pulse,\s*mode:\s*mode\)/, "official reference artwork base must receive mode and phase for subtle native motion");
-const primaryArtworkChain = backdrop.match(/Image\(assetName\)[\s\S]*?\.opacity\(mode\.referenceArtworkOpacity\)[\s\S]*?\.shadow\(/)?.[0] ?? "";
+assert.match(backdrop, /BenyuanReferenceCelestialArtwork\(layers:\s*layers,\s*size:\s*size,\s*phase:\s*phase,\s*progress:\s*progress,\s*pulse:\s*pulse,\s*mode:\s*mode\)/, "official reference artwork base must receive cached layers, mode, and phase for subtle native motion");
+const primaryArtworkChain = backdrop.match(/Image\(layers\.baseName\)[\s\S]*?\.opacity\(mode\.referenceArtworkOpacity\)[\s\S]*?\.shadow\(/)?.[0] ?? "";
 assert.ok(primaryArtworkChain.length > 0, "official reference artwork must have a primary subject image chain");
 assert.doesNotMatch(primaryArtworkChain, /\.blendMode\(\.screen\)/, "official reference artwork subject must render as a full-strength transparent PNG, not screen-blend away dark celestial cores");
 const referenceArtworkBody = backdrop.slice(
@@ -324,13 +349,13 @@ const referenceArtworkBody = backdrop.slice(
   backdrop.indexOf("struct BenyuanLayeredCelestialCore"),
 );
 assert.equal(
-  (referenceArtworkBody.match(/Image\(assetName\)/g) ?? []).length,
+  (referenceArtworkBody.match(/Image\(layers\.baseName\)/g) ?? []).length,
   1,
   "official reference artwork must draw the full subject exactly once to avoid large/small duplicate celestial ghosts",
 );
 assert.match(
   referenceArtworkBody,
-  /if mode\.referenceArtworkUsesGlowLayer,[\s\S]*?let glowAssetName = BenyuanCelestialAssetCatalog\.layerSet\(for:\s*assetName\)\.glowName[\s\S]*?Image\(glowAssetName\)/,
+  /if mode\.referenceArtworkUsesGlowLayer,[\s\S]*?let glowAssetName = layers\.glowName[\s\S]*?Image\(glowAssetName\)/,
   "official reference artwork glow must use the transparent Glow layer instead of redrawing the full subject",
 );
 assert.match(

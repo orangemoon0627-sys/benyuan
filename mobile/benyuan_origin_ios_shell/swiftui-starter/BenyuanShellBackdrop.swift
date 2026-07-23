@@ -1,6 +1,23 @@
 import SwiftUI
 import UIKit
 
+private struct BenyuanCelestialEdgeFeatherMask: View {
+    var body: some View {
+        EllipticalGradient(
+            stops: [
+                .init(color: .black, location: 0),
+                .init(color: .black, location: 0.60),
+                .init(color: .black.opacity(0.86), location: 0.76),
+                .init(color: .black.opacity(0.42), location: 0.90),
+                .init(color: .clear, location: 1)
+            ],
+            center: .center,
+            startRadiusFraction: 0,
+            endRadiusFraction: 0.5
+        )
+    }
+}
+
 struct BenyuanShellBackdrop: View {
     var showsGhostTitle = true
     var moonAlignment: Alignment = .topTrailing
@@ -141,29 +158,38 @@ enum BenyuanCelestialAssetCatalog {
         "BenyuanCelestialDeepSpaceAnchor",
     ]
 
+    private static let cachedLayerSets: [String: LayerSet] = {
+        Dictionary(uniqueKeysWithValues: requiredAssetNames.map { assetName in
+            let backdropName = assetName + layeredSuffixes.backdrop
+            let coreName = assetName + layeredSuffixes.core
+            let glowName = assetName + layeredSuffixes.glow
+            return (
+                assetName,
+                LayerSet(
+                    baseName: assetName,
+                    backdropName: UIImage(named: backdropName) != nil ? backdropName : nil,
+                    coreName: UIImage(named: coreName) != nil ? coreName : nil,
+                    glowName: UIImage(named: glowName) != nil ? glowName : nil,
+                    particlesName: nil
+                )
+            )
+        })
+    }()
+
+    private static let cachedAvailableBaseNames = Set(requiredAssetNames.filter { UIImage(named: $0) != nil })
+
     static func isAvailable(_ assetName: String) -> Bool {
-        UIImage(named: assetName) != nil
+        if requiredAssetNames.contains(assetName) { return cachedAvailableBaseNames.contains(assetName) }
+        return UIImage(named: assetName) != nil
     }
 
     static func layerSet(for assetName: String) -> LayerSet {
-        let backdropName = assetName + layeredSuffixes.backdrop
-        let coreName = assetName + layeredSuffixes.core
-        let glowName = assetName + layeredSuffixes.glow
-        let particlesName = assetName + layeredSuffixes.particles
-
-        return LayerSet(
-            baseName: assetName,
-            backdropName: isAvailable(backdropName) ? backdropName : nil,
-            coreName: isAvailable(coreName) ? coreName : nil,
-            glowName: isAvailable(glowName) ? glowName : nil,
-            particlesName: isAvailable(particlesName) ? particlesName : nil
-        )
+        cachedLayerSets[assetName] ?? LayerSet(baseName: assetName, backdropName: nil, coreName: nil, glowName: nil, particlesName: nil)
     }
 }
 
 struct BenyuanLayeredCelestialAssetRenderer: View {
     var layers: BenyuanCelestialAssetCatalog.LayerSet
-    var assetName: String
     var size: CGFloat
     var phase: TimeInterval
     var progress: Double
@@ -172,7 +198,7 @@ struct BenyuanLayeredCelestialAssetRenderer: View {
 
     var body: some View {
         ZStack {
-            BenyuanReferenceCelestialArtwork(assetName: layers.baseName, size: size, phase: phase, progress: progress, pulse: pulse, mode: mode)
+            BenyuanReferenceCelestialArtwork(layers: layers, size: size, phase: phase, progress: progress, pulse: pulse, mode: mode)
         }
     }
 }
@@ -192,6 +218,7 @@ struct BenyuanReferenceCelestialBackdrop: View {
                 .antialiased(true)
                 .scaledToFit()
                 .frame(width: size * 1.82, height: size * 1.52)
+                .mask(BenyuanCelestialEdgeFeatherMask())
                 .scaleEffect(1.012 + CGFloat(pulse) * mode.localAssetGlowBreath * 0.38)
                 .offset(mode.localAssetBackdropOffset(phase: phase, size: size))
                 .rotationEffect(.degrees(mode.localAssetBackdropRotation(phase: phase)))
@@ -202,7 +229,7 @@ struct BenyuanReferenceCelestialBackdrop: View {
 }
 
 struct BenyuanReferenceCelestialArtwork: View {
-    var assetName: String
+    var layers: BenyuanCelestialAssetCatalog.LayerSet
     var size: CGFloat
     var phase: TimeInterval
     var progress: Double
@@ -211,12 +238,13 @@ struct BenyuanReferenceCelestialArtwork: View {
 
     var body: some View {
         ZStack {
-            Image(assetName)
+            Image(layers.baseName)
                 .resizable()
                 .interpolation(.high)
                 .antialiased(true)
                 .scaledToFit()
                 .frame(width: size * 1.46, height: size * 1.22)
+                .mask(BenyuanCelestialEdgeFeatherMask())
                 .scaleEffect(mode.localAssetCoreScale + CGFloat(pulse) * mode.localAssetCoreBreath)
                 .offset(mode.localAssetCoreOffset(phase: phase, size: size))
                 .rotationEffect(.degrees(mode.localAssetCoreRotation(phase: phase)))
@@ -224,13 +252,14 @@ struct BenyuanReferenceCelestialArtwork: View {
                 .shadow(color: mode.localAssetGlowColor.opacity(0.08 + pulse * 0.05), radius: size * 0.040)
 
             if mode.referenceArtworkUsesGlowLayer,
-               let glowAssetName = BenyuanCelestialAssetCatalog.layerSet(for: assetName).glowName {
+               let glowAssetName = layers.glowName {
                 Image(glowAssetName)
                     .resizable()
                     .interpolation(.high)
                     .antialiased(true)
                     .scaledToFit()
                     .frame(width: size * 1.46, height: size * 1.22)
+                    .mask(BenyuanCelestialEdgeFeatherMask())
                     .scaleEffect(1.006 + CGFloat(pulse) * mode.localAssetGlowBreath * 0.45)
                     .offset(mode.localAssetGlowOffset(phase: phase, size: size))
                     .rotationEffect(.degrees(mode.localAssetGlowRotation(phase: phase) * 0.25))
@@ -239,13 +268,14 @@ struct BenyuanReferenceCelestialArtwork: View {
                     .blendMode(.screen)
             }
 
-            if let particlesAssetName = BenyuanCelestialAssetCatalog.layerSet(for: assetName).particlesName {
+            if let particlesAssetName = layers.particlesName {
                 Image(particlesAssetName)
                     .resizable()
                     .interpolation(.high)
                     .antialiased(true)
                     .scaledToFit()
                     .frame(width: size * 1.56, height: size * 1.30)
+                    .mask(BenyuanCelestialEdgeFeatherMask())
                     .offset(mode.localAssetParticleLayerOffset(phase: phase, size: size))
                     .rotationEffect(.degrees(mode.localAssetParticleLayerRotation(phase: phase)))
                     .opacity(mode.localAssetParticleOpacity + pulse * 0.08)
@@ -274,6 +304,7 @@ struct BenyuanLayeredCelestialCore: View {
             .antialiased(true)
             .scaledToFit()
             .frame(width: size * 1.46, height: size * 1.22)
+            .mask(BenyuanCelestialEdgeFeatherMask())
             .scaleEffect(mode.localAssetCoreScale + CGFloat(pulse) * mode.localAssetCoreBreath)
             .offset(mode.localAssetCoreOffset(phase: phase, size: size))
             .rotationEffect(.degrees(mode.localAssetCoreRotation(phase: phase)))
@@ -297,6 +328,7 @@ struct BenyuanLayeredCelestialGlow: View {
                 .antialiased(true)
                 .scaledToFit()
                 .frame(width: size * 1.46, height: size * 1.22)
+                .mask(BenyuanCelestialEdgeFeatherMask())
                 .scaleEffect(1.0 + CGFloat(pulse) * mode.localAssetGlowBreath)
                 .offset(mode.localAssetGlowOffset(phase: phase, size: size))
                 .rotationEffect(.degrees(mode.localAssetGlowRotation(phase: phase)))
@@ -463,9 +495,18 @@ struct BenyuanLocalCelestialAssetAtmosphere: View {
             }
 
             if mode == .eventHorizonDiver {
-                BenyuanGravitationalLens(size: size, phase: phase, progress: progress, pulse: pulse)
-                BenyuanOrbitalDustBand(size: size, phase: phase, progress: progress)
-                    .opacity(0.72)
+                RadialGradient(
+                    colors: [
+                        BenyuanColor.accentGold.opacity(0.07 + pulse * 0.03),
+                        BenyuanColor.aubergineBlack.opacity(0.04),
+                        .clear
+                    ],
+                    center: .center,
+                    startRadius: size * 0.10,
+                    endRadius: size * 0.72
+                )
+                .frame(width: size * 1.52, height: size * 1.20)
+                .blendMode(.screen)
             }
 
             if mode == .nebulaWeaver {
@@ -519,6 +560,8 @@ struct BenyuanLocalCelestialAssetMotionOverlay: View {
     @ViewBuilder
     var body: some View {
         switch mode {
+        case .accretionBlackHole:
+            BenyuanProcessingBlackHoleMotionPath(size: size, phase: phase, progress: progress, pulse: pulse)
         case .farTideMoon:
             BenyuanLocalFarTideMoonMotionPath(size: size, phase: phase, progress: progress, pulse: pulse)
         case .starMapArchitect:
@@ -542,6 +585,49 @@ struct BenyuanLocalCelestialAssetMotionOverlay: View {
         default:
             BenyuanLocalFallbackMotionPath(size: size, phase: phase, progress: progress, pulse: pulse, mode: mode)
         }
+    }
+}
+
+struct BenyuanProcessingBlackHoleMotionPath: View {
+    var size: CGFloat
+    var phase: TimeInterval
+    var progress: Double
+    var pulse: Double
+
+    var body: some View {
+        ZStack {
+            BenyuanAccretionParticleField(
+                progress: progress,
+                intensity: 0.78 + progress * 0.24,
+                focalPoint: .center,
+                verticalCompression: 0.30,
+                particleCount: 96,
+                preferredFramesPerSecond: 30
+            )
+            .frame(width: size * 1.72, height: size * 1.10)
+
+            Circle()
+                .stroke(
+                    AngularGradient(
+                        colors: [
+                            BenyuanColor.textPrimary.opacity(0.06),
+                            BenyuanColor.accentGold.opacity(0.38 + pulse * 0.10),
+                            BenyuanColor.textPrimary.opacity(0.10),
+                            BenyuanColor.accentGold.opacity(0.20),
+                            BenyuanColor.textPrimary.opacity(0.06)
+                        ],
+                        center: .center,
+                        angle: .degrees(phase * 18)
+                    ),
+                    lineWidth: 1.3
+                )
+                .frame(width: size * 0.34, height: size * 0.34)
+                .blur(radius: 0.6)
+                .shadow(color: BenyuanColor.accentGold.opacity(0.22), radius: 10)
+                .blendMode(.screen)
+        }
+        .rotationEffect(.degrees(-16))
+        .blendMode(.screen)
     }
 }
 
@@ -651,31 +737,34 @@ struct BenyuanLocalStarMapArchitectMotionPath: View {
                     .blendMode(.screen)
             }
 
-            ForEach(Self.edges.indices, id: \.self) { index in
-                let edge = Self.edges[index]
-                let start = Self.nodes[edge.0]
-                let end = Self.nodes[edge.1]
-                Path { path in
-                    path.move(to: CGPoint(x: start.0 * size, y: start.1 * size))
-                    path.addLine(to: CGPoint(x: end.0 * size, y: end.1 * size))
-                }
-                .stroke(
-                    index.isMultiple(of: 3) ? BenyuanColor.accentGold.opacity(0.16 + progress * 0.05) : BenyuanColor.textPrimary.opacity(0.11 + pulse * 0.04),
-                    style: StrokeStyle(lineWidth: index.isMultiple(of: 4) ? 1.1 : 0.7, lineCap: .round)
-                )
-                .blendMode(.screen)
-            }
-
-            ForEach(Self.nodes.indices, id: \.self) { index in
-                let node = Self.nodes[index]
-                let nodePulse = 0.55 + 0.45 * sin(phase * (0.74 + Double(index) * 0.05) + Double(index))
-                Circle()
-                    .fill(index.isMultiple(of: 3) ? BenyuanColor.accentGold.opacity(0.48 + nodePulse * 0.28) : BenyuanColor.textPrimary.opacity(0.25 + nodePulse * 0.20))
-                    .frame(width: index.isMultiple(of: 3) ? 5.0 : 3.2, height: index.isMultiple(of: 3) ? 5.0 : 3.2)
-                    .offset(x: node.0 * size, y: node.1 * size)
-                    .shadow(color: BenyuanColor.textPrimary.opacity(0.14), radius: 8)
+            ZStack {
+                ForEach(Self.edges.indices, id: \.self) { index in
+                    let edge = Self.edges[index]
+                    let start = Self.nodes[edge.0]
+                    let end = Self.nodes[edge.1]
+                    Path { path in
+                        path.move(to: CGPoint(x: size * (0.5 + start.0), y: size * (0.5 + start.1)))
+                        path.addLine(to: CGPoint(x: size * (0.5 + end.0), y: size * (0.5 + end.1)))
+                    }
+                    .stroke(
+                        index.isMultiple(of: 3) ? BenyuanColor.accentGold.opacity(0.16 + progress * 0.05) : BenyuanColor.textPrimary.opacity(0.11 + pulse * 0.04),
+                        style: StrokeStyle(lineWidth: index.isMultiple(of: 4) ? 1.1 : 0.7, lineCap: .round)
+                    )
                     .blendMode(.screen)
+                }
+
+                ForEach(Self.nodes.indices, id: \.self) { index in
+                    let node = Self.nodes[index]
+                    let nodePulse = 0.55 + 0.45 * sin(phase * (0.74 + Double(index) * 0.05) + Double(index))
+                    Circle()
+                        .fill(index.isMultiple(of: 3) ? BenyuanColor.accentGold.opacity(0.48 + nodePulse * 0.28) : BenyuanColor.textPrimary.opacity(0.25 + nodePulse * 0.20))
+                        .frame(width: index.isMultiple(of: 3) ? 5.0 : 3.2, height: index.isMultiple(of: 3) ? 5.0 : 3.2)
+                        .position(x: size * (0.5 + node.0), y: size * (0.5 + node.1))
+                        .shadow(color: BenyuanColor.textPrimary.opacity(0.14), radius: 8)
+                        .blendMode(.screen)
+                }
             }
+            .frame(width: size, height: size)
 
             Capsule()
                 .fill(
@@ -879,48 +968,17 @@ struct BenyuanLocalEventHorizonDiverMotionPath: View {
     var pulse: Double
 
     var body: some View {
-        ZStack {
-            ForEach(0..<4, id: \.self) { index in
-                Ellipse()
-                    .stroke(
-                        AngularGradient(
-                            colors: [
-                                BenyuanColor.accentGold.opacity(0.08 + Double(index) * 0.035),
-                                BenyuanColor.textPrimary.opacity(0.18 + progress * 0.05),
-                                BenyuanColor.accentGold.opacity(0.24 + pulse * 0.12),
-                                BenyuanColor.textPrimary.opacity(0.08),
-                                BenyuanColor.accentGold.opacity(0.08 + Double(index) * 0.035)
-                            ],
-                            center: .center,
-                            angle: .degrees(phase * (10 + Double(index) * 2.2))
-                        ),
-                        style: StrokeStyle(lineWidth: index == 1 ? 1.8 : 1.0, lineCap: .round)
-                    )
-                    .frame(width: size * (1.10 + CGFloat(index) * 0.16), height: size * (0.38 + CGFloat(index) * 0.052))
-                    .rotationEffect(.degrees(-16 + Double(index) * 7 + phase * (1.2 + Double(index) * 0.28)))
-                    .blur(radius: CGFloat(index) * 0.35)
-                    .blendMode(.screen)
-            }
-
-            ForEach(0..<18, id: \.self) { index in
-                let angle = phase * (0.48 + Double(index % 4) * 0.038) + Double(index) * .pi * 2 / 18
-                let radiusX = size * (0.52 + CGFloat(index % 4) * 0.038)
-                let radiusY = size * (0.15 + CGFloat(index % 3) * 0.020)
-                Circle()
-                    .fill(index.isMultiple(of: 5) ? BenyuanColor.accentGold.opacity(0.62) : BenyuanColor.textPrimary.opacity(0.19))
-                    .frame(width: index.isMultiple(of: 5) ? 3.8 : 2.1, height: index.isMultiple(of: 5) ? 3.8 : 2.1)
-                    .offset(x: cos(angle) * radiusX, y: sin(angle) * radiusY)
-                    .rotationEffect(.degrees(-16))
-                    .blur(radius: index.isMultiple(of: 5) ? 0.15 : 0.65)
-                    .blendMode(.screen)
-            }
-
-            Circle()
-                .stroke(BenyuanColor.textPrimary.opacity(0.08 + pulse * 0.04), lineWidth: 1)
-                .frame(width: size * (0.56 + pulse * 0.035), height: size * (0.56 + pulse * 0.035))
-                .blur(radius: 1.0)
-                .blendMode(.screen)
-        }
+        BenyuanCinematicSpaceField(
+            progress: progress,
+            intensity: 0.42 + pulse * 0.10,
+            velocity: 0.22 + progress * 0.34,
+            focalPoint: .center,
+            preferredFramesPerSecond: 18
+        )
+        .frame(width: size * 1.68, height: size * 1.18)
+        .mask(BenyuanCelestialEdgeFeatherMask())
+        .compositingGroup()
+        .blendMode(.screen)
     }
 }
 
@@ -1315,7 +1373,7 @@ struct BenyuanDeepCelestialBody: View {
 
         var usesReferenceArtworkRender: Bool {
             switch self {
-            case .farTideMoon, .starMapArchitect, .moonHarbor, .existentialNomad, .rainWindowScribe, .eventHorizonDiver, .nebulaWeaver, .solarCorona, .terrestrialPlanet, .deepSpaceAnchor:
+            case .accretionBlackHole, .farTideMoon, .starMapArchitect, .moonHarbor, .existentialNomad, .rainWindowScribe, .eventHorizonDiver, .nebulaWeaver, .solarCorona, .terrestrialPlanet, .deepSpaceAnchor:
                 return true
             default:
                 return false
@@ -1354,7 +1412,7 @@ struct BenyuanDeepCelestialBody: View {
 
         var usesSharedSatellites: Bool {
             switch self {
-            case .farTideMoon, .starMapArchitect, .moonHarbor, .existentialNomad, .rainWindowScribe, .nebulaWeaver, .eventHorizonDiver, .deepSpaceAnchor:
+            case .accretionBlackHole, .farTideMoon, .starMapArchitect, .moonHarbor, .existentialNomad, .rainWindowScribe, .nebulaWeaver, .eventHorizonDiver, .deepSpaceAnchor:
                 return false
             default:
                 return true
@@ -1363,6 +1421,7 @@ struct BenyuanDeepCelestialBody: View {
 
         var localAssetName: String? {
             switch self {
+            case .accretionBlackHole: return "BenyuanProcessingBlackHole"
             case .farTideMoon: return "BenyuanCelestialFarTideMoon"
             case .starMapArchitect: return "BenyuanCelestialStarMapArchitect"
             case .moonHarbor: return "BenyuanCelestialMoonHarbor"
@@ -1822,7 +1881,7 @@ struct BenyuanDeepCelestialBody: View {
                     let layerSet = BenyuanCelestialAssetCatalog.layerSet(for: assetName)
                     BenyuanLocalCelestialAssetAtmosphere(size: size, phase: phase, progress: clampedProgress, pulse: pulse, mode: mode)
                     BenyuanReferenceCelestialBackdrop(layers: layerSet, size: size, phase: phase, pulse: pulse, mode: mode)
-                    BenyuanLayeredCelestialAssetRenderer(layers: layerSet, assetName: assetName, size: size, phase: phase, progress: clampedProgress, pulse: pulse, mode: mode)
+                    BenyuanLayeredCelestialAssetRenderer(layers: layerSet, size: size, phase: phase, progress: clampedProgress, pulse: pulse, mode: mode)
                     BenyuanLocalCelestialAssetMotionOverlay(size: size, phase: phase, progress: clampedProgress, pulse: pulse, mode: mode)
                 } else {
                     BenyuanSpectralParticleField(size: size, phase: phase, progress: clampedProgress)
@@ -1867,9 +1926,17 @@ struct BenyuanDeepCelestialBody: View {
 
                     if mode == .accretionBlackHole || mode == .deepSpace || mode == .eventHorizonDiver {
                         BenyuanGravitationalLens(size: size, phase: phase, progress: clampedProgress, pulse: pulse)
-                        BenyuanOrbitalDustBand(size: size, phase: phase, progress: clampedProgress)
+                        if mode != .accretionBlackHole {
+                            BenyuanOrbitalDustBand(size: size, phase: phase, progress: clampedProgress)
+                        }
                         BenyuanAccretionRing(size: size, phase: phase, progress: clampedProgress, mode: mode)
-                            .rotationEffect(.degrees(mode.tilt + spin * (mode == .deepSpace ? 180 : 360)))
+                            .rotationEffect(
+                                .degrees(
+                                    mode == .accretionBlackHole
+                                        ? mode.tilt + sin(phase * 0.22) * 1.8
+                                        : mode.tilt + spin * (mode == .deepSpace ? 180 : 360)
+                                )
+                            )
                             .scaleEffect(
                                 x: mode == .deepSpace ? 0.92 + pulse * 0.012 : 1.05 + pulse * 0.018,
                                 y: mode == .deepSpace ? 0.74 + pulse * 0.010 : 0.94 + pulse * 0.012
@@ -1931,6 +1998,9 @@ struct BenyuanDeepCelestialBody: View {
             .shadow(color: BenyuanColor.accentGold.opacity(0.12 + pulse * 0.05), radius: size * 0.18)
         }
         .frame(width: size * 1.78, height: size * 1.42)
+        .mask(BenyuanCelestialEdgeFeatherMask())
+        .compositingGroup()
+        .blendMode(mode.usesReferenceArtworkRender && mode != .accretionBlackHole ? .screen : .normal)
         .accessibilityHidden(true)
     }
 }
@@ -1984,7 +2054,16 @@ struct BenyuanAccretionRing: View {
     var progress: Double
     var mode: BenyuanDeepCelestialBody.Mode
 
+    @ViewBuilder
     var body: some View {
+        if mode == .accretionBlackHole {
+            BenyuanProcessingAccretionDisk(size: size, phase: phase, progress: progress)
+        } else {
+            orbitalRingField
+        }
+    }
+
+    private var orbitalRingField: some View {
         ZStack {
             Ellipse()
                 .stroke(BenyuanColor.accentGold.opacity(mode.ringOpacity * 0.36), lineWidth: 1.2)
@@ -2025,6 +2104,75 @@ struct BenyuanAccretionRing: View {
                     .blur(radius: index.isMultiple(of: 3) ? 0.2 : 0.6)
             }
         }
+    }
+}
+
+struct BenyuanProcessingAccretionDisk: View {
+    var size: CGFloat
+    var phase: TimeInterval
+    var progress: Double
+
+    var body: some View {
+        let pulse = 0.5 + 0.5 * sin(phase * 0.54)
+        let flowAngle = phase * 13
+
+        ZStack {
+            Ellipse()
+                .stroke(
+                    AngularGradient(
+                        stops: [
+                            .init(color: .clear, location: 0.02),
+                            .init(color: BenyuanColor.accentGold.opacity(0.18), location: 0.18),
+                            .init(color: BenyuanColor.textPrimary.opacity(0.46 + pulse * 0.10), location: 0.42),
+                            .init(color: BenyuanColor.accentGold.opacity(0.62), location: 0.62),
+                            .init(color: .clear, location: 0.96)
+                        ],
+                        center: .center,
+                        angle: .degrees(flowAngle)
+                    ),
+                    style: StrokeStyle(lineWidth: 8 + pulse * 2, lineCap: .round)
+                )
+                .frame(width: size * 1.78, height: size * 0.50)
+                .blur(radius: 2.4)
+                .opacity(0.48 + progress * 0.18)
+
+            Ellipse()
+                .trim(from: 0.035, to: 0.49)
+                .stroke(
+                    AngularGradient(
+                        colors: [
+                            .clear,
+                            BenyuanColor.accentGold.opacity(0.34),
+                            BenyuanColor.textPrimary.opacity(0.76),
+                            BenyuanColor.accentGold.opacity(0.26),
+                            .clear
+                        ],
+                        center: .center,
+                        angle: .degrees(flowAngle * 0.72)
+                    ),
+                    style: StrokeStyle(lineWidth: 2.2, lineCap: .round)
+                )
+                .frame(width: size * 1.82, height: size * 0.51)
+                .shadow(color: BenyuanColor.accentGold.opacity(0.22), radius: 6)
+
+            Ellipse()
+                .trim(from: 0.53, to: 0.965)
+                .stroke(
+                    BenyuanColor.planetEdge.opacity(0.16 + pulse * 0.06),
+                    style: StrokeStyle(lineWidth: 1.1, lineCap: .round, dash: [2, 10])
+                )
+                .frame(width: size * 1.66, height: size * 0.46)
+
+            ForEach(0..<7, id: \.self) { index in
+                let angle = phase * (0.40 + Double(index) * 0.016) + Double(index) * .pi * 2 / 7
+                Circle()
+                    .fill(index.isMultiple(of: 3) ? BenyuanColor.accentGold.opacity(0.76) : BenyuanColor.textPrimary.opacity(0.30))
+                    .frame(width: index.isMultiple(of: 3) ? 3.4 : 2.0, height: index.isMultiple(of: 3) ? 3.4 : 2.0)
+                    .offset(x: cos(angle) * size * 0.84, y: sin(angle) * size * 0.23)
+                    .blur(radius: index.isMultiple(of: 3) ? 0.2 : 0.5)
+            }
+        }
+        .compositingGroup()
     }
 }
 

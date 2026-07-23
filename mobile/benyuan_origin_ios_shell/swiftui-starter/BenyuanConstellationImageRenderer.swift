@@ -122,7 +122,9 @@ enum BenyuanConstellationImageRenderer {
         context.strokeEllipse(in: halo.insetBy(dx: diameter * 0.12, dy: diameter * 0.34))
 
         let assetRect = CGRect(x: center.x - diameter * 0.50, y: center.y - diameter * 0.50, width: diameter, height: diameter)
-        if let image = UIImage(named: celestialCoreAssetName(for: archetype)) ?? UIImage(named: celestialBaseAssetName(for: archetype)) {
+        let coreImage = celestialCoreAssetName(for: archetype).flatMap { UIImage(named: $0) }
+        let baseImage = celestialBaseAssetName(for: archetype).flatMap { UIImage(named: $0) }
+        if let image = coreImage ?? baseImage {
             image.draw(in: assetRect, blendMode: .normal, alpha: 1)
         } else {
             drawFallbackArchetypeGlyph(for: archetype, in: context, rect: assetRect, accent: accent)
@@ -232,17 +234,11 @@ enum BenyuanConstellationImageRenderer {
         for suggestion in suggestions.prefix(2) where y < contentBottomLimit - 250 {
             draw(suggestion.title, at: CGPoint(x: margin, y: y), size: 32, weight: .bold, color: .white)
             y += 46
-            draw("为什么做", at: CGPoint(x: margin, y: y), size: 20, weight: .black, color: gold.withAlphaComponent(0.92))
-            y += 30
             let descriptionHeight = drawWrapped(suggestion.description, at: CGPoint(x: margin, y: y), width: contentWidth, size: 25, weight: .regular, color: softWhite.withAlphaComponent(0.82), lineHeight: 39, maxHeight: 118)
-            y += descriptionHeight + 16
+            y += descriptionHeight + 22
             if let step = suggestion.actionableSteps.first {
-                draw("可以尝试", at: CGPoint(x: margin, y: y), size: 20, weight: .black, color: gold.withAlphaComponent(0.92))
-                y += 30
-                y += drawCardLine(step, atY: y, maxHeight: 88)
+                y += drawCardLine(growthActionText(step), atY: y, maxHeight: 88)
                 if y < contentBottomLimit - 120 {
-                    draw("会带来什么", at: CGPoint(x: margin, y: y), size: 20, weight: .black, color: gold.withAlphaComponent(0.92))
-                    y += 30
                     let effect = growthExpectedEffect(for: suggestion, step: step)
                     let effectHeight = drawWrapped(effect, at: CGPoint(x: margin, y: y), width: contentWidth, size: 23, weight: .regular, color: softWhite.withAlphaComponent(0.78), lineHeight: 35, maxHeight: 74)
                     y += effectHeight + 24
@@ -256,9 +252,6 @@ enum BenyuanConstellationImageRenderer {
 
     private static func drawRecommendations(_ recommendations: PsycheConstellation.Recommendations, atY startY: CGFloat) -> CGFloat {
         var y = startY
-        let intro = "这些不是书影音清单，而是这张星图的外部回声：每一项都说明它为什么会和你的精神结构发生共振。"
-        let introHeight = drawWrapped(intro, at: CGPoint(x: margin, y: y), width: contentWidth, size: 24, weight: .regular, color: softWhite.withAlphaComponent(0.80), lineHeight: 36, maxHeight: 78)
-        y += introHeight + 28
 
         let values: [(String, String?, String?)] = [
             ("书籍", recommendations.books.first.map { "\($0.title) · \($0.author)" }, recommendations.books.first?.reason),
@@ -286,15 +279,29 @@ enum BenyuanConstellationImageRenderer {
             }
         }
         if suggestion.description.contains("边界") {
-            return "这样做会让边界从撤退变成可沟通的坐标，减少关系里的误读。"
+            return "边界会从撤退变成可沟通的坐标，关系里的误读也会随之减少。"
         }
         if suggestion.description.contains("行动") || suggestion.description.contains("现实") {
-            return "这样做会让理解落到现实动作里，减少只在脑内反复校准的消耗。"
+            return "理解会落到现实动作里，减少只在脑内反复校准的消耗。"
         }
         if suggestion.description.contains("情绪") || suggestion.description.contains("感受") {
-            return "这样做会让模糊感受变得可辨认，避免它只在身体里反复回放。"
+            return "模糊感受会变得可辨认，避免它只在身体里反复回放。"
         }
-        return "这样做会让这条路径从理解变成可观察的小变化，而不是停留在一句漂亮建议里。"
+        return "这条路径会从理解变成可观察的小变化，逐渐进入现实节律。"
+    }
+
+    private static func growthActionText(_ step: String) -> String {
+        let markers = ["这样做会", "会让你", "帮助你", "从而", "用来"]
+        for marker in markers {
+            if let range = step.range(of: marker) {
+                let action = String(step[..<range.lowerBound])
+                    .trimmingCharacters(in: CharacterSet(charactersIn: " ，,；;。\n\t"))
+                if action.count >= 4 {
+                    return action
+                }
+            }
+        }
+        return step
     }
 
     private static func drawRecommendationCard(title: String, reason: String?, atY y: CGFloat) -> CGFloat {
@@ -407,11 +414,11 @@ enum BenyuanConstellationImageRenderer {
         return cleaned.count > 18 ? "\(cleaned.prefix(18))" : cleaned
     }
 
-    private static func celestialCoreAssetName(for archetype: PsycheArchetype) -> String {
-        celestialBaseAssetName(for: archetype) + "Core"
+    private static func celestialCoreAssetName(for archetype: PsycheArchetype) -> String? {
+        celestialBaseAssetName(for: archetype).map { $0 + "Core" }
     }
 
-    private static func celestialBaseAssetName(for archetype: PsycheArchetype) -> String {
+    private static func celestialBaseAssetName(for archetype: PsycheArchetype) -> String? {
         switch archetype.name.trimmingCharacters(in: .whitespacesAndNewlines) {
         case "远潮观月者":
             return "BenyuanCelestialFarTideMoon"
@@ -434,7 +441,7 @@ enum BenyuanConstellationImageRenderer {
         case "深空锚定者":
             return "BenyuanCelestialDeepSpaceAnchor"
         default:
-            return "BenyuanCelestialFarTideMoon"
+            return nil
         }
     }
 

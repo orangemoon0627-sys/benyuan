@@ -5,8 +5,11 @@ struct BenyuanShellRootView: View {
     @StateObject private var networkMonitor = BenyuanNetworkMonitor()
     @StateObject private var nativeModel = BenyuanNativeFlowModel()
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var reloadToken = UUID()
     @State private var isMotionActive = true
+    @State private var cinematicTransitionToken = UUID()
+    @State private var cinematicTransitionStyle: BenyuanCinematicTransitionStyle = .drift
 #if DEBUG
     @State private var showsDebugWebInspector = false
 #endif
@@ -21,6 +24,11 @@ struct BenyuanShellRootView: View {
 
             topStatusStack
 
+            BenyuanCinematicStageTransition(
+                token: cinematicTransitionToken,
+                style: cinematicTransitionStyle
+            )
+
             if BenyuanShellConfig.hasReleaseBaseURLIssue {
                 ritualStateCard(
                     title: "Release 地址尚未接入",
@@ -33,7 +41,7 @@ struct BenyuanShellRootView: View {
                 }
                 .padding(.horizontal, BenyuanSpacing.x8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .transition(.opacity.combined(with: .scale(scale: 0.985)))
+                .transition(stateCardTransition)
             } else if let errorMessage = state.errorMessage {
                 ritualStateCard(
                     title: "这一页暂时没有抵达",
@@ -63,7 +71,7 @@ struct BenyuanShellRootView: View {
                 }
                 .padding(.horizontal, BenyuanSpacing.x8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .transition(.opacity.combined(with: .scale(scale: 0.985)))
+                .transition(stateCardTransition)
             }
 
 #if DEBUG
@@ -81,15 +89,25 @@ struct BenyuanShellRootView: View {
             guard !Self.isRunningUnitTests else { return }
             await nativeModel.start()
         }
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: state.isLoading)
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: state.errorMessage)
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: networkMonitor.isOnline)
-        .animation(.easeInOut(duration: BenyuanMotion.base), value: state.nativeActivity)
-        .animation(nativeModel.shouldAnimateStageTransition ? .easeInOut(duration: BenyuanMotion.base) : nil, value: nativeModel.stage)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: state.isLoading)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: state.errorMessage)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: networkMonitor.isOnline)
+        .animation(accessibilityReduceMotion ? nil : .easeInOut(duration: BenyuanMotion.base), value: state.nativeActivity)
+        .animation(
+            nativeModel.shouldAnimateStageTransition && !accessibilityReduceMotion
+                ? .easeInOut(duration: BenyuanMotion.base)
+                : nil,
+            value: nativeModel.stage
+        )
         .onChange(of: scenePhase) { _, phase in
             isMotionActive = phase == .active
             guard phase == .active else { return }
             Task { await nativeModel.resumeProcessingIfNeeded() }
+        }
+        .onChange(of: nativeModel.stage) { previousStage, nextStage in
+            guard nativeModel.shouldAnimateStageTransition else { return }
+            cinematicTransitionStyle = cinematicStyle(from: previousStage, to: nextStage)
+            cinematicTransitionToken = UUID()
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $state.isShareSheetPresented, onDismiss: state.clearShare) {
@@ -102,6 +120,30 @@ struct BenyuanShellRootView: View {
 
     private static var isRunningUnitTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
+    private var stateCardTransition: AnyTransition {
+        accessibilityReduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.985))
+    }
+
+    private var topBannerTransition: AnyTransition {
+        accessibilityReduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity)
+    }
+
+    private func cinematicStyle(
+        from previousStage: BenyuanNativeStage,
+        to nextStage: BenyuanNativeStage
+    ) -> BenyuanCinematicTransitionStyle {
+        switch (previousStage, nextStage) {
+        case (.home, .auth), (.auth, .home):
+            return .descent
+        case (_, .processing), (.theater, .constellation):
+            return .passage
+        case (.processing, .theater), (.processing, .constellation):
+            return .emergence
+        default:
+            return .drift
+        }
     }
 
     @ViewBuilder
@@ -166,7 +208,7 @@ struct BenyuanShellRootView: View {
             if let toast = nativeModel.toast, !BenyuanShellConfig.nativePreviewSuppressesTransientChrome {
                 BenyuanToastView(text: toast)
                     .padding(.top, BenyuanSpacing.x12)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(topBannerTransition)
             }
         }
     }
@@ -267,7 +309,7 @@ struct BenyuanShellRootView: View {
             )
             .clipShape(Capsule())
             .shadow(color: BenyuanColor.accentGold.opacity(0.12), radius: 20, x: 0, y: 10)
-            .transition(.move(edge: .top).combined(with: .opacity))
+            .transition(topBannerTransition)
     }
 
     private func nativeActivityBanner(_ activity: BenyuanShellNativeActivity) -> some View {
@@ -311,7 +353,7 @@ struct BenyuanShellRootView: View {
         )
         .clipShape(Capsule())
         .shadow(color: BenyuanColor.accentGold.opacity(0.12), radius: 22, x: 0, y: 12)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .transition(topBannerTransition)
     }
 
     private func ritualStateCard<Content: View>(
@@ -394,6 +436,8 @@ struct BenyuanShellRootView: View {
 }
 
 struct BenyuanPrimaryPillButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: BenyuanSpacing.x3) {
             Circle()
@@ -425,7 +469,7 @@ struct BenyuanPrimaryPillButtonStyle: ButtonStyle {
                 )
         )
         .shadow(color: BenyuanColor.accentGold.opacity(configuration.isPressed ? 0.12 : 0.20), radius: configuration.isPressed ? 12 : 24, x: 0, y: configuration.isPressed ? 6 : 14)
-        .scaleEffect(configuration.isPressed ? 0.985 : 1)
-        .animation(.easeOut(duration: BenyuanMotion.fast), value: configuration.isPressed)
+        .scaleEffect(configuration.isPressed && !accessibilityReduceMotion ? 0.985 : 1)
+        .animation(accessibilityReduceMotion ? nil : .easeOut(duration: BenyuanMotion.fast), value: configuration.isPressed)
     }
 }

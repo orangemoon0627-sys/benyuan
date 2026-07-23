@@ -30,7 +30,9 @@ struct BenyuanConstellationLayoutBudget {
 
 struct BenyuanNativeConstellationView: View {
     @ObservedObject var model: BenyuanNativeFlowModel
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var activeDimensionKey: String?
+    @State private var celestialRevealProgress = 0.0
     private let constellationEndAnchor = "constellation-end-anchor"
     private let layoutBudget = BenyuanConstellationLayoutBudget.defaults
 
@@ -52,7 +54,7 @@ struct BenyuanNativeConstellationView: View {
                 GeometryReader { geometry in
                     ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
+                        LazyVStack(alignment: .leading, spacing: BenyuanSpacing.x6) {
                             BenyuanRevealedStack(delay: 0.02) {
                                 archetype(data)
                             }
@@ -90,13 +92,26 @@ struct BenyuanNativeConstellationView: View {
                         guard model.prefersConstellationEndPreview else { return }
                         try? await Task.sleep(nanoseconds: 1_450_000_000)
                         await MainActor.run {
-                            withAnimation(.easeInOut(duration: 0.82)) {
+                            if accessibilityReduceMotion {
                                 proxy.scrollTo(constellationEndAnchor, anchor: layoutBudget.scrollAnchor)
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.82)) {
+                                    proxy.scrollTo(constellationEndAnchor, anchor: layoutBudget.scrollAnchor)
+                                }
                             }
                         }
                     }
                 }
                 }
+            }
+        }
+        .task(id: model.constellation?.constellationId) {
+            celestialRevealProgress = accessibilityReduceMotion ? 1 : 0
+            guard !accessibilityReduceMotion, model.constellation != nil else { return }
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 1.55)) {
+                celestialRevealProgress = 1
             }
         }
     }
@@ -108,23 +123,27 @@ struct BenyuanNativeConstellationView: View {
 
         return VStack(alignment: .center, spacing: BenyuanSpacing.x2) {
             ZStack {
+                BenyuanCinematicSpaceField(
+                    progress: progress,
+                    intensity: 0.26,
+                    velocity: 0.10,
+                    focalPoint: UnitPoint(x: 0.50, y: 0.48),
+                    preferredFramesPerSecond: 18
+                )
+                .frame(height: celestialFieldHeight)
+                .opacity(0.30 + celestialRevealProgress * 0.70)
+                .compositingGroup()
+                .blendMode(.screen)
+                .allowsHitTesting(false)
+
                 BenyuanConstellationArchetypeField(progress: progress, mode: mode)
                     .frame(height: celestialFieldHeight)
                     .compositingGroup()
                     .blendMode(.screen)
-                    .mask(
-                        LinearGradient(
-                            colors: [
-                                .clear,
-                                .black.opacity(0.82),
-                                .black,
-                                .black.opacity(0.72),
-                                .clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                    .mask(constellationFieldMask(verticalColors: [.clear, .black.opacity(0.82), .black, .black.opacity(0.72), .clear]))
+                    .scaleEffect(1.10 - CGFloat(celestialRevealProgress) * 0.10)
+                    .blur(radius: (1 - celestialRevealProgress) * 10)
+                    .opacity(0.16 + celestialRevealProgress * 0.84)
                     .allowsHitTesting(false)
 
                 BenyuanFlowOrbitTrail(
@@ -137,19 +156,18 @@ struct BenyuanNativeConstellationView: View {
                 .padding(.horizontal, BenyuanSpacing.x2)
                 .compositingGroup()
                 .blendMode(.screen)
-                .mask(
-                    LinearGradient(
-                        colors: [.clear, .black.opacity(0.78), .black, .black.opacity(0.60), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .mask(constellationFieldMask(verticalColors: [.clear, .black.opacity(0.78), .black, .black.opacity(0.60), .clear]))
+                .opacity(max(0, (celestialRevealProgress - 0.42) / 0.58))
                 .allowsHitTesting(false)
 
                 BenyuanConstellationSubjectIsolationField(mode: mode)
+                    .opacity(celestialRevealProgress)
                 BenyuanDeepCelestialBody(size: 204, progress: progress, mode: mode)
                     .contrast(mode.referenceArtworkSubjectContrast)
                     .saturation(mode.referenceArtworkSubjectSaturation)
+                    .scaleEffect(0.72 + CGFloat(celestialRevealProgress) * 0.28)
+                    .blur(radius: (1 - celestialRevealProgress) * 7)
+                    .opacity(celestialRevealProgress)
             }
             .frame(height: 232)
             .padding(.horizontal, -BenyuanSpacing.x2)
@@ -184,6 +202,22 @@ struct BenyuanNativeConstellationView: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
+    private func constellationFieldMask(verticalColors: [Color]) -> some View {
+        LinearGradient(colors: verticalColors, startPoint: .top, endPoint: .bottom)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.08),
+                        .init(color: .black, location: 0.92),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+    }
+
     private func leadingConstellationProgress(_ data: PsycheConstellation) -> Double {
         let scores = data.sevenDimensions.values.map { Double($0.score) / 100.0 }
         guard !scores.isEmpty else { return 0.68 }
@@ -202,7 +236,11 @@ struct BenyuanNativeConstellationView: View {
     }
 
     private func celestialMode(for archetype: PsycheArchetype) -> BenyuanDeepCelestialBody.Mode {
-        switch archetype.name.trimmingCharacters(in: .whitespacesAndNewlines) {
+        guard let profile = BenyuanNativeArchetypeRegistry.profile(for: archetype) else {
+            return .deepSpace
+        }
+
+        switch profile.name {
         case "远潮观月者":
             return .farTideMoon
         case "星图筑序者":
@@ -224,46 +262,8 @@ struct BenyuanNativeConstellationView: View {
         case "深空锚定者":
             return .deepSpaceAnchor
         default:
-            break
+            return .deepSpace
         }
-
-        let fingerprint = [
-            archetype.name,
-            archetype.englishName,
-            archetype.visualPrompt
-        ].joined(separator: " ").lowercased()
-
-        if fingerprint.contains("event horizon") || fingerprint.contains("black hole") || fingerprint.contains("事件视界") || fingerprint.contains("黑洞") {
-            return .eventHorizonDiver
-        }
-        if fingerprint.contains("rain-window") || fingerprint.contains("rain window") || fingerprint.contains("雨窗") {
-            return .rainWindowScribe
-        }
-        if fingerprint.contains("star-map") || fingerprint.contains("star map") || fingerprint.contains("architect") || fingerprint.contains("筑序") || fingerprint.contains("星图") {
-            return .starMapArchitect
-        }
-        if fingerprint.contains("moon-harbor") || fingerprint.contains("moon harbor") || fingerprint.contains("月港") {
-            return .moonHarbor
-        }
-        if fingerprint.contains("existential") || fingerprint.contains("nomad") || fingerprint.contains("wanderer") || fingerprint.contains("游牧") {
-            return .existentialNomad
-        }
-        if fingerprint.contains("nebula") || fingerprint.contains("星云") {
-            return .nebulaWeaver
-        }
-        if fingerprint.contains("solar") || fingerprint.contains("corona") || fingerprint.contains("日冕") || fingerprint.contains("太阳") {
-            return .solarCorona
-        }
-        if fingerprint.contains("terrestrial") || fingerprint.contains("earth-like") || fingerprint.contains("类地") || fingerprint.contains("栖居") {
-            return .terrestrialPlanet
-        }
-        if fingerprint.contains("deep space") || fingerprint.contains("anchor") || fingerprint.contains("深空") || fingerprint.contains("锚") {
-            return .deepSpaceAnchor
-        }
-        if fingerprint.contains("moonlit") || fingerprint.contains("远潮") || fingerprint.contains("观月") || fingerprint.contains("月") {
-            return .farTideMoon
-        }
-        return .farTideMoon
     }
 
     private func dimensions(_ data: PsycheConstellation) -> some View {
@@ -322,7 +322,7 @@ struct BenyuanNativeConstellationView: View {
         let secondary = dimensions.dropFirst().first?.label ?? "内在边界"
         let third = dimensions.dropFirst(2).first?.label ?? "深处直觉"
 
-        return "这张星图不是把你压缩成性格标签，而是在标出当下最有引力的几条精神轨道。\(primary)像主月面，\(secondary)与\(third)围绕它形成潮汐；它们一起决定你如何靠近关系、作品、选择和未说出口的愿望。"
+        return "当下最有引力的是\(primary)。\(secondary)与\(third)围绕它形成潮汐，共同影响你如何靠近关系、作品、选择和未说出口的愿望。"
     }
 
     private func dimensionInsightCard(_ dimension: (key: String, label: String, score: Int, interpretation: String)?) -> some View {
@@ -486,23 +486,13 @@ struct BenyuanNativeConstellationView: View {
             Text(path.title)
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(BenyuanColor.textPrimary)
-            Text("为什么做")
-                .font(.system(size: 12, weight: .black, design: .monospaced))
-                .foregroundStyle(BenyuanColor.accentGold.opacity(0.92))
             pathExplanation(path)
             if let step = path.actionableSteps.first {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("可以尝试")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(BenyuanColor.accentGold.opacity(0.92))
-                    Text(step)
+                    Text(pathActionText(step))
                         .font(.system(size: 15, weight: .semibold))
                         .lineSpacing(6)
                         .foregroundStyle(BenyuanColor.textPrimary.opacity(0.94))
-                    Text("会带来什么")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundStyle(BenyuanColor.accentGold.opacity(0.92))
-                        .padding(.top, BenyuanSpacing.x1)
                     Text(pathExpectedEffect(path, step: step))
                         .font(.system(size: 14, weight: .regular))
                         .lineSpacing(5)
@@ -533,15 +523,29 @@ struct BenyuanNativeConstellationView: View {
             }
         }
         if path.description.contains("边界") {
-            return "这样做会让边界从撤退变成可沟通的坐标，减少关系里的误读。"
+            return "边界会从撤退变成可沟通的坐标，关系里的误读也会随之减少。"
         }
         if path.description.contains("行动") || path.description.contains("现实") {
-            return "这样做会让理解落到现实动作里，减少只在脑内反复校准的消耗。"
+            return "理解会落到现实动作里，减少只在脑内反复校准的消耗。"
         }
         if path.description.contains("情绪") || path.description.contains("感受") {
-            return "这样做会让模糊感受变得可辨认，避免它只在身体里反复回放。"
+            return "模糊感受会变得可辨认，避免它只在身体里反复回放。"
         }
-        return "这样做会让这条路径从理解变成可观察的小变化，而不是停留在一句漂亮建议里。"
+        return "这条路径会从理解变成可观察的小变化，逐渐进入现实节律。"
+    }
+
+    private func pathActionText(_ step: String) -> String {
+        let markers = ["这样做会", "会让你", "帮助你", "从而", "用来"]
+        for marker in markers {
+            if let range = step.range(of: marker) {
+                let action = String(step[..<range.lowerBound])
+                    .trimmingCharacters(in: CharacterSet(charactersIn: " ，,；;。\n\t"))
+                if action.count >= 4 {
+                    return action
+                }
+            }
+        }
+        return step
     }
 
     private func resonances(_ data: PsycheConstellation) -> some View {
@@ -549,10 +553,6 @@ struct BenyuanNativeConstellationView: View {
             Text("继续共鸣")
                 .font(.system(size: 13, weight: .black, design: .monospaced))
                 .foregroundStyle(BenyuanColor.accentGold)
-            Text("这些不是泛泛的书影音清单，而是这张星图的外部回声：每一项都说明它为什么会和你的精神结构发生共振。")
-                .font(.system(size: 14, weight: .regular))
-                .lineSpacing(6)
-                .foregroundStyle(BenyuanColor.textSecondary)
             resonanceLine(
                 "书籍",
                 items: data.recommendations.books.prefix(2).map {
@@ -602,7 +602,7 @@ struct BenyuanNativeConstellationView: View {
     }
 
     private var closing: some View {
-        let closingMode = (model.constellation?.psycheConstellation).map { celestialMode(for: $0.archetype) } ?? .farTideMoon
+        let closingMode = (model.constellation?.psycheConstellation).map { celestialMode(for: $0.archetype) } ?? .deepSpace
 
         return BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
             let pulse = 0.5 + 0.5 * sin(phase * 0.38)
@@ -1263,30 +1263,29 @@ struct BenyuanArchetypeEventHorizonField: View {
     var body: some View {
         BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
             ZStack {
-                Circle()
-                    .fill(BenyuanColor.bgVoid.opacity(0.86))
-                    .frame(width: 260, height: 260)
-                    .blur(radius: 8)
-                    .offset(y: -32)
+                RadialGradient(
+                    colors: [
+                        BenyuanColor.bgVoid.opacity(0.78),
+                        BenyuanColor.accentGold.opacity(0.06 + progress * 0.03),
+                        .clear
+                    ],
+                    center: .center,
+                    startRadius: 24,
+                    endRadius: 162
+                )
+                .frame(width: 300, height: 230)
+                .blur(radius: 8)
 
-                ForEach(0..<4, id: \.self) { index in
-                    Ellipse()
-                        .stroke(
-                            AngularGradient(
-                                colors: [
-                                    .clear,
-                                    BenyuanColor.accentGold.opacity(0.12 + progress * 0.05),
-                                    BenyuanColor.textPrimary.opacity(0.10),
-                                    .clear
-                                ],
-                                center: .center,
-                                angle: .degrees(phase * (5 + Double(index)))
-                            ),
-                            style: StrokeStyle(lineWidth: index == 0 ? 1.8 : 1.0, lineCap: .round)
-                        )
-                        .frame(width: 330 + CGFloat(index) * 34, height: 86 + CGFloat(index) * 16)
-                        .rotationEffect(.degrees(-14 + Double(index) * 13 + phase * (1.2 + Double(index) * 0.3)))
-                        .blur(radius: index == 3 ? 0.9 : 0.2)
+                ForEach(0..<22, id: \.self) { index in
+                    let angle = phase * (0.12 + Double(index % 4) * 0.018) + Double(index) * .pi * 2 / 22
+                    let radiusX = 126 + CGFloat(index % 4) * 22
+                    let radiusY = 48 + CGFloat(index % 3) * 14
+                    let sparkle = 0.45 + 0.55 * sin(phase * (0.35 + Double(index % 5) * 0.05) + Double(index))
+                    Circle()
+                        .fill(index.isMultiple(of: 5) ? BenyuanColor.accentGold.opacity(0.25 + sparkle * 0.22) : BenyuanColor.textPrimary.opacity(0.08 + sparkle * 0.08))
+                        .frame(width: index.isMultiple(of: 5) ? 3.8 : 2.0, height: index.isMultiple(of: 5) ? 3.8 : 2.0)
+                        .position(x: 210 + cos(angle) * radiusX, y: 134 + sin(angle) * radiusY)
+                        .blur(radius: index.isMultiple(of: 5) ? 0.2 : 0.8)
                 }
             }
         }
@@ -1576,6 +1575,7 @@ struct BenyuanDimensionResonanceGraph: View {
     let dimensions: [Dimension]
     let activeKey: String?
     let onSelect: (String) -> Void
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     var body: some View {
         BenyuanMotionTimeline(preferredFramesPerSecond: 16) { phase in
@@ -1637,11 +1637,6 @@ struct BenyuanDimensionResonanceGraph: View {
                             .foregroundStyle(BenyuanColor.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.76)
-                        Text("点亮一枚星点，查看它在你精神星系里的运行方式。")
-                            .font(.system(size: 12, weight: .regular))
-                            .lineSpacing(4)
-                            .foregroundStyle(BenyuanColor.textTertiary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: width * 0.54, alignment: .leading)
                     .position(x: width * 0.33, y: height * 0.24)
@@ -1742,7 +1737,7 @@ struct BenyuanDimensionResonanceGraph: View {
                 .frame(width: 72)
         }
         .contentShape(Rectangle())
-        .animation(.easeOut(duration: 0.20), value: activeKey)
+        .animation(accessibilityReduceMotion ? nil : .easeOut(duration: 0.20), value: activeKey)
     }
 
     private func lineagePoint(index: Int, dimension: Dimension, size: CGSize, phase: TimeInterval) -> CGPoint {

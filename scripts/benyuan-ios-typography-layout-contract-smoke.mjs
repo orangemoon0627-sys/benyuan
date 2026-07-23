@@ -119,13 +119,13 @@ assert.match(
 
 assert.match(
   processing,
-  /Text\(model\.processingTitle\)[\s\S]*?\.font\(\.system\(size:\s*34,\s*weight:\s*\.semibold\)\)/,
-  "native processing title should feel like a calm state label, not a 42pt poster headline"
+  /Text\(model\.processingTitle\)[\s\S]*?\.font\(\.system\(size:\s*30,\s*weight:\s*\.semibold\)\)/,
+  "native processing title should feel like a calm state label, not a poster headline"
 );
-assert.match(
+assert.doesNotMatch(
   processing,
-  /Text\(model\.processingDetail\)[\s\S]*?\.font\(\.system\(size:\s*15,\s*weight:\s*\.regular\)\)/,
-  "native processing detail should use regular reading type under the celestial body"
+  /Text\(model\.processingDetail\)/,
+  "native processing view should not repeat implementation detail below its state title"
 );
 
 assert.match(
@@ -150,9 +150,10 @@ assert.doesNotMatch(
 );
 assert.match(
   theater,
-  /private func theaterTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 92 \{ return 19 \}[\s\S]*?if value\.count > 64 \{ return 22 \}[\s\S]*?if value\.count > 36 \{ return 25 \}[\s\S]*?return 29[\s\S]*?\}[\s\S]*?private func theaterLensCardHeight\(_ title: String\) -> CGFloat \{[\s\S]*?if title\.count > 150 \{ return 286 \}/,
-  "native theater title sizing should leave more breathing room after visual screenshot review"
+  /private func theaterTitleSize\(_ value: String\) -> CGFloat \{[\s\S]*?if value\.count > 92 \{ return 19 \}[\s\S]*?if value\.count > 64 \{ return 22 \}[\s\S]*?if value\.count > 36 \{ return 25 \}[\s\S]*?return 29[\s\S]*?\}/,
+  "native theater title sizing should remain readable across generated scene lengths"
 );
+assert.doesNotMatch(theater, /theaterLensCardHeight|let cardHeight/, "native theater card height should come from text layout, not character-count guesses");
 
 assert.match(
   constellation,
@@ -184,12 +185,12 @@ assert.match(
   /\.reason/,
   "constellation resonance section must surface book, film, and music reasons from the generated report"
 );
-for (const label of ["补足什么", "照见什么", "适合在什么时候靠近", "这条路径的作用"]) {
+for (const label of ["补足什么", "照见什么", "适合在什么时候靠近", "这条路径的作用", "为什么做", "可以尝试", "会带来什么"]) {
   assert.doesNotMatch(constellation, new RegExp(label), `constellation should not expose stiff resonance label ${label}`);
 }
-for (const label of ["为什么做", "会带来什么"]) {
-  assert.match(constellation, new RegExp(label), `constellation path should expose action purpose and expected effect via ${label}`);
-}
+assert.match(constellation, /pathExpectedEffect\(/, "constellation path should preserve expected-effect content without a helper heading");
+assert.match(constellation, /Text\(pathActionText\(step\)\)/, "constellation path must separate its action from an embedded expected effect instead of repeating the same sentence");
+assert.doesNotMatch(constellation, /这张星图不是把你压缩成性格标签/, "constellation reading must state the user's current coordinates directly instead of explaining what the feature is not");
 
 assert.match(
   primitives,

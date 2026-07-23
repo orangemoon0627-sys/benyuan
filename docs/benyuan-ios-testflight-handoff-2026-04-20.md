@@ -1,5 +1,7 @@
 # 本源 iOS / TestFlight 交接手册（2026-04-20）
 
+> 历史交接记录，不再作为发布操作入口。当前唯一发布手册是 `docs/beta/ios-testflight-runbook.md`；以下路径和状态已按现工程修正，但 2026-04-20 的阶段性叙述仅供追溯。
+
 这份手册只覆盖当前 `WKWebView + 原生壳` 方案进入 TestFlight 前的最后一段收口，不涉及改 Web contract，也不展开纯 SwiftUI 重写。
 
 ## 当前已完成
@@ -13,24 +15,24 @@
   - `npm run ios:shell:build`
   - `npm run ios:shell:archive`（默认 unsigned archive，用于本地 release 验证）
 - 当前最新验证产物：
-  - `/Users/fanhao/Documents/Playground/output/benyuan-ios-shell-build.json`
-  - `/Users/fanhao/Documents/Playground/output/benyuan-ios-native-smoke.json`
-  - `/Users/fanhao/Documents/Playground/output/benyuan-ios-native-smoke-library.png`
-  - `/Users/fanhao/Documents/Playground/output/benyuan-ios-native-smoke-camera.png`
-  - `/Users/fanhao/Documents/Playground/output/benyuan-ios-shell-archive.json`
+  - `/Users/fanhao/Documents/Playground-benyuan/output/benyuan-ios-shell-build.json`
+  - `/Users/fanhao/Documents/Playground-benyuan/output/benyuan-ios-native-smoke.json`
+  - `/Users/fanhao/Documents/Playground-benyuan/output/benyuan-ios-native-smoke-library.png`
+  - `/Users/fanhao/Documents/Playground-benyuan/output/benyuan-ios-native-smoke-camera.png`
+  - `/Users/fanhao/Documents/Playground-benyuan/output/benyuan-ios-shell-archive.json`
 - iOS shell release 配置已经显式分成 `Debug / Staging / Release`，不再在 release 配置下静默回退 localhost。
 - AppIcon 资产已补齐到 `Assets.xcassets/AppIcon.appiconset/`。
 
 ## 当前工程基线
 
-- iOS shell 目录：`/Users/fanhao/Documents/Playground/mobile/benyuan_origin_ios_shell`
+- iOS shell 目录：`/Users/fanhao/Documents/Playground-benyuan/mobile/benyuan_origin_ios_shell`
 - Scheme：`BenyuanOriginShell`
 - Bundle ID：`com.fanhao.benyuan.origin.shell`
 - App 名称：`本源`
-- 最低系统：`iOS 18.0`
+- 最低系统：`iOS 17.0`
 - 当前版本号：
-  - `MARKETING_VERSION = 0.2.0`
-  - `CURRENT_PROJECT_VERSION = 2`
+  - `MARKETING_VERSION = 0.2.1`
+  - `CURRENT_PROJECT_VERSION = 21`
 
 ## 当前仍然阻塞 TestFlight 的项
 
@@ -82,7 +84,7 @@
 ### A. 先跑当前预检
 
 ```bash
-cd /Users/fanhao/Documents/Playground
+cd /Users/fanhao/Documents/Playground-benyuan
 npm run ios:shell:testflight:preflight
 ```
 
@@ -108,7 +110,7 @@ npm run ios:shell:testflight:preflight
 ### C. 重跑自动化护栏
 
 ```bash
-cd /Users/fanhao/Documents/Playground
+cd /Users/fanhao/Documents/Playground-benyuan
 npm run build
 BENYUAN_BASE_URL=http://127.0.0.1:3015 npm run smoke:benyuan:golden
 BENYUAN_BASE_URL=http://127.0.0.1:3015 npm run ios:shell:regression
@@ -119,14 +121,14 @@ npm run ios:shell:archive
 如果要做 signed archive，改用：
 
 ```bash
-cd /Users/fanhao/Documents/Playground
+cd /Users/fanhao/Documents/Playground-benyuan
 BENYUAN_IOS_DEVELOPMENT_TEAM=<YOUR_TEAM_ID> npm run ios:shell:archive
 ```
 
 ### D. 在 Xcode 里做签名与上传
 
 ```bash
-open /Users/fanhao/Documents/Playground/mobile/benyuan_origin_ios_shell/BenyuanOriginShell.xcodeproj
+open /Users/fanhao/Documents/Playground-benyuan/mobile/benyuan_origin_ios_shell/BenyuanOriginShell.xcodeproj
 ```
 
 Xcode 中需要检查：
@@ -157,8 +159,8 @@ Xcode 中需要检查：
 
 记录建议继续落到：
 
-- `/Users/fanhao/Documents/Playground/docs/benyuan-ios-camera-real-device-checklist.md`
-- `/Users/fanhao/Documents/Playground/docs/benyuan-ios-camera-real-device-record-template.md`
+- `/Users/fanhao/Documents/Playground-benyuan/docs/benyuan-ios-camera-real-device-checklist.md`
+- `/Users/fanhao/Documents/Playground-benyuan/docs/benyuan-ios-camera-real-device-record-template.md`
 
 ## 上线门槛
 

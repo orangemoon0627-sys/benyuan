@@ -36,7 +36,12 @@ extension BenyuanNativeFlowModel {
                 "apple": "apple:native-preview"
             ],
             phoneBound: false,
-            wechatBound: false
+            wechatBound: false,
+            avatarSymbol: "moon.stars.fill",
+            profileStatus: "complete",
+            birthYear: 1994,
+            gender: "undisclosed",
+            profileBio: "把月光、影像和选择收进同一份档案。"
         )
     }
 
@@ -174,7 +179,7 @@ extension BenyuanNativeFlowModel {
                     BenyuanQuestionOption(id: "A1_3", text: "雾里慢慢亮起的城市，像记忆正在回到身体。", psychologicalSignal: "memory_city", tags: ["memory", "urban"])
                 ],
                 outputKey: "core_image",
-                helperText: "这个选择会决定你的第一层视觉母题。",
+                helperText: nil,
                 distributionKeys: nil,
                 analysisDimensions: nil,
                 acceptedFiles: nil,
@@ -190,7 +195,7 @@ extension BenyuanNativeFlowModel {
                 maxSelections: nil,
                 options: nil,
                 outputKey: "time_philosophy",
-                helperText: "比例不是事实，而是你当下的内部重力。",
+                helperText: nil,
                 distributionKeys: [
                     BenyuanDistributionKey(key: "past", label: "过去"),
                     BenyuanDistributionKey(key: "present", label: "现在"),
@@ -204,13 +209,13 @@ extension BenyuanNativeFlowModel {
                 id: "C2_precious_photo_analysis",
                 module: .c,
                 title: "珍贵影像",
-                prompt: "上传一张你舍不得删除的照片，让它成为剧场的入口。",
+                prompt: "上传一张你舍不得删除的照片。",
                 kind: .upload,
                 minSelections: nil,
                 maxSelections: nil,
                 options: nil,
                 outputKey: "precious_photo_analysis",
-                helperText: "照片不会被当作普通素材，它会参与后续剧情和星图解释。",
+                helperText: nil,
                 distributionKeys: nil,
                 analysisDimensions: ["attachment", "loss", "identity"],
                 acceptedFiles: "image/*",

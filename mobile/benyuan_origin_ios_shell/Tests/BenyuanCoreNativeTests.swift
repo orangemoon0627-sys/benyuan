@@ -82,6 +82,11 @@ private extension URLRequest {
 }
 
 final class BenyuanCoreNativeTests: XCTestCase {
+    func testProviderBindingConflictHasAUserFacingMessage() {
+        let error = BenyuanAPIError.server(status: 409, message: "provider_already_bound")
+        XCTAssertEqual(error.errorDescription, "这个登录方式已绑定到另一份本源档案。请先退出当前账号，再用该方式登录。")
+    }
+
     func testFlowStorePersistsMinimalNativeSession() throws {
         let suiteName = "benyuan-core-native-tests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -303,6 +308,64 @@ final class BenyuanCoreNativeTests: XCTestCase {
         }
     }
 
+    func testAPIClientDoesNotSendAuthenticatedRequestsToFallbackHost() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "https://benyuan.orangemoonai.cn")!,
+            fallbackBaseURL: URL(string: "https://staging-benyuan.orangemoonai.cn")!,
+            session: URLSession(configuration: config)
+        )
+        client.setAuthSession(BenyuanAuthSession(
+            sessionId: "auth_test",
+            userId: "usr_test",
+            token: "bya_apple_private",
+            provider: .apple,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        ))
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        var requestedHosts: [String] = []
+        BenyuanMockURLProtocol.handler = { request in
+            requestedHosts.append(request.url?.host ?? "")
+            throw URLError(.secureConnectionFailed)
+        }
+
+        do {
+            _ = try await client.fetchCurrentAccount() as BenyuanAuthResponse
+            XCTFail("Expected network error")
+        } catch let error as BenyuanAPIError {
+            XCTAssertEqual(error.errorDescription, "暂时连接不上本源服务器，请稍后再试。")
+            XCTAssertEqual(requestedHosts, ["benyuan.orangemoonai.cn"])
+        }
+    }
+
+    func testAPIClientDoesNotDowngradeFallbackToHTTP() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "https://staging-benyuan.orangemoonai.cn")!,
+            fallbackBaseURL: URL(string: "http://120.26.126.88")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        var requestedURLs: [String] = []
+        BenyuanMockURLProtocol.handler = { request in
+            requestedURLs.append(request.url?.absoluteString ?? "")
+            throw URLError(.secureConnectionFailed)
+        }
+
+        do {
+            _ = try await client.fetchAuthProviders() as BenyuanAuthProvidersResponse
+            XCTFail("Expected network error")
+        } catch let error as BenyuanAPIError {
+            XCTAssertEqual(error.errorDescription, "暂时连接不上本源服务器，请稍后再试。")
+            XCTAssertEqual(requestedURLs, ["https://staging-benyuan.orangemoonai.cn/api/auth/providers"])
+        }
+    }
+
     func testAPIClientRetriesFallbackBaseURLForAnyURLError() async throws {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [BenyuanMockURLProtocol.self]
@@ -400,11 +463,11 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         let canonical = archetype.canonicalizedForNativeDisplay
 
-        XCTAssertEqual(canonical.name, "事件视界沉潜者")
-        XCTAssertEqual(canonical.englishName, "The Event Horizon Diver")
+        XCTAssertEqual(canonical.name, "远潮观月者")
+        XCTAssertEqual(canonical.englishName, "The Far-Tide Moon Watcher")
         XCTAssertNil(canonical.personalizedName)
         XCTAssertNil(canonical.personalizedSubtitle)
-        XCTAssertEqual(canonical.visualPrompt, "black hole event horizon, antique gold accretion rim, gravitational lens")
+        XCTAssertEqual(canonical.visualPrompt, "far tide moon, silver lunar body, black sea horizon, restrained gold tide")
     }
 
     func testNativeGenerationJobDecodesStageProgressMetadata() throws {
@@ -804,6 +867,11 @@ final class BenyuanCoreNativeTests: XCTestCase {
             "created_at": "2026-05-08T00:00:00.000Z",
             "updated_at": "2026-05-08T00:00:00.000Z",
             "display_name": "访客",
+            "avatar_symbol": "moon.stars.fill",
+            "profile_status": "incomplete",
+            "birth_year": 1994,
+            "gender": "undisclosed",
+            "profile_bio": "夜色里的测试档案",
             "primary_provider": "anonymous",
             "providers": {
               "anonymous": "anonymous:test",
@@ -828,6 +896,251 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(response.user.userId, "usr_test")
         XCTAssertEqual(response.user.wechatBound, true)
         XCTAssertEqual(response.user.phoneBound, false)
+        XCTAssertEqual(response.user.avatarSymbol, "moon.stars.fill")
+        XCTAssertEqual(response.user.profileStatus, "incomplete")
+        XCTAssertEqual(response.user.birthYear, 1994)
+        XCTAssertEqual(response.user.gender, "undisclosed")
+        XCTAssertEqual(response.user.profileBio, "夜色里的测试档案")
+    }
+
+    func testAPIClientSendsCompleteProfilePatch() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-profile.test")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { request in
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertEqual(request.url?.path, "/api/auth/me")
+            let body = try JSONDecoder.benyuan.decode([String: BenyuanJSONValue].self, from: request.benyuanHTTPBodyData)
+            XCTAssertEqual(body["display_name"]?.stringValue, "樊浩")
+            XCTAssertEqual(body["avatar_symbol"]?.stringValue, "scope")
+            XCTAssertEqual(body["birth_year"]?.intValue, 1992)
+            XCTAssertEqual(body["gender"]?.stringValue, "undisclosed")
+            XCTAssertEqual(body["profile_bio"]?.stringValue, "把月相、黑洞和旧相册放在一起。")
+            return BenyuanMockURLProtocol.response(
+                url: request.url ?? URL(string: "http://native-profile.test/api/auth/me")!,
+                status: 200,
+                body: """
+                {
+                  "user": {
+                    "user_id": "usr_profile",
+                    "created_at": "2026-05-08T00:00:00.000Z",
+                    "updated_at": "2026-05-08T00:01:00.000Z",
+                    "display_name": "樊浩",
+                    "avatar_symbol": "scope",
+                    "profile_status": "complete",
+                    "birth_year": 1992,
+                    "gender": "undisclosed",
+                    "profile_bio": "把月相、黑洞和旧相册放在一起。",
+                    "primary_provider": "apple",
+                    "providers": { "apple": "apple:test" },
+                    "phone_bound": false,
+                    "wechat_bound": false
+                  },
+                  "session": {
+                    "session_id": "auth_profile",
+                    "user_id": "usr_profile",
+                    "token": "bya_apple_profile",
+                    "provider": "apple",
+                    "created_at": "2026-05-08T00:00:00.000Z",
+                    "updated_at": "2026-05-08T00:01:00.000Z"
+                  }
+                }
+                """
+            )
+        }
+
+        let response = try await client.updateUserProfile(
+            displayName: "樊浩",
+            avatarSymbol: "scope",
+            birthYear: 1992,
+            gender: "undisclosed",
+            profileBio: "把月相、黑洞和旧相册放在一起。"
+        )
+
+        XCTAssertEqual(response.user.displayName, "樊浩")
+        XCTAssertEqual(response.user.avatarSymbol, "scope")
+        XCTAssertEqual(response.user.profileStatus, "complete")
+    }
+
+    func testAPIClientCanClearSavedBirthYear() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-profile.test")!,
+            session: URLSession(configuration: config)
+        )
+        defer { BenyuanMockURLProtocol.handler = nil }
+
+        BenyuanMockURLProtocol.handler = { request in
+            let body = try JSONDecoder.benyuan.decode([String: BenyuanJSONValue].self, from: request.benyuanHTTPBodyData)
+            XCTAssertEqual(body["display_name"]?.stringValue, "樊浩")
+            XCTAssertEqual(body["birth_year"], .null)
+            return BenyuanMockURLProtocol.response(
+                url: request.url ?? URL(string: "http://native-profile.test/api/auth/me")!,
+                status: 200,
+                body: """
+                {
+                  "user": {
+                    "user_id": "usr_profile",
+                    "created_at": "2026-05-08T00:00:00.000Z",
+                    "updated_at": "2026-05-08T00:01:00.000Z",
+                    "display_name": "樊浩",
+                    "avatar_symbol": "scope",
+                    "profile_status": "complete",
+                    "gender": "undisclosed",
+                    "primary_provider": "apple",
+                    "providers": { "apple": "apple:test" },
+                    "phone_bound": false,
+                    "wechat_bound": false
+                  },
+                  "session": {
+                    "session_id": "auth_profile",
+                    "user_id": "usr_profile",
+                    "token": "bya_apple_profile",
+                    "provider": "apple",
+                    "created_at": "2026-05-08T00:00:00.000Z",
+                    "updated_at": "2026-05-08T00:01:00.000Z"
+                  }
+                }
+                """
+            )
+        }
+
+        let response = try await client.updateUserProfile(
+            displayName: "樊浩",
+            avatarSymbol: "scope",
+            birthYear: nil,
+            gender: "undisclosed",
+            profileBio: ""
+        )
+
+        XCTAssertNil(response.user.birthYear)
+    }
+
+    @MainActor
+    func testProfileCompletionTreatsPlaceholderNamesAsIncomplete() throws {
+        let model = BenyuanNativeFlowModel()
+        let placeholderUser = BenyuanUser(
+            userId: "usr_placeholder",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z",
+            displayName: "Apple 用户",
+            primaryProvider: .apple,
+            providers: ["apple": "apple:test"],
+            phoneBound: false,
+            wechatBound: false
+        )
+        let completeUser = BenyuanUser(
+            userId: "usr_complete",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z",
+            displayName: "樊浩",
+            primaryProvider: .apple,
+            providers: ["apple": "apple:test"],
+            phoneBound: false,
+            wechatBound: false,
+            avatarSymbol: "scope",
+            profileStatus: "complete",
+            birthYear: 1992,
+            gender: "undisclosed",
+            profileBio: "把月相、黑洞和旧相册放在一起。"
+        )
+
+        XCTAssertTrue(model.requiresProfileCompletion(placeholderUser))
+        XCTAssertFalse(model.requiresProfileCompletion(completeUser))
+    }
+
+    @MainActor
+    func testAccountPhoneBindingKeepsCurrentUserAndAccountStage() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [BenyuanMockURLProtocol.self]
+        let client = BenyuanAPIClient(
+            baseURL: URL(string: "http://native-phone-binding.test")!,
+            session: URLSession(configuration: config)
+        )
+        let suiteName = "benyuan-phone-binding-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+            BenyuanMockURLProtocol.handler = nil
+        }
+        let store = BenyuanFlowStore(defaults: defaults)
+        let model = BenyuanNativeFlowModel(client: client, store: store)
+        let authSession = BenyuanAuthSession(
+            sessionId: "auth_current",
+            userId: "usr_current",
+            token: "bya_apple_current",
+            provider: .apple,
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z"
+        )
+        model.session.authSession = authSession
+        model.session.user = BenyuanUser(
+            userId: "usr_current",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:00:00.000Z",
+            displayName: "樊浩",
+            primaryProvider: .apple,
+            providers: ["apple": "apple:test"],
+            phoneBound: false,
+            wechatBound: false,
+            avatarSymbol: "scope",
+            profileStatus: "complete"
+        )
+        model.stage = .account
+        client.setAuthSession(authSession)
+
+        BenyuanMockURLProtocol.handler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.url?.path, "/api/auth/phone/verify-code")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer bya_apple_current")
+            let body = try JSONDecoder.benyuan.decode([String: BenyuanJSONValue].self, from: request.benyuanHTTPBodyData)
+            XCTAssertEqual(body["phone"]?.stringValue, "+8613800138000")
+            XCTAssertEqual(body["code"]?.stringValue, "246810")
+            return BenyuanMockURLProtocol.response(
+                url: request.url ?? URL(string: "http://native-phone-binding.test/api/auth/phone/verify-code")!,
+                status: 200,
+                body: """
+                {
+                  "user": {
+                    "user_id": "usr_current",
+                    "created_at": "2026-05-08T00:00:00.000Z",
+                    "updated_at": "2026-05-08T00:02:00.000Z",
+                    "display_name": "樊浩",
+                    "avatar_symbol": "scope",
+                    "profile_status": "complete",
+                    "primary_provider": "apple",
+                    "providers": {
+                      "apple": "apple:test",
+                      "phone": "phone:test"
+                    },
+                    "phone_bound": true,
+                    "wechat_bound": false
+                  },
+                  "session": {
+                    "session_id": "auth_phone",
+                    "user_id": "usr_current",
+                    "token": "bya_phone_current",
+                    "provider": "phone",
+                    "created_at": "2026-05-08T00:02:00.000Z",
+                    "updated_at": "2026-05-08T00:02:00.000Z"
+                  }
+                }
+                """
+            )
+        }
+
+        await model.bindPhoneToCurrentAccount(phone: "+8613800138000", code: "246810")
+
+        XCTAssertEqual(model.session.user?.userId, "usr_current")
+        XCTAssertEqual(model.session.user?.phoneBound, true)
+        XCTAssertEqual(model.session.authSession?.provider, .phone)
+        XCTAssertEqual(model.stage, .account)
     }
 
     func testAccountHistoryResponseDecodesExplorationState() throws {
@@ -890,8 +1203,26 @@ final class BenyuanCoreNativeTests: XCTestCase {
 
         XCTAssertEqual(constellationItem.titleForNativeDisplay, "远潮观月者的本源档案")
         XCTAssertEqual(constellationItem.canonicalArchetypeNameForDisplay, "远潮观月者")
+        XCTAssertEqual(constellationItem.subtitleForNativeDisplay, "影像线索 3 个 / 星图已生成")
         XCTAssertFalse(draftItem.titleForNativeDisplay.contains("meaning_seeking"))
         XCTAssertFalse(draftItem.subtitleForNativeDisplay.contains("meaning_seeking"))
+
+        let conflictingLegacySubtitle = BenyuanAccountHistoryItem(
+            part1Id: "part1_conflicting_legacy_subtitle",
+            theaterScriptId: nil,
+            part2Id: nil,
+            constellationId: "const_conflicting_legacy_subtitle",
+            stage: .constellation,
+            title: "类地栖居者的本源档案",
+            subtitle: "暗潮守月人：把海天、旧窗与暗金边界收进轨道",
+            archetypeName: "类地栖居者",
+            createdAt: "2026-05-08T00:00:00.000Z",
+            updatedAt: "2026-05-08T00:30:00.000Z",
+            assetCount: 3
+        )
+        XCTAssertEqual(conflictingLegacySubtitle.canonicalArchetypeNameForDisplay, "类地栖居者")
+        XCTAssertEqual(conflictingLegacySubtitle.titleForNativeDisplay, "类地栖居者的本源档案")
+        XCTAssertEqual(conflictingLegacySubtitle.subtitleForNativeDisplay, "把海天、旧窗与暗金边界收进轨道")
     }
 
     func testConstellationLongImageRendererExportsFullPosterWithUserName() throws {
@@ -2412,6 +2743,83 @@ final class BenyuanCoreNativeTests: XCTestCase {
         XCTAssertEqual(response.runtime.mode, "live")
         XCTAssertEqual(response.theaterScript.act2.choices.first?.options.first?.traitSignal, "aesthetic_memory_orientation")
         XCTAssertEqual(response.theaterScript.act3.mirrorQuestions.first?.options.first?.traitSignal, "meaning_seeking")
+    }
+
+    func testLegacyArchetypeCanonicalizationKeepsKnownAliasesButDoesNotInventMoonResults() {
+        let legacy = PsycheArchetype(
+            name: "月门潜航者",
+            englishName: "Moon Gate Navigator",
+            personalizedName: nil,
+            personalizedSubtitle: nil,
+            coreEssence: "旧版本结果",
+            visualPrompt: "lunar body"
+        )
+        XCTAssertEqual(legacy.canonicalizedForNativeDisplay.name, "远潮观月者")
+
+        let unknown = PsycheArchetype(
+            name: "待校验星体",
+            englishName: "Unverified Archetype",
+            personalizedName: nil,
+            personalizedSubtitle: nil,
+            coreEssence: "无法匹配固定十标签",
+            visualPrompt: "unmapped form"
+        )
+        XCTAssertNil(BenyuanNativeArchetypeRegistry.profile(for: unknown))
+        XCTAssertEqual(unknown.canonicalizedForNativeDisplay.name, "待校验星体")
+        XCTAssertThrowsError(try unknown.validatedForNativeDisplay()) { error in
+            XCTAssertEqual(error as? BenyuanAPIError, .invalidResponse)
+        }
+        XCTAssertNoThrow(try legacy.validatedForNativeDisplay())
+
+        let canonicalWithConflictingVisual = PsycheArchetype(
+            name: "类地栖居者",
+            englishName: "The Terrestrial Dweller",
+            personalizedName: nil,
+            personalizedSubtitle: nil,
+            coreEssence: "正式主星体名称应当优先",
+            visualPrompt: "far tide moon, silver lunar body"
+        )
+        XCTAssertEqual(BenyuanNativeArchetypeRegistry.profile(for: canonicalWithConflictingVisual)?.name, "类地栖居者")
+
+        let legacyWithConflictingVisual = PsycheArchetype(
+            name: "月门潜航者",
+            englishName: "Moon Gate Navigator",
+            personalizedName: nil,
+            personalizedSubtitle: nil,
+            coreEssence: "显式旧别名仍应恢复",
+            visualPrompt: "black hole event horizon"
+        )
+        XCTAssertEqual(BenyuanNativeArchetypeRegistry.profile(for: legacyWithConflictingVisual)?.name, "远潮观月者")
+
+        let legacyWithEmbeddedSubtitle = PsycheArchetype(
+            name: "月门潜航者：把海天与旧窗收进轨道",
+            englishName: "Moon Gate Navigator - archived result",
+            personalizedName: nil,
+            personalizedSubtitle: nil,
+            coreEssence: "旧标签后的文案不应阻断恢复",
+            visualPrompt: "black hole event horizon"
+        )
+        XCTAssertEqual(BenyuanNativeArchetypeRegistry.profile(for: legacyWithEmbeddedSubtitle)?.name, "远潮观月者")
+
+        let proseContainingGenericMoonWord = PsycheArchetype(
+            name: "在月光与黑洞之间停留的人",
+            englishName: "An Unverified Poetic Label",
+            personalizedName: nil,
+            personalizedSubtitle: nil,
+            coreEssence: "普通句子不能因为包含月光而冒充旧标签",
+            visualPrompt: "moonlit lunar body"
+        )
+        XCTAssertNil(BenyuanNativeArchetypeRegistry.profile(for: proseContainingGenericMoonWord))
+
+        let unknownLunarPrompt = PsycheArchetype(
+            name: "待校验星体",
+            englishName: "Unverified Archetype",
+            personalizedName: nil,
+            personalizedSubtitle: nil,
+            coreEssence: "视觉提示不能冒充正式标签",
+            visualPrompt: "moonlit lunar body"
+        )
+        XCTAssertNil(BenyuanNativeArchetypeRegistry.profile(for: unknownLunarPrompt))
     }
 
 }
