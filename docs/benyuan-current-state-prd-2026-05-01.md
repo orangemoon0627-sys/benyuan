@@ -351,7 +351,7 @@ Railway 容器启动本身不是主要问题；当前更像本地网络/运营�
 | `npm run build` | Web 构建 |
 | `npm run ios:shell:archive` | 生成 iOS archive |
 | `npm run ios:shell:export` | 导出 Development IPA |
-| `npm run ios:shell:export:testflight` | 尝试导出 TestFlight 包 |
+| `BENYUAN_IOS_EXPORT_METHOD=app-store-connect npm run ios:shell:export` | 导出 TestFlight 包 |
 | `npm run ios:shell:testflight:preflight` | 发布前预检 |
 | `npm run ios:shell:native-smoke` | Native smoke |
 | `npm run ios:shell:regression` | iOS shell 回归 |
@@ -459,7 +459,7 @@ xcrun devicectl device process launch \
 3. 重新导出：
 
 ```bash
-npm run ios:shell:export:testflight
+BENYUAN_IOS_EXPORT_METHOD=app-store-connect npm run ios:shell:export
 ```
 
 4. 上传 App Store Connect。
@@ -495,7 +495,7 @@ npm run ios:shell:export:testflight
 - `npm run ios:shell:testflight:preflight` 无 blockers。
 - archive 使用 Apple Distribution 签名。
 - embedded profile 有 `beta-reports-active`。
-- `npm run ios:shell:export:testflight` 成功。
+- `BENYUAN_IOS_EXPORT_METHOD=app-store-connect npm run ios:shell:export` 成功。
 - App Store Connect 能看到构建。
 - 至少一台内部测试设备安装成功。
 

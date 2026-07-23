@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { toPublicAnalysisJob } from "@/lib/benyuan-public-analysis";
 import { getSessionRuntime } from "@/lib/store";
 
 export async function GET(_: Request, { params }: { params: Promise<{ sessionId: string }> }) {
@@ -11,10 +12,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ sessionId:
 
   return NextResponse.json({
     status: "ok",
+    sessionId: runtime.session.sessionId,
     lifecycleStatus: runtime.session.lifecycleStatus,
-    session: runtime.session,
-    currentJob: runtime.currentJob,
-    latestJob: runtime.latestJob,
+    currentJob: toPublicAnalysisJob(runtime.currentJob),
+    latestJob: toPublicAnalysisJob(runtime.latestJob),
     reportReady: Boolean(runtime.report),
     featureVectorReady: Boolean(runtime.featureVector),
   });

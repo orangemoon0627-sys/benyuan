@@ -32,7 +32,7 @@ export default function DirectorAgentPage() {
             <MetaPill>POST /api/theater/generate</MetaPill>
             <MetaPill>runtime_override.live</MetaPill>
             <MetaPill>provider=crs</MetaPill>
-            <MetaPill>model=gpt-5.4</MetaPill>
+            <MetaPill>model=gpt-5.6-terra</MetaPill>
           </div>
         </GlassPanel>
         <GlassPanel>

@@ -1,32 +1,43 @@
 import { benyuanQuestionsById, getQuestionOption, getQuestionOptionTags } from "@/lib/benyuan-v3-schema";
 import { legacyIsolationPromptBlock } from "@/lib/benyuan-v3-legacy-isolation";
-import { getTheaterAct2ChoiceText } from "@/lib/benyuan-v3-theater-labels";
-import type { Part1Record, Part2Record } from "@/lib/benyuan-v3-types";
+import { getPart2ChoiceText } from "@/lib/benyuan-v3-theater-labels";
+import { parseTraitSignalComponents } from "@/lib/benyuan-v3-trait-signals";
+import type { BenyuanPsycheSignalKey as PsycheSignalKey } from "@/lib/benyuan-v3-trait-signals";
+import type { MultimodalBehaviorSignal, Part1Record, Part2Record } from "@/lib/benyuan-v3-types";
 
-type PsycheSignalKey =
-  | "meaning_orientation"
-  | "object_distance"
-  | "boundary_integrity"
-  | "desire_structure"
-  | "defense_style"
-  | "projection_symbolic_sensitivity"
-  | "repression_container"
-  | "relationship_mirror_need"
-  | "shadow_material"
-  | "repetition_loop"
-  | "solitude_capacity"
-  | "action_entry"
-  | "time_gravity"
-  | "transitional_space";
+type EvidenceSourceKind = "question" | "music" | "social_post" | "photo" | "theater";
+type EvidencePolarity = "support" | "counter";
+
+type EvidenceRecord = {
+  evidence: string;
+  source_kind: EvidenceSourceKind;
+  source_id: string;
+  temporal_scope: string;
+  polarity: EvidencePolarity;
+  confidence: number;
+  independence_group: string;
+  alternative_explanation?: string;
+};
+
+type EvidenceMetadata = Omit<EvidenceRecord, "evidence">;
+type EvidenceMap = Map<PsycheSignalKey, EvidenceRecord[]>;
 
 type SignalEntry = {
   key: PsycheSignalKey;
   zhName: string;
   description: string;
   evidence: string[];
+  evidence_records: EvidenceRecord[];
+  independent_source_count: number;
+  source_kind_count: number;
+  support_count: number;
+  counter_count: number;
+  temporal_scope: string[];
 };
 
-const SIGNAL_DEFINITIONS: Record<PsycheSignalKey, Omit<SignalEntry, "key" | "evidence">> = {
+type SignalDefinition = Pick<SignalEntry, "zhName" | "description">;
+
+const SIGNAL_DEFINITIONS: Record<PsycheSignalKey, SignalDefinition> = {
   meaning_orientation: {
     zhName: "意义取向",
     description: "用户会先追问一件事是否真的有内在理由，而不是只看它是否有效或好看。",
@@ -88,9 +99,9 @@ const SIGNAL_DEFINITIONS: Record<PsycheSignalKey, Omit<SignalEntry, "key" | "evi
 const SIGNAL_PATTERNS: Array<{ key: PsycheSignalKey; pattern: RegExp }> = [
   { key: "meaning_orientation", pattern: /meaning|意义|philosophical|existential|方向|追问|quest/u },
   { key: "object_distance", pattern: /object_distance|distance|slow_disclosure|靠近|距离|房间|保留/u },
-  { key: "boundary_integrity", pattern: /boundary|strong_boundary|engulf|边界|门|窗|岸|不会太快/u },
+  { key: "boundary_integrity", pattern: /boundary|strong_boundary|engulf|self_preserv|self_protect|边界|门|窗|岸|不会太快/u },
   { key: "desire_structure", pattern: /desire|want|attraction|risk_taking|想要|欲望|靠近/u },
-  { key: "defense_style", pattern: /defense|observe|delay|avoidant|systematic|repressive|先|观察|压|放到一边/u },
+  { key: "defense_style", pattern: /defense|observe|delay|avoid(?:ant|ance)?|withdraw|systematic|repressive|先|观察|压|放到一边/u },
   { key: "projection_symbolic_sensitivity", pattern: /projection|aesthetic|visual|symbol|resonance|画面|句子|作品|光|构图/u },
   { key: "repression_container", pattern: /repression|repressive|withheld|unsaid|implicit|没说出口|压抑|平静|容器/u },
   { key: "relationship_mirror_need", pattern: /mirror|relationship|attachment|reply|response|understood|回应|语气|被看见|可信的人/u },
@@ -121,34 +132,87 @@ function compact(value: unknown, maxLength = 90) {
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 }
 
-function addEvidence(map: Map<PsycheSignalKey, Set<string>>, key: PsycheSignalKey, evidence: string) {
+function evidenceConfidence(quality: unknown, fallback = 0.72) {
+  if (quality === "high") return 0.9;
+  if (quality === "medium") return 0.72;
+  if (quality === "low") return 0.5;
+  if (quality === "none") return 0.2;
+  return fallback;
+}
+
+function addEvidence(map: EvidenceMap, key: PsycheSignalKey, evidence: string, metadata: EvidenceMetadata) {
   const text = compact(evidence);
   if (!text) return;
-  const bucket = map.get(key) ?? new Set<string>();
-  bucket.add(text);
+  const bucket = map.get(key) ?? [];
+  const duplicate = bucket.find(
+    (record) =>
+      record.evidence === text &&
+      record.source_id === metadata.source_id &&
+      record.polarity === metadata.polarity &&
+      record.independence_group === metadata.independence_group,
+  );
+  if (duplicate) {
+    duplicate.confidence = Math.max(duplicate.confidence, metadata.confidence);
+    return;
+  }
+  bucket.push({ evidence: text, ...metadata });
   map.set(key, bucket);
 }
 
-function addSignalsFromText(map: Map<PsycheSignalKey, Set<string>>, source: string, evidence: string) {
+function addSignalsFromText(map: EvidenceMap, source: string, evidence: string, metadata: EvidenceMetadata) {
+  let matchedCount = 0;
   for (const item of SIGNAL_PATTERNS) {
     if (item.pattern.test(source)) {
-      addEvidence(map, item.key, evidence);
+      addEvidence(map, item.key, evidence, metadata);
+      matchedCount += 1;
     }
   }
+  return matchedCount;
+}
+
+function addStructuredBehaviorSignals(
+  map: EvidenceMap,
+  signals: MultimodalBehaviorSignal[] | undefined,
+  evidencePrefix: string,
+  metadata: EvidenceMetadata,
+) {
+  if (!signals?.length) return false;
+  let addedCount = 0;
+  for (const signal of signals) {
+    const evidence = signal.evidence.map((item) => compact(item, 80)).filter(Boolean).join("；");
+    if (!evidence) continue;
+    addEvidence(map, signal.signal, `${evidencePrefix}：${evidence}`, {
+      ...metadata,
+      polarity: signal.polarity,
+      confidence: Math.min(metadata.confidence, signal.confidence),
+      temporal_scope: signal.temporal_scope === "unknown" ? metadata.temporal_scope : signal.temporal_scope,
+      alternative_explanation: compact(signal.alternative_explanation, 100) || undefined,
+    });
+    addedCount += 1;
+  }
+  return addedCount > 0;
 }
 
 function optionEvidence(part1: Part1Record) {
   const rows: string[] = [];
-  const map = new Map<PsycheSignalKey, Set<string>>();
+  const map: EvidenceMap = new Map();
 
   for (const [questionId, rawValue] of Object.entries(part1.answers)) {
     const question = benyuanQuestionsById[questionId];
     if (!question) continue;
+    const independenceGroup = `${part1.part1_id}:question:${questionId}`;
     if (question.kind === "distribution" && rawValue && typeof rawValue === "object") {
       const time = rawValue as Record<string, unknown>;
       const evidence = `${question.title}：过去 ${compact(time.past)} / 现在 ${compact(time.present)} / 未来 ${compact(time.future)}`;
       rows.push(evidence);
-      addEvidence(map, "time_gravity", evidence);
+      addEvidence(map, "time_gravity", evidence, {
+        source_kind: "question",
+        source_id: `${independenceGroup}:distribution`,
+        temporal_scope: "current_self_report",
+        polarity: "support",
+        confidence: 0.95,
+        independence_group: independenceGroup,
+      });
       continue;
     }
 
@@ -160,28 +224,66 @@ function optionEvidence(part1: Part1Record) {
       const signalPayload = [option.psychologicalSignal, ...getQuestionOptionTags(questionId, optionId)].filter(Boolean).join(" ");
       const evidence = `${question.title}：${option.text}`;
       rows.push(evidence);
-      addSignalsFromText(map, signalPayload + " " + option.text, evidence);
+      addSignalsFromText(map, signalPayload + " " + option.text, evidence, {
+        source_kind: "question",
+        source_id: `${independenceGroup}:option:${optionId}`,
+        temporal_scope: "current_self_report",
+        polarity: "support",
+        confidence: 0.9,
+        independence_group: independenceGroup,
+      });
     }
   }
 
   return { rows, map };
 }
 
-function addMultimodalEvidence(map: Map<PsycheSignalKey, Set<string>>, part1: Part1Record) {
+function hasAnalyzedEvidence<T extends { analysis_status?: unknown }>(
+  value: T | null | undefined,
+): value is T & { analysis_status: "analyzed" } {
+  return value?.analysis_status === "analyzed";
+}
+
+function analysisEvidenceQuality(value: unknown) {
+  return value && typeof value === "object" ? (value as { evidence_quality?: unknown }).evidence_quality : undefined;
+}
+
+function addMultimodalEvidence(map: EvidenceMap, part1: Part1Record) {
   const music = part1.part1_data.aesthetics.music_analysis;
-  if (music) {
+  if (hasAnalyzedEvidence(music)) {
+    const musicSourceId = `${part1.part1_id}:music_playlist`;
+    const musicMetadata: EvidenceMetadata = {
+      source_kind: "music",
+      source_id: musicSourceId,
+      temporal_scope: "long_term_preference",
+      polarity: "support",
+      confidence: evidenceConfidence(analysisEvidenceQuality(music)),
+      independence_group: musicSourceId,
+    };
     const musicPayload = [
       music.primary_genres.join(" "),
       music.emotional_tone,
       music.language_diversity.join(" "),
       Object.entries(music.personality_signals ?? {}).map(([key, value]) => `${key}:${value}`).join(" "),
     ].join(" ");
-    addSignalsFromText(map, musicPayload, `音乐/歌单解析：声音气候 ${compact(music.emotional_tone)}，信号 ${compact(Object.entries(music.personality_signals ?? {}).map(([key, value]) => `${key}:${value}`).join(" / "), 120)}`);
-    addEvidence(map, "transitional_space", "音乐作为情绪容器和过渡空间参与后续剧场");
+    const hasStructuredSignals = addStructuredBehaviorSignals(map, music.behavioral_signals, "音乐/歌单行为线索", musicMetadata);
+    if (!hasStructuredSignals) {
+      addSignalsFromText(
+        map,
+        musicPayload,
+        `音乐/歌单解析：声音气候 ${compact(music.emotional_tone)}，信号 ${compact(Object.entries(music.personality_signals ?? {}).map(([key, value]) => `${key}:${value}`).join(" / "), 120)}`,
+        musicMetadata,
+      );
+      addEvidence(map, "transitional_space", "音乐作为情绪容器和过渡空间参与后续剧场", musicMetadata);
+    }
   }
 
+  const socialOverall = part1.part1_data.narrative.social_posts_overall_pattern;
+  const socialAnalyzed = hasAnalyzedEvidence(socialOverall);
+  const socialGroup = `${part1.part1_id}:social_posts`;
+  const socialConfidence = evidenceConfidence(analysisEvidenceQuality(socialOverall), 0.68);
   const posts = part1.part1_data.narrative.social_posts_analysis ?? [];
-  for (const post of posts.slice(0, 3)) {
+  for (const post of socialAnalyzed ? posts.slice(0, 3) : []) {
     const postPayload = [
       post.text_content,
       post.emotional_tone,
@@ -190,20 +292,66 @@ function addMultimodalEvidence(map: Map<PsycheSignalKey, Set<string>>, part1: Pa
       post.self_presentation,
       post.psychological_signals.join(" "),
     ].join(" ");
-    addSignalsFromText(map, postPayload, `社交文字解析：${compact(post.expression_style)} / ${compact(post.emotional_tone)} / ${compact(post.psychological_signals.join("、"), 120)}`);
+    const postMetadata: EvidenceMetadata = {
+      source_kind: "social_post",
+      source_id: `${socialGroup}:post:${post.post_id}`,
+      temporal_scope: "historical_or_current_expression",
+      polarity: "support",
+      confidence: socialConfidence,
+      independence_group: socialGroup,
+    };
+    const hasStructuredSignals = addStructuredBehaviorSignals(
+      map,
+      post.behavioral_signals,
+      `社交动态 ${post.post_id} 行为线索`,
+      postMetadata,
+    );
+    if (!hasStructuredSignals) {
+      addSignalsFromText(
+        map,
+        postPayload,
+        `社交文字解析：${compact(post.expression_style)} / ${compact(post.emotional_tone)} / ${compact(post.psychological_signals.join("、"), 120)}`,
+        postMetadata,
+      );
+    }
   }
 
-  const overall = part1.part1_data.narrative.social_posts_overall_pattern;
-  if (overall) {
-    addSignalsFromText(
+  if (socialOverall && socialAnalyzed) {
+    const overallMetadata: EvidenceMetadata = {
+      source_kind: "social_post",
+      source_id: `${socialGroup}:overall`,
+      temporal_scope: "historical_or_current_expression",
+      polarity: "support",
+      confidence: socialConfidence,
+      independence_group: socialGroup,
+    };
+    const hasStructuredSignals = addStructuredBehaviorSignals(
       map,
-      [overall.dominant_emotion, overall.core_themes.join(" "), overall.expression_authenticity].join(" "),
-      `社交总体姿态：${compact(overall.dominant_emotion)} / ${compact(overall.core_themes.join("、"))}`,
+      socialOverall.behavioral_signals,
+      "社交总体行为线索",
+      overallMetadata,
     );
+    if (!hasStructuredSignals) {
+      addSignalsFromText(
+        map,
+        [socialOverall.dominant_emotion, socialOverall.core_themes.join(" "), socialOverall.expression_authenticity].join(" "),
+        `社交总体姿态：${compact(socialOverall.dominant_emotion)} / ${compact(socialOverall.core_themes.join("、"))}`,
+        overallMetadata,
+      );
+    }
   }
 
   const photo = part1.part1_data.narrative.precious_photo_analysis;
-  if (photo) {
+  if (hasAnalyzedEvidence(photo)) {
+    const photoSourceId = `${part1.part1_id}:precious_photo`;
+    const photoMetadata: EvidenceMetadata = {
+      source_kind: "photo",
+      source_id: photoSourceId,
+      temporal_scope: "remembered_or_symbolic_material",
+      polarity: "support",
+      confidence: evidenceConfidence(analysisEvidenceQuality(photo)),
+      independence_group: photoSourceId,
+    };
     const photoPayload = [
       photo.visual_content,
       photo.composition,
@@ -215,37 +363,103 @@ function addMultimodalEvidence(map: Map<PsycheSignalKey, Set<string>>, part1: Pa
       photo.psychological_interpretation.existential_stance,
       photo.psychological_interpretation.traits.join(" "),
     ].join(" ");
-    addSignalsFromText(map, photoPayload, `照片/珍视物解析：${compact(photo.composition)} / ${compact(photo.lighting)} / ${compact(photo.psychological_interpretation.core_themes.join("、"), 120)}`);
-    addEvidence(map, "projection_symbolic_sensitivity", "珍视照片被视作自我投射、关系位置和时间感的显影入口");
+    const hasStructuredSignals = addStructuredBehaviorSignals(map, photo.behavioral_signals, "照片/珍视物行为线索", photoMetadata);
+    if (!hasStructuredSignals) {
+      addSignalsFromText(
+        map,
+        photoPayload,
+        `照片/珍视物解析：${compact(photo.composition)} / ${compact(photo.lighting)} / ${compact(photo.psychological_interpretation.core_themes.join("、"), 120)}`,
+        photoMetadata,
+      );
+      addEvidence(map, "projection_symbolic_sensitivity", "珍视照片被视作自我投射、关系位置和时间感的显影入口", photoMetadata);
+    }
   }
 }
 
-function addTheaterEvidence(map: Map<PsycheSignalKey, Set<string>>, part2?: Part2Record) {
+function addTheaterEvidence(map: EvidenceMap, part2?: Part2Record) {
   if (!part2) return;
   for (const item of part2.act2_choices) {
-    const text = getTheaterAct2ChoiceText(item.selected) ?? item.selected;
-    addSignalsFromText(map, text, `剧场第 ${item.choice_id} 轮选择：${text}`);
+    const choice = item as typeof item & { option_text?: string; trait_signal?: string };
+    const text = getPart2ChoiceText(choice);
+    const traitSignal = compact(choice.trait_signal, 160);
+    const sourceId = `${part2.part2_id}:act2_choice:${item.choice_id}`;
+    const evidence = `剧场第 ${item.choice_id} 轮选择：${text}`;
+    const components = parseTraitSignalComponents(traitSignal);
+    let matchedCount = 0;
+    for (const component of components) {
+      matchedCount += addSignalsFromText(map, component.semantic, evidence, {
+        source_kind: "theater",
+        source_id: sourceId,
+        temporal_scope: "current_theater_session",
+        polarity: component.polarity,
+        confidence: 0.9,
+        independence_group: sourceId,
+      });
+    }
+    if (matchedCount === 0) {
+      addSignalsFromText(map, text, evidence, {
+        source_kind: "theater",
+        source_id: sourceId,
+        temporal_scope: "current_theater_session",
+        polarity: "support",
+        confidence: 0.72,
+        independence_group: sourceId,
+      });
+    }
   }
 }
 
-function buildEntries(map: Map<PsycheSignalKey, Set<string>>) {
-  return [...map.entries()]
-    .map(([key, evidence]) => ({
-      key,
-      ...SIGNAL_DEFINITIONS[key],
-      evidence: [...evidence].slice(0, 4),
-    }))
-    .sort((left, right) => right.evidence.length - left.evidence.length || left.key.localeCompare(right.key));
+function distinctCount(records: EvidenceRecord[], select: (record: EvidenceRecord) => string) {
+  return new Set(records.map(select)).size;
 }
 
-function strengthLabel(count: number) {
-  if (count >= 3) return "strong_signal";
-  if (count >= 2) return "medium_signal";
+function independentPolarityCount(records: EvidenceRecord[], polarity: EvidencePolarity) {
+  return new Set(records.filter((record) => record.polarity === polarity).map((record) => record.independence_group)).size;
+}
+
+function buildEntries(map: EvidenceMap): SignalEntry[] {
+  return [...map.entries()]
+    .map(([key, records]) => {
+      const evidence = [...new Set(records.map((record) => record.evidence))].slice(0, 4);
+      return {
+        key,
+        ...SIGNAL_DEFINITIONS[key],
+        evidence,
+        evidence_records: records,
+        independent_source_count: distinctCount(records, (record) => record.independence_group),
+        source_kind_count: distinctCount(records, (record) => record.source_kind),
+        support_count: independentPolarityCount(records, "support"),
+        counter_count: independentPolarityCount(records, "counter"),
+        temporal_scope: [...new Set(records.map((record) => record.temporal_scope))],
+      };
+    })
+    .sort((left, right) => {
+      const leftNetSupport = left.support_count - left.counter_count;
+      const rightNetSupport = right.support_count - right.counter_count;
+      return (
+        rightNetSupport - leftNetSupport ||
+        right.support_count - left.support_count ||
+        right.independent_source_count - left.independent_source_count ||
+        left.counter_count - right.counter_count ||
+        left.key.localeCompare(right.key)
+      );
+    });
+}
+
+function strengthLabel(entry: SignalEntry) {
+  const netSupport = entry.support_count - entry.counter_count;
+  if (entry.independent_source_count >= 3 && entry.support_count >= 3 && netSupport >= 2) return "strong_signal";
+  if (entry.independent_source_count >= 2 && entry.support_count >= 2 && netSupport >= 1) return "medium_signal";
   return "weak_signal";
 }
 
 function dominantTensions(entries: SignalEntry[]) {
-  const keys = new Set(entries.slice(0, 8).map((item) => item.key));
+  const keys = new Set(
+    entries
+      .filter((item) => item.support_count > item.counter_count)
+      .slice(0, 8)
+      .map((item) => item.key),
+  );
   const tensions: string[] = [];
   if (keys.has("object_distance") && keys.has("relationship_mirror_need")) {
     tensions.push("想被真正听见，但需要先确认靠近不会压缩自我边界");
@@ -263,7 +477,7 @@ function dominantTensions(entries: SignalEntry[]) {
 }
 
 function theaterSupplementTargets(entries: SignalEntry[]) {
-  const evidenceCount = new Map(entries.map((item) => [item.key, item.evidence.length]));
+  const entryByKey = new Map(entries.map((item) => [item.key, item]));
   const desiredOrder: PsycheSignalKey[] = [
     "desire_structure",
     "object_distance",
@@ -276,23 +490,53 @@ function theaterSupplementTargets(entries: SignalEntry[]) {
     "repetition_loop",
     "meaning_orientation",
   ];
-  const weak = desiredOrder.filter((key) => (evidenceCount.get(key) ?? 0) < 2);
-  const fallback = desiredOrder.filter((key) => evidenceCount.has(key)).slice(0, 4);
-  return (weak.length > 0 ? weak : fallback).slice(0, 4).map((key, index) => {
+  const candidates = desiredOrder
+    .map((key, order) => {
+      const entry = entryByKey.get(key);
+      const priority = entry?.counter_count ? 0 : !entry || strengthLabel(entry) === "weak_signal" ? 1 : strengthLabel(entry) === "medium_signal" ? 2 : 3;
+      return { key, order, entry, priority };
+    })
+    .sort((left, right) => left.priority - right.priority || left.order - right.order);
+  const needsSampling = candidates.filter((candidate) => candidate.priority <= 1);
+  const selected = (needsSampling.length > 0 ? needsSampling : candidates.filter((candidate) => candidate.entry)).slice(0, 4);
+  const roleByKey: Partial<Record<PsycheSignalKey, string>> = {
+    action_entry: "行动入口",
+    object_distance: "关系距离",
+    relationship_mirror_need: "关系距离",
+    desire_structure: "欲望与边界",
+    boundary_integrity: "欲望与边界",
+    time_gravity: "动机与时间感",
+    defense_style: "潜在防御",
+  };
+
+  return selected.map(({ key, entry }) => {
     const definition = SIGNAL_DEFINITIONS[key];
-    const role = ["行动入口", "关系距离", "欲望与边界", "动机/时间感/潜在防御"][index] ?? "补采样";
-    return `${role}：${key} / ${definition.zhName}。前 13 题与多模态尚未采足这一层，需要在小说选择里让用户用具体行动补充。`;
+    const role = roleByKey[key] ?? "补采样";
+    let reason = "尚无独立来源支持";
+    if (entry?.support_count && entry.counter_count) {
+      reason = `已有支持与反证（支持 ${entry.support_count} / 反证 ${entry.counter_count}）`;
+    } else if (entry?.counter_count) {
+      reason = `目前只有反证（反证 ${entry.counter_count}）`;
+    } else if (entry) {
+      reason = `目前只有 ${entry.independent_source_count} 个独立来源支持`;
+    }
+    return `${role}：${key} / ${definition.zhName}。前 13 题与多模态尚未采足或存在冲突：${reason}，需要在小说选择里用具体行动补充或交叉验证。`;
   });
 }
 
 function narrativeInstruction(entries: SignalEntry[]) {
-  const top = entries.slice(0, 5).map((item) => `${item.key}/${item.zhName}`).join("、") || "meaning_orientation/意义取向";
+  const top = entries
+    .filter((item) => item.support_count > item.counter_count)
+    .slice(0, 5)
+    .map((item) => `${item.key}/${item.zhName}`)
+    .join("、") || "meaning_orientation/意义取向";
   return [
     "剧场生成指令：小说情节必须从精神元数据生长，而不是从原始素材清单生长。",
     `优先围绕这些核心信号建立短篇小说处境：${top}。`,
     "剧场四轮的核心任务不是重复 13 题，而是补足前 13 题和多模态之后仍不够清楚的精神向量。",
     "开场长文要把这些信号转成一个可进入的处境：空间、动作、关系距离、声音气候、核心物件和未完成问题。",
     "四轮选择分别采样行动入口、关系距离、欲望与边界、动机/时间感/潜在防御。",
+    "若某个信号已有反证或只有单一独立来源，剧场应优先交叉验证，不得把派生描述的数量当作确定性。",
     "不要把 13 题答案、歌单、社交文字或照片描述逐项搬进可见文本；只能把它们转译为物件、声音、天气、距离、路、窗、门、岸线或天体现象。",
     "旧版 Act3 / 镜面追问只作为历史兼容字段，不参与新版剧场生成，也不能作为精神信号证据。",
   ].join("\n");
@@ -322,8 +566,15 @@ export function buildPsycheMetadataDossier(part1: Part1Record, part2?: Part2Reco
   const profile = buildPsycheMetadataProfile(part1, part2);
   const entries = profile.selectedSignals.slice(0, 9);
   const signalLines = entries.map((item) => {
-    const evidence = item.evidence.map((row) => `    · ${row}`).join("\n");
-    return `- ${item.key} / ${item.zhName} / ${strengthLabel(item.evidence.length)}：${item.description}\n${evidence}`;
+    const evidence = item.evidence_records
+      .slice(0, 6)
+      .map(
+        (record) =>
+          `    · [${record.polarity === "counter" ? "反证" : "支持"}；${record.source_kind}/${record.source_id}；独立组 ${record.independence_group}；置信 ${record.confidence.toFixed(2)}] ${record.evidence}${record.alternative_explanation ? `；备选解释：${record.alternative_explanation}` : ""}`,
+      )
+      .join("\n");
+    const counts = `独立来源 ${item.independent_source_count}；来源类型 ${item.source_kind_count}；支持 ${item.support_count}；反证 ${item.counter_count}；时间范围 ${item.temporal_scope.join(" / ")}`;
+    return `- ${item.key} / ${item.zhName} / ${strengthLabel(item)}：${item.description}（${counts}）\n${evidence}`;
   });
   const tensionLines = profile.dominantTensions.map((item) => `- ${item}`);
   const supplementLines = profile.theaterSupplementTargets.map((item) => `- ${item}`);

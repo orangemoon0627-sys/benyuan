@@ -187,7 +187,7 @@ test("deterministic constellation includes evidence-based psychoanalytic star tr
 
   assert.match(constellation.narrative_overview, /边界|轨道/u);
   assert.match(constellation.narrative_overview, /荣格|温尼科特|客体距离|防御/u);
-  assert.match(constellation.narrative_overview, /不是.*诊断|不是.*缺陷|不是.*冷淡/u);
+  assert.doesNotMatch(constellation.narrative_overview, /潜意识剥离过程|第一层线索|第二层线索|这次推荐来自/u);
   assert.doesNotMatch(constellation.narrative_overview, /人格障碍|心理疾病|抑郁症|焦虑症|创伤诊断/u);
   assert.ok(constellation.narrative_overview.length > 700);
 });

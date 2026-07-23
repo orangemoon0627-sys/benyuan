@@ -98,10 +98,11 @@ assert.doesNotMatch(chooseAct2Body, /finishTheaterAndGenerateConstellation\(\)|e
 assert.match(flowModel, /case \.theaterAct2:[\s\S]*?theaterChoiceIndex = 0/, "native preview act2 must open the first visible theater test node");
 assert.match(flowModel, /var requiredTheaterChoiceCount:\s*Int[\s\S]*?min\(4,\s*theater\?\.theaterScript\.act2\.choices\.count \?\? 0\)/, "native preview act2 must require four theater rounds when available");
 assert.match(flowModel, /var canEnterConstellationGenerationFromTheater:[\s\S]*?choiceLogs\.count >= requiredTheaterChoiceCount/, "native theater must only reveal constellation generation after all four rounds are answered");
-assert.match(actions, /guard let choice = currentTheaterChoice,[\s\S]*?choiceLogs\.count < requiredTheaterChoiceCount/, "native theater must ignore extra option taps after the four required rounds");
-assert.match(actions, /if choiceLogs\.count < requiredTheaterChoiceCount[\s\S]*?theaterChoiceIndex = choiceLogs\.count/, "native theater must advance through the first three Act2 rounds and stop after the fourth");
+assert.match(actions, /guard let choice = currentTheaterChoice,[\s\S]*?theaterChoiceIndex < requiredTheaterChoiceCount/, "native theater must ignore option taps outside the four required rounds");
+assert.match(actions, /func nextTheaterChoice\(\)[\s\S]*?theaterChoiceIndex \+= 1/, "native theater must advance only after an explicit next action");
+assert.match(actions, /func previousTheaterChoice\(\)[\s\S]*?theaterChoiceIndex -= 1/, "native theater must allow backtracking through completed rounds");
 assert.doesNotMatch(fixtures, /question:\s*"让镜面停在一个方向上："/, "native preview Act3 visible question must not use the old mirror-direction wording");
-for (const motif of ["没有寄出的信", "旧音乐", "照片轮廓", "暗金轨道"]) {
+for (const motif of ["照相馆", "纸袋", "清运人员", "柜台抽屉"]) {
   assert.match(fixtures, new RegExp(motif), `native preview theater must carry motif ${motif} through the continuous theater route`);
 }
 for (const expected of [
@@ -125,7 +126,7 @@ assert.doesNotMatch(fixtures, /The Moonlit Seeker/, "native preview fixtures mus
 assert.match(flowModel, /previewConstellation\(archetypeVariant:\s*BenyuanShellConfig\.nativePreviewArchetypeVariant\)/, "native preview flow must apply the requested archetype variant only in debug preview");
 assert.match(flowModel, /case \.theaterAct2:[\s\S]*?theaterPhase = \.act2/, "native preview flow must be able to capture theater act2 directly");
 assert.doesNotMatch(flowModel, /case \.theaterAct3|case \.theaterEpilogue|theaterPhase = \.epilogue/, "native preview flow must not expose removed theater act3 or epilogue captures");
-assert.match(fixtures, /sceneDescription:\s*"[\s\S]*?很深的月场边缘[\s\S]*?\\n\\n[\s\S]*?那段旧音乐[\s\S]*?\\n\\n[\s\S]*?一段只能由你继续往下走的小说/, "native preview Act1 must use a longer private-story scene with paragraph breaks");
+assert.match(fixtures, /sceneDescription:\s*"[\s\S]*?即将清空的照相馆[\s\S]*?\\n\\n[\s\S]*?旧音箱[\s\S]*?\\n\\n[\s\S]*?故事从你的第一个动作开始/, "native preview Act1 must use a concrete private-story scene with paragraph breaks");
 assert.doesNotMatch(fixtures, /售票|检票|座位|观众|演员|幕布|引座员/, "native preview Act1 should not literalize the theater as a physical venue");
 assert.match(script, /stage:\s*"theater-act2"[\s\S]*?waitMs:\s*10000/, "native preview screenshots should wait for theater act2 to settle before capture");
 

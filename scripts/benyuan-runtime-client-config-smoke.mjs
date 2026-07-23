@@ -17,7 +17,7 @@ for (const file of files) {
 }
 
 const webWorkflow = readFileSync(path.join(root, "src/components/benyuan-part1-workflow.tsx"), "utf8");
-assert.match(webWorkflow, /model:\s*"gpt-5\.5"/, "web workflow should keep the selected model visible");
+assert.match(webWorkflow, /model:\s*"gpt-5\.6-terra"/, "web workflow should keep the selected Terra model visible");
 assert.doesNotMatch(webWorkflow, /live:\s*true/, "web workflow must not force live mode from the client");
 assert.doesNotMatch(webWorkflow, /requestRuntime\.live/, "web workflow must not override server-side live gating");
 assert.doesNotMatch(webWorkflow, /requestRuntime\.api_key/, "web workflow must not forward client-side API keys");

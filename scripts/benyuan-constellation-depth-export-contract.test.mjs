@@ -19,6 +19,7 @@ registerHooks({
 
 const { generateDeterministicConstellation } = await import("../src/lib/benyuan-v3-engine.ts");
 const { buildAnalystUserPrompt, buildFastAnalystUserPrompt } = await import("../src/lib/benyuan-v3-prompts.ts");
+const { enrichGrowthSuggestions } = await import("../src/lib/benyuan-v3-report-profile.ts");
 
 const nativeConstellationView = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanNativeConstellationView.swift", "utf8");
 const nativeRenderer = readFileSync("mobile/benyuan_origin_ios_shell/swiftui-starter/BenyuanConstellationImageRenderer.swift", "utf8");
@@ -148,6 +149,9 @@ test("constellation prompts require unconscious-level evidence, not only poetic 
     assert.match(prompt, /意外感|不自知|尚未意识/u);
     assert.match(prompt, /直接定性|关键性的定性|不要让用户解码/u);
     assert.match(prompt, /引经据典|思想旁证|哲学与文艺旁证/u);
+    assert.match(prompt, /稳定回答结构、当下状态、审美投射、剧场反应/u);
+    assert.match(prompt, /至少.*两类证据|交叉两类证据/u);
+    assert.match(prompt, /出乎意料但可核验/u);
   }
 });
 
@@ -156,14 +160,15 @@ test("deterministic constellation speaks in direct psychoanalytic conclusions", 
   const dimensionTexts = Object.values(constellation.seven_dimensions).map((dimension) => dimension.interpretation);
 
   assert.match(constellation.narrative_overview, /潜意识|意识之外/u);
-  assert.match(constellation.narrative_overview, /第一层线索|图像线索/u);
-  assert.match(constellation.narrative_overview, /第二层线索|选择线索/u);
-  assert.match(constellation.narrative_overview, /第三层线索|剧场线索/u);
-  assert.match(constellation.narrative_overview, /这不是单纯的审美偏好|不是随机的选择/u);
+  assert.match(constellation.narrative_overview, /图像|画面|照片/u);
+  assert.match(constellation.narrative_overview, /选择|防御/u);
+  assert.match(constellation.narrative_overview, /剧场|身体路线/u);
   assert.match(constellation.narrative_overview, /防御|欲望|投射|重复|阴影|客体关系/u);
   assert.match(constellation.narrative_overview, /荣格|温尼科特|弗洛伊德|拉康|加缪|尼采/u);
   assert.match(constellation.narrative_overview, /你真正想确认的是|你反复保护的是|你不自知地/u);
-  assert.match(constellation.narrative_overview, /所以，.*不是.*而是/u);
+  assert.doesNotMatch(constellation.narrative_overview, /由此成立|这些材料指向|精神分析式阅读|潜意识剥离过程|第一层线索|第二层线索|第三层线索|第四层线索/u);
+  assert.doesNotMatch(constellation.narrative_overview, /meaning_seeking|aesthetic_sensitivity|emotional_depth|relationship_need|action_tendency|\bboundary\b/u);
+  assert.doesNotMatch(constellation.narrative_overview, /。、|！？。/u);
   assert.ok(dimensionTexts.every((text) => /^结论：/u.test(text)), "dimension interpretations must start with a direct conclusion");
   assert.ok(dimensionTexts.every((text) => /潜在防御：|潜在意图：/u.test(text)), "dimension interpretations must name intention or defense");
   assert.ok(dimensionTexts.every((text) => /盲点：/u.test(text)), "dimension interpretations must name a concrete blind spot");
@@ -194,8 +199,10 @@ test("saved constellation image is a full long report, not a compact share card"
   assert.doesNotMatch(nativeRenderer, /drawDimensionBars|星际谱系|drawLineageBlock/u, "saved image must not keep the old bar-score or lineage block");
   assert.match(nativeRenderer, /drawGrowth\([\s\S]*?suggestion\.description/u, "saved image path section must explain the path's role before the action");
   assert.match(nativeRenderer, /drawRecommendations\([\s\S]*?reason/u, "saved image resonance section must include recommendation reasons, not only work names");
-  assert.doesNotMatch(nativeRenderer, /补足什么|照见什么|适合在什么时候靠近|这条路径的作用/u, "saved image should not expose stiff resonance labels");
-  assert.match(nativeRenderer, /为什么做|会带来什么/u, "saved image path should label purpose and expected effect");
+  assert.doesNotMatch(nativeRenderer, /补足什么|照见什么|适合在什么时候靠近|这条路径的作用|为什么做|可以尝试|会带来什么/u, "saved image should not expose explanatory scaffolding labels");
+  assert.match(nativeRenderer, /growthExpectedEffect/u, "saved image path should preserve expected-effect content without a helper heading");
+  assert.match(nativeRenderer, /drawCardLine\(growthActionText\(step\)/u, "saved image path should draw only the action in its primary line");
+  assert.doesNotMatch(nativeRenderer, /drawCardLine\(step,/u, "saved image path must not redraw purpose and effect inside the action line");
   assert.match(nativeRenderer, /userName/u, "saved image must be able to include the user's name");
   assert.match(nativeRenderer, /celestialCoreAssetName/u, "saved image must reuse the local archetype subject artwork");
   assert.match(nativeRenderer, /footerTop/u, "saved image footer should be anchored to the real bottom of the poster");
@@ -204,4 +211,25 @@ test("saved constellation image is a full long report, not a compact share card"
   assert.match(nativeRenderer, /发给想一起探索的人/u);
   assert.match(nativeActions, /星图长图已保存到相册/u);
   assert.doesNotMatch(nativeActions, /星图摘要已保存/u);
+});
+
+test("growth normalization requires both purpose and expected effect", () => {
+  const [purposeOnly, effectOnly] = enrichGrowthSuggestions([
+    {
+      title: "辨认边界",
+      description: "把关系中的距离变得可沟通。",
+      actionable_steps: ["先说出一个可以接受的距离，用来让边界进入对话"],
+    },
+    {
+      title: "落回现实",
+      description: "把内在判断转成现实动作。",
+      actionable_steps: ["先做一个十分钟的小实验，这样做会让方向变得可观察"],
+    },
+  ]);
+
+  for (const suggestion of [purposeOnly, effectOnly]) {
+    const step = suggestion.actionable_steps[0];
+    assert.match(step, /为了|用来|目的/u, "every path step must state its purpose");
+    assert.match(step, /这样做会|会让你|帮助你|从而|成效/u, "every path step must state its expected effect");
+  }
 });

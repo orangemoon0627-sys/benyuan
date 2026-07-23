@@ -12,6 +12,20 @@ const selectedPacks = (process.env.BENYUAN_PACKS ?? 'A,B,C')
 const outputDir = path.join(process.cwd(), 'output');
 const outputPath = path.join(outputDir, 'benyuan-pack-benchmark.json');
 const manifestPath = path.join(process.cwd(), 'src', 'lib', 'fixtures', 'benyuan-v3-test-packs.json');
+const expectedModel = process.env.BENYUAN_EXPECT_MODEL;
+const canonicalArchetypes = new Set([
+  '远潮观月者',
+  '星图筑序者',
+  '月港栖岸者',
+  '存在游牧者',
+  '雨窗抒写者',
+  '事件视界沉潜者',
+  '星云织梦者',
+  '日冕引燃者',
+  '类地栖居者',
+  '深空锚定者',
+]);
+let authToken;
 
 function benchmarkSnapshotPath(selectedPacks, generatedAt) {
   const stamp = generatedAt.replace(/[:]/g, '-').replace(/\..+$/, '');
@@ -54,7 +68,11 @@ async function loadPacks() {
 }
 
 async function requestJson(pathname, init) {
-  const response = await fetch(`${baseUrl}${pathname}`, init);
+  const headers = new Headers(init?.headers);
+  if (authToken) {
+    headers.set('authorization', `Bearer ${authToken}`);
+  }
+  const response = await fetch(`${baseUrl}${pathname}`, { ...init, headers });
   const contentType = response.headers.get('content-type') ?? '';
   const payload = contentType.includes('application/json') ? await response.json() : await response.text();
   if (!response.ok) {
@@ -85,11 +103,30 @@ function durationSeconds(startedAt) {
   return Number(((now() - startedAt) / 1000).toFixed(1));
 }
 
+function requireLiveRuntime(label, payload) {
+  if (payload?.runtime?.mode !== 'live') {
+    throw new Error(`${label} returned ${payload?.runtime?.mode ?? 'missing'} runtime: ${payload?.runtime?.error ?? 'unknown error'}`);
+  }
+  if (expectedModel && payload.runtime.model !== expectedModel) {
+    throw new Error(`${label} used ${payload.runtime.model ?? 'missing model'}, expected ${expectedModel}`);
+  }
+}
+
 async function runPack(packId, packs) {
   const pack = packs[packId];
   if (!pack) throw new Error(`unknown pack: ${packId}`);
 
   console.log(`\n=== ${packId} / ${pack.label} ===`);
+
+  const auth = await requestJson('/api/auth/anonymous', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
+  });
+  if (typeof auth?.session?.token !== 'string' || auth.session.token.length === 0) {
+    throw new Error('anonymous benchmark auth did not return a session token');
+  }
+  authToken = auth.session.token;
 
   const events = [];
   const uploadStarted = now();
@@ -124,6 +161,7 @@ async function runPack(packId, packs) {
     body: JSON.stringify({ part1_id: part1.part1_id }),
   }, { label: 'multimodal', pack: packId, events, retries: 2 });
   const multimodalDuration = durationSeconds(multimodalStarted);
+  requireLiveRuntime('multimodal', multimodal);
   console.log(`multimodal: ${multimodalDuration}s`);
 
   const theaterStarted = now();
@@ -133,9 +171,17 @@ async function runPack(packId, packs) {
     body: JSON.stringify({ part1_id: part1.part1_id }),
   }, { label: 'theater', pack: packId, events, retries: 1 });
   const theaterDuration = durationSeconds(theaterStarted);
+  requireLiveRuntime('theater', theater);
   console.log(`theater generate: ${theaterDuration}s -> ${theater.theater_script_id}`);
 
   const theaterRecord = await requestJson(`/api/theater/${encodeURIComponent(theater.theater_script_id)}`);
+  const theaterChoices = theaterRecord?.theater_script?.act2?.choices;
+  if (!Array.isArray(theaterChoices) || theaterChoices.length !== 4 || theaterChoices.some((choice) => choice?.options?.length !== 4)) {
+    throw new Error('theater must contain exactly four rounds with four options each');
+  }
+  if ((theaterRecord?.theater_script?.act3?.mirror_questions?.length ?? 0) !== 0) {
+    throw new Error('new theater flow must keep legacy Act3 questions empty');
+  }
   const act2Choices = theaterRecord.theater_script.act2.choices.map((choice, index) => ({
     choice_id: choice.choice_id,
     selected: choice.options[0]?.id,
@@ -183,9 +229,27 @@ async function runPack(packId, packs) {
     body: JSON.stringify({ part1_id: part1.part1_id, part2_id: part2.part2_id }),
   }, { label: 'constellation', pack: packId, events, retries: 1 });
   const constellationDuration = durationSeconds(constellationStarted);
+  requireLiveRuntime('constellation', constellation);
   console.log(`constellation: ${constellationDuration}s -> ${constellation.constellation_id}`);
 
   const report = await requestJson(`/api/constellation/${encodeURIComponent(constellation.constellation_id)}`);
+  const psyche = report.constellation;
+  if (!canonicalArchetypes.has(psyche?.archetype?.name)) {
+    throw new Error(`constellation returned non-canonical archetype: ${psyche?.archetype?.name ?? 'missing'}`);
+  }
+  if (Object.keys(psyche?.seven_dimensions ?? {}).length !== 7) {
+    throw new Error('constellation must contain all seven dimensions');
+  }
+  if (!psyche?.narrative_overview || psyche.narrative_overview.length < 200) {
+    throw new Error('constellation narrative is missing or too short');
+  }
+  if ((psyche?.core_tensions?.length ?? 0) < 2 || (psyche?.growth_suggestions?.length ?? 0) < 3) {
+    throw new Error('constellation tensions or growth paths are incomplete');
+  }
+  const recommendations = Object.values(psyche?.recommendations ?? {}).flat();
+  if (recommendations.length < 6 || recommendations.some((item) => !item?.reason?.trim())) {
+    throw new Error('constellation recommendations or reasons are incomplete');
+  }
 
   return {
     pack: packId,

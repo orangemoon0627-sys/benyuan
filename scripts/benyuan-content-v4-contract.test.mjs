@@ -56,6 +56,8 @@ function createPart1Record() {
         cinema: "A4-1",
         inspiration_scene: "A5-2",
         music_analysis: {
+          analysis_status: "analyzed",
+          evidence_quality: "high",
           primary_genres: ["ambient", "post-rock"],
           emotional_tone: "melancholic_introspective",
           era_distribution: { "2000s": 35, "2010s": 45 },
@@ -84,11 +86,15 @@ function createPart1Record() {
           },
         ],
         social_posts_overall_pattern: {
+          analysis_status: "analyzed",
+          evidence_quality: "high",
           dominant_emotion: "melancholic",
           core_themes: ["solitude", "meaning", "sea"],
           expression_authenticity: "high",
         },
         precious_photo_analysis: {
+          analysis_status: "analyzed",
+          evidence_quality: "high",
           visual_content: "lone_figure_seascape_sunset",
           composition: "centered_figure_vast_background",
           lighting: "backlit_silhouette",
@@ -126,10 +132,10 @@ function createPart2Record() {
     theater_script_id: "theater_content_v4",
     created_at: "2026-05-09T00:00:00.000Z",
     act2_choices: [
-      { choice_id: 1, selected: "1C", hesitation_time: 4.2, timestamp: "2026-05-09T00:01:00.000Z" },
-      { choice_id: 2, selected: "2A", hesitation_time: 8.6, timestamp: "2026-05-09T00:02:00.000Z" },
-      { choice_id: 3, selected: "3D", hesitation_time: 12.1, timestamp: "2026-05-09T00:03:00.000Z" },
-      { choice_id: 4, selected: "4C", hesitation_time: 10.4, timestamp: "2026-05-09T00:04:00.000Z" },
+      { choice_id: 1, selected: "1C", option_text: "沿着回声回应一句话，再等它回来", trait_signal: "emotional_expression + relationship_need", hesitation_time: 4.2, timestamp: "2026-05-09T00:01:00.000Z" },
+      { choice_id: 2, selected: "2A", option_text: "停下脚步，看那个人如何对待照片", trait_signal: "observation + boundary_integrity", hesitation_time: 8.6, timestamp: "2026-05-09T00:02:00.000Z" },
+      { choice_id: 3, selected: "3D", option_text: "沿着暗金轨道，寻找没有标出的出口", trait_signal: "exploration + meaning_seeking", hesitation_time: 12.1, timestamp: "2026-05-09T00:03:00.000Z" },
+      { choice_id: 4, selected: "4C", option_text: "把保护自己的边界放到暗金轨道上", trait_signal: "boundary_integrity + self_protection", hesitation_time: 10.4, timestamp: "2026-05-09T00:04:00.000Z" },
     ],
     act3_responses: [],
     metadata: {
@@ -178,30 +184,32 @@ test("literature options pair philosophical works with everyday self-recognition
   }
 });
 
-test("director prompt v4 requires continuous destiny-like theater generated from collected traces", () => {
-  assert.match(DIRECTOR_SYSTEM_PROMPT, /剧场导演 Agent Prompt v4/);
+test("director prompt v5 requires a concrete continuous private story generated from collected traces", () => {
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /剧场导演 Agent Prompt v5/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /用户的回答、审美素材与精神倾向/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /一条镜头连续推进/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /宿命感不是预言/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /物件、声音、颜色或距离/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /反复母题/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /私人小说感/);
-  assert.match(DIRECTOR_SYSTEM_PROMPT, /小说片段、心理寓言和象征性处境/);
-  assert.match(DIRECTOR_SYSTEM_PROMPT, /第四轮问题应帮助区分|心性辨认|动机辨认/);
-  assert.match(DIRECTOR_SYSTEM_PROMPT, /二阶追问|心理补问|动机辨认|边界辨认|关系姿态/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /具体人物、明确地点、当下目标、现实阻力、时间压力和行动后果/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /第四轮问题应帮助区分|剧情高潮中的二阶采样/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /现实决定|关系姿态/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /统筹而非填空/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /私小说/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /卷入事件、处理关系、面对代价、作出收束决定/);
+  assert.match(DIRECTOR_SYSTEM_PROMPT, /精神向量从行动里推断/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /歌单是什么声音风格|潜在愿望|潜在欲望/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /长度 500-800 字/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /\\n\\n 分隔/);
   assert.match(DIRECTOR_SYSTEM_PROMPT, /禁止把“月下剧场”字面化成售票、检票、座位、观众、演员、幕布、舞台、引座员/);
 
   const prompt = buildDirectorUserPrompt(createPart1Record());
-  assert.match(prompt, /Act2 是四轮连续剧场题/);
-  assert.match(prompt, /第四轮把前三轮选择补成动机、边界、时间感或行动确认/);
-  assert.match(prompt, /上传素材不是素材库/);
+  assert.match(prompt, /Act2 是四轮连续剧情/);
+  assert.match(prompt, /第一轮卷入事件，第二轮处理人物关系，第三轮面对选择代价，第四轮作出收束决定/);
+  assert.match(prompt, /上传素材要成为反复母题/);
   assert.match(prompt, /必须先统筹再创作/);
-  assert.match(prompt, /歌单不是背景乐/);
+  assert.match(prompt, /歌单要先分析风格、心境、欲望和防御/);
   assert.match(prompt, /审美动机、自我投射和关系距离/);
   assert.match(prompt, /深夜的海像一封没有寄出的信/);
   assert.match(prompt, /lone_figure_seascape_sunset/);
@@ -212,34 +220,38 @@ test("fast director prompt preserves multimodal evidence and psychoanalytic samp
   const fallback = generateDeterministicTheaterScript(record);
   const prompt = buildFastDirectorUserPrompt(record, fallback);
 
-  assert.match(prompt, /多模态线索/);
-  assert.match(prompt, /音乐: ambient \/ post-rock；melancholic_introspective/);
-  assert.match(prompt, /社交: 深夜的海像一封没有寄出的信/);
-  assert.match(prompt, /照片: lone_figure_seascape_sunset/);
-  assert.match(prompt, /act2_lenses 四条分别写进入、改变距离、触碰或放下、动机\/边界\/时间感\/行动确认的补采样/);
-  assert.match(prompt, /精神分析概念卡只用于强化叙事种子/);
-  assert.match(prompt, /关系距离、边界、暗面、轨道、回声或核心物件/);
-  assert.match(prompt, /先把回答、音乐、照片、珍视物和社交文本统筹成一个私小说处境/);
+  assert.match(prompt, /受控来源上下文/);
+  assert.match(prompt, /音乐：analyzed\/high；ambient \/ post-rock；melancholic_introspective/);
+  assert.match(prompt, /社交：[\s\S]*深夜的海像一封没有寄出的信/);
+  assert.match(prompt, /照片：[\s\S]*lone_figure_seascape_sunset/);
+  assert.match(prompt, /卷入事件 → 处理关系 → 面对代价 → 收束决定/);
+  assert.match(prompt, /trait_signal 内分别采样行动入口、关系距离、欲望与边界、动机\/时间感\/潜在防御/);
+  assert.match(prompt, /每轮 4 个等价选项/u);
+  assert.match(prompt, /精神分析概念卡只用于后台设计/);
+  assert.match(prompt, /事件压力、关系分寸、人物行动和后果/);
+  assert.match(prompt, /先把回答、音乐、照片、珍视物和社交文本统筹成一个私小说事件/);
 });
 
-test("fallback theater is a continuous role-play scene rather than a questionnaire", () => {
+test("fallback theater is a concrete continuous story rather than an abstract questionnaire", () => {
   const theater = generateDeterministicTheaterScript(createPart1Record());
   const visibleText = JSON.stringify(theater);
-  const actionStart = /^(靠近|停下|沿着|伸手|绕开|留在|回望|推开|等待|把|走向)/;
+  const actionStart = /^(先|推门|把|绕到|请|走到|发|暂时|带走|只拿|拍下)/;
 
-  assert.match(theater.act1.scene_description, /黑色潮水|远处海面|没有直接说出口的愿望|想被真正听见|墙后/);
-  assert.match(theater.act1.scene_description, /统筹成一条可以继续走下去的路|第一处微光|会先保护什么/);
+  assert.match(theater.act1.scene_description, /即将清空|写着你的名字|清运人员|二十分钟/);
+  assert.match(theater.act1.scene_description, /故事从你的第一个动作开始|登记簿/);
   assert.match(theater.act1.scene_description, /\n\n/);
   assert.equal(theater.act2.choices.length, 4);
   assert(theater.act2.choices.every((choice) => choice.options.length === 4), "fallback theater must expose four options for each of the four rounds");
-  assert.match(theater.act2.choices[1].scene, /窄桥|模糊的人影|靠近保持清晰|空气里最细微的变化/);
-  assert.match(theater.act2.choices[3].scene, /最后一道门|理解你刚才的选择|星图/);
+  assert.match(theater.act2.choices[1].scene, /旧照片|小钥匙|街对面|门外/);
+  assert.match(theater.act2.choices[3].scene, /清运车|最后五分钟|明确的收尾/);
   assert(theater.act2.choices.every((choice) => choice.options.every((option) => actionStart.test(option.text))), "act2 options must start with embodied actions");
   assert.doesNotMatch(visibleText, /镜像测试|选择最接近|你已经知道答案了|正确的答案/);
+  assert.doesNotMatch(visibleText, /理解你刚才的选择|星图应该先看|系统正在|正在分析你/);
   assert.doesNotMatch(visibleText, /售票|检票|座位|观众|演员|幕布|引座员/);
   assert.doesNotMatch(visibleText, /lone_figure_seascape_sunset|melancholic_introspective|post-rock|ambient；|照片里|歌单里|社交动态里|剧场先把/);
-  assert.match(theater.act3.mirror_questions[0].dialogue, /一句被写下|潮声|靠近|原因/);
+  assert.match(theater.act3.mirror_questions[0].dialogue, /一句被写下|便条|靠近|原因/);
   assert.doesNotMatch(visibleText, /让镜面停在一个方向上/);
+  assert.doesNotMatch(JSON.stringify(theater.act2), /把保护自己的边界|允许未知靠近|交给星图|暗金轨道/);
 });
 
 test("analyst prompt and fallback constellation bind star language to psychoanalytic and philosophical discernment", () => {
@@ -262,15 +274,15 @@ test("analyst prompt and fallback constellation bind star language to psychoanal
   assert.match(reportText, /荣格|温尼科特|加缪|尼采|海德格尔|卡夫卡|博尔赫斯|卡尔维诺/);
   assert.match(overview, /沿着回声回应一句话|回声回应/);
   assert.match(overview, /没有标出的出口|第三条细线/);
-  assert.match(overview, /把保护自己的边界放到暗金轨道上|四轮|补足/);
+  assert.match(overview, /把保护自己的边界放到暗金轨道上|剧场|身体路线/);
   assert.match(overview, /停顿|停留|迟疑|慢/);
   assert.match(overview, /歌单|声音|低频|无词|后摇|氛围|心境|潜在欲望|防御/u);
   assert.match(overview, /珍视|画面|投射|关系位置|未完成愿望|不会立刻侵入你的空间/u);
-  assert.match(overview, /社交文字|真实|隐喻|低强度求回应|精神状态|心理动机|不想让这份需要显得太直接/u);
+  assert.match(overview, /社交文字|真实|隐喻|低强度.*回应|表达姿态|控制它的亮度/u);
   assert.doesNotMatch(reportText, /孤独求索者|敏感而复杂的人|关系哲学“/);
   assert.doesNotMatch(overview, /你给人的核心印象|你给人的第一印象/);
   assert(fallback.recommendations.books.some((item) => /精神旁证|存在主义|个体化|时间|动机|边界|辨认/.test(item.reason)));
-  assert.match(ANALYST_SYSTEM_PROMPT, /动作\s*→\s*目的\s*→\s*预期成效|动作 \+ 目的 \+ 预期成效/);
+  assert.match(ANALYST_SYSTEM_PROMPT, /自然包含动作、目的与可能产生的变化/u);
   assert.doesNotMatch(ANALYST_SYSTEM_PROMPT, /补足什么|照见什么|什么时候靠近/);
   assert.ok(
     fallback.growth_suggestions.every((item) =>
@@ -306,6 +318,8 @@ test("same canonical archetype still personalizes report and recommendations fro
   variantPart1.part1_id = "part1_content_v4_variant";
   variantPart1.user_id = "usr_content_v4_variant";
   variantPart1.part1_data.aesthetics.music_analysis = {
+    analysis_status: "analyzed",
+    evidence_quality: "high",
     primary_genres: ["electronic", "indie"],
     emotional_tone: "warm_hopeful",
     era_distribution: { "2010s": 40, "2020s": 60 },
@@ -325,11 +339,15 @@ test("same canonical archetype still personalizes report and recommendations fro
     },
   ];
   variantPart1.part1_data.narrative.social_posts_overall_pattern = {
+    analysis_status: "analyzed",
+    evidence_quality: "high",
     dominant_emotion: "warm_hopeful",
     core_themes: ["movement", "renewal", "daily_life"],
     expression_authenticity: "high",
   };
   variantPart1.part1_data.narrative.precious_photo_analysis = {
+    analysis_status: "analyzed",
+    evidence_quality: "high",
     visual_content: "morning_bicycle_tree_shadow",
     composition: "moving_subject_open_path",
     lighting: "soft_morning_light",

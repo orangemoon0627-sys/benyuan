@@ -2,7 +2,7 @@ import type { PsycheConstellation } from "@/lib/benyuan-v3-types";
 
 export const BENYUAN_V3_CONSTELLATION_ENGINE = {
   mode: "hybrid-structured.v1",
-  promptVersion: "analyst.v4.hybrid.1",
+  promptVersion: "analyst.v5.hybrid.1-behavior-profile-v2",
   normalizationVersion: "constellation-normalize.v2",
   safetyVersion: "supportive-boundary.v1",
   deltaDoc: "/Users/fanhao/Documents/Playground/docs/benyuan-content-delta-2026-03-11.md",
@@ -27,8 +27,12 @@ function fingerprint(value: string | null | undefined) {
   return cleanText(value ?? "").toLocaleLowerCase("zh-CN").replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
-function hasPurposeAndEffect(value: string) {
-  return /为了|用来|让你|帮助你|这样做会|从而|会让|目的|成效/u.test(value);
+function hasPurpose(value: string) {
+  return /为了|用来|以便|目的是|目的/u.test(value);
+}
+
+function hasExpectedEffect(value: string) {
+  return /这样做会|会让你|帮助你|从而|成效/u.test(value);
 }
 
 function stripAmbiguousLegacyAction(value: string) {
@@ -80,11 +84,15 @@ function inferGrowthEffect(description: string) {
 function enrichGrowthStep(step: string, description: string) {
   const cleaned = stripAmbiguousLegacyAction(cleanText(step));
   if (!cleaned) return cleaned;
-  if (hasPurposeAndEffect(cleaned)) return cleaned;
+  const hasPurposeStatement = hasPurpose(cleaned);
+  const hasEffectStatement = hasExpectedEffect(cleaned);
+  if (hasPurposeStatement && hasEffectStatement) return cleaned;
 
   const purpose = inferGrowthPurpose(description);
   const effect = inferGrowthEffect(description);
-  return `${cleaned}，${purpose}；${effect}`;
+  return [cleaned, hasPurposeStatement ? undefined : purpose, hasEffectStatement ? undefined : effect]
+    .filter(Boolean)
+    .join("；");
 }
 
 export function enrichGrowthSuggestions(
@@ -117,7 +125,7 @@ const loneSeekerProfile: ArchetypeProfile = {
       title: "为记忆建立出口，而不是让它循环",
       description: "你很容易把情绪和记忆保存在体内，如果没有出口，它们会不断回放，慢慢挤压当下的空间。",
       actionable_steps: [
-        "固定一个低噪音时段，只写下今天仍在回响的三个画面",
+        "当某个画面持续回响时，用一句话记下它和当下的身体感受",
         "把反复出现的句子、旋律和场景整理成个人档案，而不是任由它们混在一起",
         "当某段回忆再次出现时，先记录它带来的身体感受，再决定是否继续解释",
       ],
@@ -657,28 +665,8 @@ const archetypeAliases: Record<string, ArchetypeProfile> = {
   gas_giant: gentleGuardianProfile,
 };
 
-function enrichBookReason(reason: string) {
-  const cleaned = cleanText(reason);
-  if (/补足|延伸|精神旁证|个体化|边界|时间|意义|欲望|镜面/u.test(cleaned)) {
-    return cleaned;
-  }
-  return `它能补足你的精神旁证：${cleaned}`;
-}
-
-function enrichFilmReason(reason: string) {
-  const cleaned = cleanText(reason);
-  if (/照见|映照|回应|核心张力|关系姿态|叙事|潜意识|边界|时间|意义|结构/u.test(cleaned)) {
-    return cleaned;
-  }
-  return `它会照见你的叙事结构：${cleaned}`;
-}
-
-function enrichMusicReason(reason: string) {
-  const cleaned = cleanText(reason);
-  if (/适合|靠近|承接|回到|整理|节律|情绪|气质|身体|夜晚|现实/u.test(cleaned)) {
-    return cleaned;
-  }
-  return `适合在你需要承接情绪时靠近：${cleaned}`;
+function cleanRecommendationReason(reason: string) {
+  return cleanText(reason);
 }
 
 function withConstellationPurposes(profile: ArchetypeProfile): ArchetypeProfile {
@@ -688,22 +676,32 @@ function withConstellationPurposes(profile: ArchetypeProfile): ArchetypeProfile 
     recommendations: {
       books: profile.recommendations.books.map((item) => ({
         ...item,
-        reason: enrichBookReason(item.reason),
+        reason: cleanRecommendationReason(item.reason),
       })),
       films: profile.recommendations.films.map((item) => ({
         ...item,
-        reason: enrichFilmReason(item.reason),
+        reason: cleanRecommendationReason(item.reason),
       })),
       music: profile.recommendations.music.map((item) => ({
         ...item,
-        reason: enrichMusicReason(item.reason),
+        reason: cleanRecommendationReason(item.reason),
       })),
     },
   };
 }
 
 export function getBenyuanArchetypeProfile(hint: string | null | undefined) {
-  return withConstellationPurposes(archetypeProfiles[hint ?? ""] ?? archetypeAliases[hint ?? ""] ?? loneSeekerProfile);
+  const key = cleanText(hint ?? "");
+  const profile = archetypeProfiles[key] ?? archetypeAliases[key];
+  if (!profile) {
+    throw new Error(`unknown_benyuan_archetype:${key || "missing"}`);
+  }
+  return withConstellationPurposes(profile);
+}
+
+export function isSupportedBenyuanArchetypeHint(value: string | null | undefined) {
+  const key = cleanText(value ?? "");
+  return Boolean(key && (archetypeProfiles[key] || archetypeAliases[key]));
 }
 
 export function isCanonicalBenyuanArchetypeName(value: string | null | undefined) {

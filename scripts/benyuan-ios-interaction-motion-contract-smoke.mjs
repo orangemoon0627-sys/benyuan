@@ -28,16 +28,21 @@ assert.match(flowModel, /var currentQuestionIsAnswered: Bool/, "collect flow mus
 assert.match(collectActions, /guard isAnswered\(question\) else \{[\s\S]*?pulseCollectValidation\(collectRequirementHint\(for:\s*question\)\)/, "collect next navigation must not silently skip an incomplete current question");
 assert.match(collectActions, /func continueCollectOrSubmit\(\) async[\s\S]*?guard isAnswered\(question\) else/, "collect primary CTA must validate the current question before advancing");
 assert.match(collectActions, /func collectRequirementHint\(for question:\s*BenyuanQuestion\) -> String/, "collect flow must provide question-specific completion hints");
+assert.doesNotMatch(collectActions, /func setSingleAnswer\([\s\S]*?advanceAfterAnswer/, "single-choice taps must stay on the current question until explicit navigation");
+assert.doesNotMatch(collectActions, /func uploadImages\([\s\S]*?advanceAfterAnswer/, "upload completion must stay on the current question until explicit navigation");
+assert.doesNotMatch(flowModel, /func advanceAfterAnswer/, "collect flow must not retain an automatic question-advance helper");
 assert.doesNotMatch(collect, /collectCompletionHint\(question\)|struct BenyuanCollectValidationPulse|完成后再进入下一段，避免线索漏收/, "collect view must not keep a persistent instructional capsule below the question");
 assert.match(collectActions, /func pulseCollectValidation\(_ message:\s*String\)[\s\S]*?showToast\(message\)/, "incomplete taps must still receive concise transient feedback");
-assert.match(collect, /primaryCollectTitle/, "collect primary CTA title must be derived from current completion state");
-for (const title of ["完成当前线索", "继续收集", "进入剧场生成"]) {
+assert.match(collect, /isLastQuestion[\s\S]*?canEnterTheater/, "collect must only derive theater entry from the final question");
+for (const title of ["下一题", "检查全部线索", "进入剧场"]) {
   assert.match(collect, new RegExp(title), `collect primary CTA title must include ${title}`);
 }
 assert.match(collect, /Task \{ await model\.continueCollectOrSubmit\(\) \}/, "collect primary CTA must use centralized validated continuation logic");
 
 assert.match(theater, /BenyuanMomentaryChoiceFeedback/, "theater must show a brief feedback layer after a choice");
 assert.match(theater, /selectedTheaterOptionId/, "theater feedback must be driven by real selected choice state");
+assert.match(theater, /上一幕/, "theater must expose explicit back navigation");
+assert.match(theater, /下一幕/, "theater must expose explicit forward navigation");
 
 assert.match(constellation, /BenyuanPressableMotionStyle/, "constellation bottom actions must use shared press feedback");
 assert.match(constellation, /sensoryFeedback|UIImpactFeedbackGenerator/, "constellation actions must provide tactile feedback");

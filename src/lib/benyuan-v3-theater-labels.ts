@@ -1,20 +1,20 @@
 export const BENYUAN_THEATER_ACT2_CHOICE_TEXT: Record<string, string> = {
-  "1A": "靠近那封信，让潮水先读出第一行",
-  "1B": "停下脚步，先看清信封背面的光",
-  "1C": "沿着回声回应一句话，再等它回来",
-  "1D": "绕开信封，先把自己的影子带到前面",
-  "2A": "停下脚步，看那个人如何对待照片",
-  "2B": "走向桥中央，把照片推回一点点",
-  "2C": "留在并肩的位置，让同一段声音流过你们",
-  "2D": "回望来路，把桥暂时留给月光",
-  "3A": "把信收进口袋，先让轨道稳定下来",
-  "3B": "伸手触碰星体边缘，允许未知靠近",
-  "3C": "留在两股引力之间，听它们同时说话",
-  "3D": "沿着暗金轨道，寻找没有标出的出口",
-  "4A": "把那些总会回来的旧画面交给星图",
-  "4B": "把迟迟没有说出口的靠近放进月光里",
-  "4C": "把保护自己的边界放到暗金轨道上",
-  "4D": "把犹豫之后仍会前行的那一步交给桥",
+  "1A": "先回电话，确认是谁留下了寄存物",
+  "1B": "推门进去，查看柜台上的登记簿",
+  "1C": "把地址发给朋友，请他在门外等你",
+  "1D": "绕到侧门，确认屋里是否还有人",
+  "2A": "请对方进来，当面把事情说清",
+  "2B": "走到街对面，只先问一个问题",
+  "2C": "发一张现场照片，等对方先开口",
+  "2D": "暂时不回复，先看完纸袋里的东西",
+  "3A": "带走两只盒子，明天再逐一归还",
+  "3B": "只拿属于你的，把另一只留在柜台",
+  "3C": "请对方进来，你们一起决定归属",
+  "3D": "拍下现状后全部放回，今晚先离开",
+  "4A": "把那份决定交给对方，当面说出实情",
+  "4B": "带走自己的部分，约定明晚再谈",
+  "4C": "请店主继续保管，并写下回复日期",
+  "4D": "先把所有物品转到安全处，停止争论",
 };
 
 export const BENYUAN_THEATER_MIRROR_CHOICE_TEXT: Record<string, string> = {
@@ -46,7 +46,29 @@ export function describeTheaterAct2Selection(selected: string | undefined) {
   return selected ? (text ? `${selected}（${text}）` : selected) : "未选择";
 }
 
+export function getPart2ChoiceText(choice: Part2ChoiceRecord) {
+  const snapshot = choice.option_text?.trim();
+  return snapshot || "";
+}
+
+export function getPart2ChoiceTraitSignal(choice: Part2ChoiceRecord) {
+  return choice.trait_signal?.trim() || "";
+}
+
+export function describePart2ChoiceSelection(choice: Part2ChoiceRecord) {
+  const text = getPart2ChoiceText(choice);
+  const signal = getPart2ChoiceTraitSignal(choice);
+  if (!text && !signal) {
+    return `${choice.selected}（历史语义不可恢复，不作为精神证据）`;
+  }
+  if (!text) {
+    return `${choice.selected}（精神信号 ${signal}）`;
+  }
+  return `${choice.selected}（${text}${signal ? `；精神信号 ${signal}` : ""}）`;
+}
+
 export function describeTheaterMirrorSelection(selected: string | undefined) {
   const text = getTheaterMirrorChoiceText(selected);
   return selected ? (text ? `${selected}（${text}）` : selected) : "未选择";
 }
+import type { Part2ChoiceRecord } from "@/lib/benyuan-v3-types";

@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { BenyuanAuthError, verifyPhoneOtpAndCreateSession } from "@/lib/benyuan-auth";
+import { BenyuanAuthError, readAuthFromRequest, verifyPhoneOtpAndCreateSession } from "@/lib/benyuan-auth";
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { phone?: string; code?: string };
 
   try {
-    const auth = await verifyPhoneOtpAndCreateSession({ phone: body.phone, code: body.code });
+    const auth = await verifyPhoneOtpAndCreateSession({
+      phone: body.phone,
+      code: body.code,
+      existingAuth: await readAuthFromRequest(request),
+    });
     return NextResponse.json({
       user: auth.user,
       session: auth.session,

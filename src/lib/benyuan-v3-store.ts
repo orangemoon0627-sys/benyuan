@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   AgentRuntimeOverride,
@@ -8,6 +8,7 @@ import type {
   BenyuanDataEnvironment,
   BenyuanAuthProviderIndex,
   BenyuanAuthRateLimit,
+  BenyuanBehaviorProfileSnapshotRecord,
   BenyuanFeedbackRecord,
   BenyuanNativeGenerationJob,
   BenyuanNativeGenerationJobKind,
@@ -20,6 +21,7 @@ import type {
   BenyuanStoredAsset,
   BenyuanUploadedAssetRef,
   BenyuanUser,
+  BenyuanUserProfilePatch,
   BenyuanV3Store,
   ConstellationRecord,
   MultimodalInputItem,
@@ -35,9 +37,19 @@ import { classifyBenyuanMultimodalCacheStatus, recordBenyuanAgentTiming } from "
 import { aggregateTraitsFromPart1, generateDeterministicConstellation } from "@/lib/benyuan-v3-engine";
 import { generateConstellationWithAgent, generateTheaterScriptWithAgent, runMultimodalAnalysis } from "@/lib/benyuan-v3-agent";
 import { normalizePsycheConstellation } from "@/lib/benyuan-v3-normalization";
-import { isCanonicalBenyuanArchetypeName, isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
+import { isCanonicalBenyuanArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { uploadedAssetsFromAnswer } from "@/lib/benyuan-upload-assets";
-import { ensureBenyuanDataDirs, getBenyuanPersistenceHealth, getBenyuanV3StorePath } from "@/lib/benyuan-persistence";
+import { validateBenyuanUploadCapacity } from "@/lib/benyuan-upload-policy";
+import { restorePart2ChoiceSemantics } from "@/lib/benyuan-v3-part2-semantics";
+import { ensureBenyuanDataDirs, getBenyuanPersistenceHealth, getBenyuanV3StorePath, getBenyuanV3UploadsDir } from "@/lib/benyuan-persistence";
+import { buildBehaviorProfileV2 } from "@/lib/benyuan-v3-behavior-profile";
+import { appendNativeGenerationEvent } from "@/lib/benyuan-native-generation-events";
+import {
+  claimNativeGenerationLease,
+  hasActiveNativeGenerationLease,
+  releaseNativeGenerationLease,
+  renewNativeGenerationLease,
+} from "@/lib/benyuan-native-generation-lease";
 
 const STORE_PATH = getBenyuanV3StorePath();
 const TEMP_STORE_PATH = `${STORE_PATH}.${process.pid}.tmp`;
@@ -63,6 +75,7 @@ const EMPTY_STORE: BenyuanV3Store = {
   part2_records: {},
   constellations: {},
   native_generation_jobs: {},
+  behavior_profile_snapshots: {},
   feedback_records: {},
   test_plan_items: {},
 };
@@ -70,10 +83,35 @@ const EMPTY_STORE: BenyuanV3Store = {
 let storeWriteQueue: Promise<void> = Promise.resolve();
 const activeNativeGenerationJobRuns = new Set<string>();
 
+const PROFILE_PLACEHOLDER_NAMES = new Set(["Apple 用户", "微信用户", "手机用户", "访客", "我的本源档案"]);
+
+function normalizeProfileDisplayName(value?: string) {
+  const cleaned = value?.replace(/\s+/g, " ").trim();
+  if (!cleaned || PROFILE_PLACEHOLDER_NAMES.has(cleaned)) return undefined;
+  return cleaned.slice(0, 32);
+}
+
+function deriveUserProfileStatus(user: BenyuanUser): BenyuanUser["profile_status"] {
+  const hasName = Boolean(normalizeProfileDisplayName(user.display_name));
+  const hasAvatar = Boolean(user.avatar_symbol?.trim());
+  return hasName && hasAvatar ? "complete" : "incomplete";
+}
+
 export type BenyuanDataScope = {
   data_cohort: BenyuanDataCohort;
   data_environment: BenyuanDataEnvironment;
 };
+
+export class BenyuanUploadCapacityError extends Error {
+  code: "user_upload_quota_exceeded" | "upload_capacity_exceeded";
+  status: 429 | 507;
+
+  constructor(code: "user_upload_quota_exceeded" | "upload_capacity_exceeded", status: 429 | 507) {
+    super(code);
+    this.code = code;
+    this.status = status;
+  }
+}
 
 function recommendationKey(item: { title?: string; author?: string; director?: string; artist?: string; album?: string }) {
   return [item.title, item.author, item.director, item.artist, item.album].filter(Boolean).join("::").toLocaleLowerCase("zh-CN");
@@ -176,9 +214,14 @@ async function ensureStoreFile() {
   await ensureBenyuanDataDirs();
   await mkdir(path.dirname(STORE_PATH), { recursive: true });
   try {
-    await readFile(STORE_PATH, "utf8");
-  } catch {
-    await writeFile(STORE_PATH, JSON.stringify(EMPTY_STORE, null, 2), "utf8");
+    await stat(STORE_PATH);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    try {
+      await writeFile(STORE_PATH, JSON.stringify(EMPTY_STORE, null, 2), { encoding: "utf8", flag: "wx" });
+    } catch (writeError) {
+      if ((writeError as NodeJS.ErrnoException).code !== "EEXIST") throw writeError;
+    }
   }
 }
 
@@ -195,6 +238,7 @@ function mergeStore(raw: Partial<BenyuanV3Store> | null | undefined): BenyuanV3S
     part2_records: raw?.part2_records ?? {},
     constellations: raw?.constellations ?? {},
     native_generation_jobs: raw?.native_generation_jobs ?? {},
+    behavior_profile_snapshots: raw?.behavior_profile_snapshots ?? {},
     feedback_records: raw?.feedback_records ?? {},
     test_plan_items: raw?.test_plan_items ?? {},
   };
@@ -206,23 +250,23 @@ async function parseStoreFile() {
 
   try {
     return mergeStore(JSON.parse(raw) as Partial<BenyuanV3Store>);
-  } catch {
-    await writeFile(STORE_PATH, JSON.stringify(EMPTY_STORE, null, 2), "utf8");
-    return { ...EMPTY_STORE };
+  } catch (error) {
+    throw new Error("benyuan_store_corrupt", { cause: error });
   }
 }
 
 async function withStoreWrite<T>(updater: (store: BenyuanV3Store) => T | Promise<T>) {
   let result: T;
 
-  storeWriteQueue = storeWriteQueue.then(async () => {
+  const operation = storeWriteQueue.then(async () => {
     const store = await parseStoreFile();
     result = await updater(store);
     await writeFile(TEMP_STORE_PATH, JSON.stringify(store, null, 2), "utf8");
     await rename(TEMP_STORE_PATH, STORE_PATH);
   });
+  storeWriteQueue = operation.catch(() => undefined);
 
-  await storeWriteQueue;
+  await operation;
   return result!;
 }
 
@@ -278,16 +322,30 @@ export async function saveAuthUserAndSession(user: BenyuanUser, session: Benyuan
 }
 
 export async function updateAuthUserDisplayName(userId: string, displayName: string) {
+  return updateAuthUserProfile(userId, { display_name: displayName });
+}
+
+export async function updateAuthUserProfile(userId: string, patch: BenyuanUserProfilePatch) {
   return withStoreWrite((store) => {
     const user = store.users[userId];
     if (!user) return undefined;
-    const cleaned = displayName.replace(/\s+/g, " ").trim().slice(0, 32);
-    if (!cleaned) return undefined;
+    const timestamp = new Date().toISOString();
+    const cleanedName = patch.display_name !== undefined ? patch.display_name.replace(/\s+/g, " ").trim().slice(0, 32) : user.display_name;
+    if (patch.display_name !== undefined && !cleanedName) return undefined;
     const updated: BenyuanUser = {
       ...storedBenyuanDataScope(user),
-      display_name: cleaned,
-      updated_at: new Date().toISOString(),
+      ...(patch.display_name !== undefined ? { display_name: cleanedName } : {}),
+      ...(patch.avatar_symbol !== undefined ? { avatar_symbol: patch.avatar_symbol } : {}),
+      ...(patch.birth_year !== undefined && patch.birth_year !== null ? { birth_year: patch.birth_year } : {}),
+      ...(patch.gender !== undefined ? { gender: patch.gender } : {}),
+      ...(patch.profile_bio !== undefined ? { profile_bio: patch.profile_bio } : {}),
+      updated_at: timestamp,
     };
+    if (patch.birth_year === null) delete updated.birth_year;
+    updated.profile_status = deriveUserProfileStatus(updated);
+    if (updated.profile_status === "complete" && !updated.registered_at) {
+      updated.registered_at = timestamp;
+    }
     store.users[userId] = updated;
     return updated;
   });
@@ -343,6 +401,27 @@ export async function saveAuthRateLimit(limit: BenyuanAuthRateLimit) {
   });
 }
 
+export async function consumeAuthRateLimit(input: { key: string; windowMs: number; timestamp: string }) {
+  return withStoreWrite((store) => {
+    const scope = resolveBenyuanDataScope();
+    const storeKey = `${scope.data_cohort}:${input.key}`;
+    const existing = store.auth_rate_limits[storeKey];
+    const resetAt = existing ? new Date(existing.reset_at).getTime() : 0;
+    const next: BenyuanAuthRateLimit =
+      !existing || resetAt <= Date.now()
+        ? {
+            key: input.key,
+            ...scope,
+            count: 1,
+            reset_at: new Date(Date.now() + input.windowMs).toISOString(),
+            updated_at: input.timestamp,
+          }
+        : { ...existing, count: existing.count + 1, updated_at: input.timestamp };
+    store.auth_rate_limits[storeKey] = next;
+    return next;
+  });
+}
+
 export async function savePhoneOtp(otp: BenyuanPhoneOtp) {
   return withStoreWrite((store) => {
     const scoped = withBenyuanDataScope(otp);
@@ -370,6 +449,11 @@ function findTheaterForPart1(store: BenyuanV3Store, part1Id: string) {
 
 function findPart2ForPart1(store: BenyuanV3Store, part1Id: string) {
   return Object.values(store.part2_records).find((item) => item.part1_id === part1Id);
+}
+
+function restoreStoredPart2Semantics(store: BenyuanV3Store, record: Part2Record | undefined) {
+  if (!record) return undefined;
+  return restorePart2ChoiceSemantics(record, store.theater_scripts[record.theater_script_id]);
 }
 
 function findConstellationForPart1(store: BenyuanV3Store, part1Id: string) {
@@ -498,27 +582,57 @@ function buildNativeGenerationJobPresentation(
 
 export function presentNativeGenerationJob(job: BenyuanNativeGenerationJob, now = new Date()): BenyuanNativeGenerationJob {
   const presentation = buildNativeGenerationJobPresentation(job, {}, now);
+  const {
+    shadow_archetype_diagnostic: _shadowDiagnostic,
+    lease_owner: _leaseOwner,
+    lease_expires_at: _leaseExpiresAt,
+    last_heartbeat_at: _lastHeartbeatAt,
+    run_attempt: _runAttempt,
+    ...publicJob
+  } = job;
   return {
-    ...job,
+    ...publicJob,
     ...presentation,
-    progress: clampProgress(presentation.progress ?? job.progress),
-  };
+    progress: clampProgress(presentation.progress ?? publicJob.progress),
+  } as BenyuanNativeGenerationJob;
 }
 
 async function updateNativeGenerationJob(
   jobId: string,
-  update: Partial<Pick<BenyuanNativeGenerationJob, "status" | "current_stage" | "progress" | "stage_progress" | "progress_basis" | "stage_started_at" | "stage_updated_at" | "stage_detail" | "stage_timings" | "message" | "error" | "theater_script_id" | "constellation_id" | "finished_at">>,
+  update: Partial<Pick<BenyuanNativeGenerationJob, "status" | "current_stage" | "progress" | "stage_progress" | "progress_basis" | "stage_started_at" | "stage_updated_at" | "stage_detail" | "stage_timings" | "message" | "error" | "theater_script_id" | "constellation_id" | "finished_at" | "behavior_profile_revision" | "shadow_archetype_diagnostic">>,
+  eventMetadata: {
+    eventType?: "stage_started" | "checkpoint" | "resumed" | "completed" | "failed";
+    checkpoint?: string;
+    evidenceRevision?: string;
+  } = {},
+  leaseOwner?: string,
 ) {
   return withStoreWrite((store) => {
     const current = store.native_generation_jobs[jobId];
     if (!current) return undefined;
     const now = new Date();
-    const next = {
-      ...current,
+    const leasedCurrent = leaseOwner ? renewNativeGenerationLease(current, { owner: leaseOwner, now }) : current;
+    if (!leasedCurrent) return undefined;
+    const nextBase: BenyuanNativeGenerationJob = {
+      ...leasedCurrent,
       ...update,
-      ...buildNativeGenerationJobPresentation(current, update, now),
+      ...buildNativeGenerationJobPresentation(leasedCurrent, update, now),
       updated_at: now.toISOString(),
     };
+    const inferredEventType = eventMetadata.eventType
+      ?? (nextBase.status === "failed" && current.status !== "failed" ? "failed" : undefined)
+      ?? (nextBase.status === "done" && current.status !== "done" ? "completed" : undefined)
+      ?? (nextBase.current_stage !== current.current_stage ? "stage_started" : undefined)
+      ?? (nextBase.behavior_profile_revision !== current.behavior_profile_revision ? "checkpoint" : undefined);
+    const next = inferredEventType
+      ? appendNativeGenerationEvent(nextBase, {
+          event_type: inferredEventType,
+          occurred_at: now.toISOString(),
+          checkpoint: eventMetadata.checkpoint,
+          behavior_profile_revision: nextBase.behavior_profile_revision,
+          evidence_revision: eventMetadata.evidenceRevision,
+        })
+      : nextBase;
     store.native_generation_jobs[jobId] = next;
     return next;
   });
@@ -526,14 +640,79 @@ async function updateNativeGenerationJob(
 
 export function shouldResumeNativeGenerationJob(job: BenyuanNativeGenerationJob, nowMs = Date.now()) {
   if (job.status !== "running") return false;
+  if (hasActiveNativeGenerationLease(job, nowMs)) return false;
+  if (job.lease_owner) return true;
   const updatedAtMs = new Date(job.updated_at).getTime();
   if (!Number.isFinite(updatedAtMs)) return true;
   return nowMs - updatedAtMs >= NATIVE_GENERATION_JOB_STALE_MS;
 }
 
+async function claimNativeGenerationJobRun(jobId: string) {
+  return withStoreWrite((store) => {
+    const current = store.native_generation_jobs[jobId];
+    if (!current) return { acquired: false as const, job: undefined, owner: undefined };
+    const owner = uid("lease");
+    const claim = claimNativeGenerationLease(current, {
+      owner,
+      now: new Date(),
+      legacyStaleAfterMs: NATIVE_GENERATION_JOB_STALE_MS,
+    });
+    if (!claim.acquired) return { acquired: false as const, job: current, owner: undefined };
+    store.native_generation_jobs[jobId] = claim.job;
+    return { acquired: true as const, job: claim.job, owner };
+  });
+}
+
+async function releaseNativeGenerationJobRun(jobId: string, owner: string) {
+  return withStoreWrite((store) => {
+    const current = store.native_generation_jobs[jobId];
+    if (!current) return undefined;
+    const released = releaseNativeGenerationLease(current, owner);
+    if (!released) return current;
+    store.native_generation_jobs[jobId] = released;
+    return released;
+  });
+}
+
+export async function ensureBehaviorProfileSnapshot(
+  part1: Part1Record,
+  part2?: Part2Record,
+  profile = buildBehaviorProfileV2(part1, part2),
+) {
+  if (part2 && part2.part1_id !== part1.part1_id) throw new Error("behavior_profile_part2_mismatch");
+  const expectedProfile = buildBehaviorProfileV2(part1, part2);
+  if (JSON.stringify(profile) !== JSON.stringify(expectedProfile)) throw new Error("behavior_profile_source_mismatch");
+  const record: BenyuanBehaviorProfileSnapshotRecord = {
+    profile_revision: profile.revision,
+    schema_version: profile.schema_version,
+    source_revision: profile.source_revision,
+    user_id: part1.user_id,
+    part1_id: part1.part1_id,
+    part2_id: part2?.part2_id,
+    data_cohort: part1.data_cohort,
+    data_environment: part1.data_environment,
+    created_at: new Date().toISOString(),
+    profile,
+  };
+  return withStoreWrite((store) => {
+    const existing = store.behavior_profile_snapshots[profile.revision];
+    if (existing) {
+      if (JSON.stringify(existing.profile) !== JSON.stringify(profile)) throw new Error("behavior_profile_revision_collision");
+      return existing;
+    }
+    store.behavior_profile_snapshots[profile.revision] = record;
+    return record;
+  });
+}
+
+export async function getBehaviorProfileSnapshot(revision: string) {
+  const store = await readBenyuanV3Store();
+  return store.behavior_profile_snapshots[revision];
+}
+
 function makeHistoryItem(store: BenyuanV3Store, part1: Part1Record): BenyuanAccountHistoryItem {
   const theater = findTheaterForPart1(store, part1.part1_id);
-  const part2 = findPart2ForPart1(store, part1.part1_id);
+  const part2 = restoreStoredPart2Semantics(store, findPart2ForPart1(store, part1.part1_id));
   const constellation = findConstellationForPart1(store, part1.part1_id);
   const stage = constellation ? "constellation" : part2 ? "part2" : theater ? "theater" : "part1";
   const assetCount = countPart1Assets(part1);
@@ -815,6 +994,40 @@ export async function saveUploadedAsset(asset: BenyuanStoredAsset) {
   });
 }
 
+export async function saveUploadedAssetsWithCapacity(assets: BenyuanStoredAsset[]) {
+  if (assets.length === 0) return [];
+
+  return withStoreWrite((store) => {
+    const scopedAssets = assets.map((asset) => withBenyuanDataScope(asset));
+    const ownerUserId = scopedAssets[0].owner_user_id;
+    const cohort = scopedAssets[0].data_cohort;
+    if (scopedAssets.some((asset) => asset.owner_user_id !== ownerUserId || asset.data_cohort !== cohort)) {
+      throw new Error("upload_batch_scope_mismatch");
+    }
+
+    let ownerBytes = 0;
+    let cohortBytes = 0;
+    for (const existing of Object.values(store.uploaded_assets)) {
+      const scoped = storedBenyuanDataScope(existing);
+      if (scoped.data_cohort !== cohort) continue;
+      const size = Number.isFinite(existing.size) && existing.size > 0 ? existing.size : 0;
+      cohortBytes += size;
+      if (existing.owner_user_id === ownerUserId) ownerBytes += size;
+    }
+
+    const incomingBytes = scopedAssets.reduce((total, asset) => total + Math.max(0, asset.size), 0);
+    const capacityError = validateBenyuanUploadCapacity({ ownerBytes, cohortBytes, incomingBytes });
+    if (capacityError?.error === "user_upload_quota_exceeded" || capacityError?.error === "upload_capacity_exceeded") {
+      throw new BenyuanUploadCapacityError(capacityError.error, capacityError.status);
+    }
+
+    for (const asset of scopedAssets) {
+      store.uploaded_assets[asset.asset_id] = asset;
+    }
+    return scopedAssets;
+  });
+}
+
 export async function getUploadedAsset(assetId: string) {
   const store = await readBenyuanV3Store();
   return store.uploaded_assets[assetId];
@@ -868,20 +1081,20 @@ export async function savePart2Record(record: Part2Record) {
 
 export async function getPart2Record(part2Id: string) {
   const store = await readBenyuanV3Store();
-  return store.part2_records[part2Id];
+  return restoreStoredPart2Semantics(store, store.part2_records[part2Id]);
 }
 
 export async function getPart2RecordForPart1(part1Id: string, part2Id?: string) {
   const store = await readBenyuanV3Store();
   if (part2Id) {
     const record = store.part2_records[part2Id];
-    return record?.part1_id === part1Id ? record : undefined;
+    return record?.part1_id === part1Id ? restoreStoredPart2Semantics(store, record) : undefined;
   }
-  return findPart2ForPart1(store, part1Id);
+  return restoreStoredPart2Semantics(store, findPart2ForPart1(store, part1Id));
 }
 
 export async function clearBenyuanCohortData(cohort: BenyuanDataCohort) {
-  return withStoreWrite((store) => {
+  const cleared = await withStoreWrite((store) => {
     const part1Ids = new Set(
       Object.values(store.part1_records)
         .filter((record) => cohortForClear(record) === cohort)
@@ -892,6 +1105,9 @@ export async function clearBenyuanCohortData(cohort: BenyuanDataCohort) {
         .filter((asset) => cohortForClear(asset) === cohort)
         .map((asset) => asset.asset_id),
     );
+    const assetPaths = [...assetIds]
+      .map((assetId) => store.uploaded_assets[assetId]?.stored_path)
+      .filter((storedPath): storedPath is string => Boolean(storedPath));
 
     for (const part1Id of part1Ids) delete store.part1_records[part1Id];
     for (const assetId of assetIds) delete store.uploaded_assets[assetId];
@@ -922,6 +1138,13 @@ export async function clearBenyuanCohortData(cohort: BenyuanDataCohort) {
     for (const [id, job] of Object.entries(store.native_generation_jobs)) {
       if (part1Ids.has(job.part1_id) || cohortForClear(job) === cohort) delete store.native_generation_jobs[id];
     }
+    let deletedBehaviorProfileSnapshots = 0;
+    for (const [id, snapshot] of Object.entries(store.behavior_profile_snapshots)) {
+      if (part1Ids.has(snapshot.part1_id) || cohortForClear(snapshot) === cohort) {
+        delete store.behavior_profile_snapshots[id];
+        deletedBehaviorProfileSnapshots += 1;
+      }
+    }
     for (const [id, feedback] of Object.entries(store.feedback_records)) {
       if (part1Ids.has(feedback.part1_id ?? "") || cohortForClear(feedback) === cohort) delete store.feedback_records[id];
     }
@@ -930,8 +1153,46 @@ export async function clearBenyuanCohortData(cohort: BenyuanDataCohort) {
       cohort,
       deleted_part1_records: part1Ids.size,
       deleted_uploaded_assets: assetIds.size,
+      deleted_behavior_profile_snapshots: deletedBehaviorProfileSnapshots,
+      asset_paths: assetPaths,
     };
   });
+
+  const uploadsDir = path.resolve(getBenyuanV3UploadsDir());
+  let deletedUploadFiles = 0;
+  let missingUploadFiles = 0;
+  let rejectedUploadPaths = 0;
+  let uploadFileDeleteFailures = 0;
+  for (const storedPath of new Set(cleared.asset_paths)) {
+    const absolutePath = path.resolve(storedPath);
+    const relativePath = path.relative(uploadsDir, absolutePath);
+    if (!relativePath || relativePath === ".." || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+      rejectedUploadPaths += 1;
+      continue;
+    }
+    try {
+      await unlink(absolutePath);
+      deletedUploadFiles += 1;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        missingUploadFiles += 1;
+      } else {
+        uploadFileDeleteFailures += 1;
+      }
+    }
+  }
+
+  const { clearCachedMultimodalAnalysisForCohort } = await import("@/lib/benyuan-multimodal-cache");
+  const deletedMultimodalCacheEntries = await clearCachedMultimodalAnalysisForCohort(cohort);
+  const { asset_paths: _, ...result } = cleared;
+  return {
+    ...result,
+    deleted_upload_files: deletedUploadFiles,
+    missing_upload_files: missingUploadFiles,
+    rejected_upload_paths: rejectedUploadPaths,
+    upload_file_delete_failures: uploadFileDeleteFailures,
+    deleted_multimodal_cache_entries: deletedMultimodalCacheEntries,
+  };
 }
 
 export async function startNativeGenerationJob(input: {
@@ -974,13 +1235,18 @@ export async function startNativeGenerationJob(input: {
       updated_at: timestamp,
       finished_at: status === "done" ? timestamp : undefined,
     };
-    const job: BenyuanNativeGenerationJob = {
+    let job: BenyuanNativeGenerationJob = {
       ...baseJob,
       ...buildNativeGenerationJobPresentation(baseJob, {}, new Date(timestamp)),
     };
     if (status === "done") {
       job.progress = 1;
     }
+    job = appendNativeGenerationEvent(job, {
+      event_type: "created",
+      occurred_at: timestamp,
+      checkpoint: status === "done" ? "existing_result_reused" : "accepted",
+    });
     store.native_generation_jobs[job.job_id] = job;
     return job;
   });
@@ -996,42 +1262,40 @@ export async function runNativeGenerationJob(jobId: string) {
     return getNativeGenerationJob(jobId);
   }
   activeNativeGenerationJobRuns.add(jobId);
-
-  const existing = await getNativeGenerationJob(jobId);
-  if (!existing || existing.status === "done" || existing.status === "failed") {
-    activeNativeGenerationJobRuns.delete(jobId);
-    return existing;
-  }
-  if (existing.status === "running" && !shouldResumeNativeGenerationJob(existing)) {
-    activeNativeGenerationJobRuns.delete(jobId);
-    return existing;
-  }
-
-  if (existing.kind === "theater") {
-    await updateNativeGenerationJob(jobId, {
-      status: "running",
-      current_stage: "multimodal",
-      stage_progress: 0,
-      message: jobMessage("multimodal"),
-      error: undefined,
-    });
-  } else {
-    await updateNativeGenerationJob(jobId, {
-      status: "running",
-      current_stage: "constellation",
-      stage_progress: 0,
-      message: jobMessage("constellation"),
-      error: undefined,
-    });
-  }
-
+  let leaseOwner: string | undefined;
   try {
+    const claim = await claimNativeGenerationJobRun(jobId);
+    if (!claim.acquired || !claim.job || !claim.owner) return claim.job;
+    const existing = claim.job;
+    leaseOwner = claim.owner;
+    const updateJob = (
+      update: Parameters<typeof updateNativeGenerationJob>[1],
+      eventMetadata?: Parameters<typeof updateNativeGenerationJob>[2],
+    ) => updateNativeGenerationJob(jobId, update, eventMetadata, leaseOwner);
+    const isResume = existing.status === "running";
+    const started = existing.kind === "theater"
+      ? await updateJob({
+          status: "running",
+          current_stage: "multimodal",
+          stage_progress: 0,
+          message: jobMessage("multimodal"),
+          error: undefined,
+        }, isResume ? { eventType: "resumed", checkpoint: "multimodal_resume" } : undefined)
+      : await updateJob({
+          status: "running",
+          current_stage: "constellation",
+          stage_progress: 0,
+          message: jobMessage("constellation"),
+          error: undefined,
+        }, isResume ? { eventType: "resumed", checkpoint: "constellation_resume" } : undefined);
+    if (!started) return getNativeGenerationJob(jobId);
+
     if (existing.kind === "theater") {
       const record = await getPart1Record(existing.part1_id);
       if (!record) throw new Error("part1_not_found");
       const existingTheater = findTheaterForPart1(await readBenyuanV3Store(), record.part1_id);
       if (existingTheater) {
-        return updateNativeGenerationJob(jobId, {
+        return updateJob({
           status: "done",
           current_stage: "done",
           progress: 1,
@@ -1058,6 +1322,8 @@ export async function runNativeGenerationJob(jobId: string) {
             }
           : undefined,
       });
+      const multimodalLease = await updateJob({ stage_progress: 0.9 });
+      if (!multimodalLease) return getNativeGenerationJob(jobId);
       await recordBenyuanAgentTiming({
         stage: "multimodal",
         duration_ms: Date.now() - multimodalStartedAt,
@@ -1092,15 +1358,25 @@ export async function runNativeGenerationJob(jobId: string) {
       };
       updatedPart1.aggregated_traits = aggregateTraitsFromPart1(updatedPart1.answers, updatedPart1.part1_data);
       await savePart1Record(updatedPart1);
+      const behaviorProfile = buildBehaviorProfileV2(updatedPart1);
+      await ensureBehaviorProfileSnapshot(updatedPart1, undefined, behaviorProfile);
 
-      await updateNativeGenerationJob(jobId, {
+      const theaterStage = await updateJob({
         current_stage: "theater",
         stage_progress: 0,
         message: jobMessage("theater"),
+        behavior_profile_revision: behaviorProfile.revision,
+        shadow_archetype_diagnostic: behaviorProfile.shadow_archetype,
+      }, {
+        checkpoint: "behavior_profile_ready",
+        evidenceRevision: updatedPart1.updated_at,
       });
+      if (!theaterStage) return getNativeGenerationJob(jobId);
 
       const theaterStartedAt = Date.now();
-      const result = await generateTheaterScriptWithAgent(updatedPart1);
+      const result = await generateTheaterScriptWithAgent(updatedPart1, undefined, behaviorProfile);
+      const theaterLease = await updateJob({ stage_progress: 0.96 });
+      if (!theaterLease) return getNativeGenerationJob(jobId);
       await recordBenyuanAgentTiming({
         stage: "theater",
         duration_ms: Date.now() - theaterStartedAt,
@@ -1118,10 +1394,11 @@ export async function runNativeGenerationJob(jobId: string) {
         data_environment: updatedPart1.data_environment,
         created_at: new Date().toISOString(),
         runtime: result.runtime,
+        behavior_profile_revision: behaviorProfile.revision,
         theater_script: result.theaterScript,
       };
       await saveTheaterScriptRecord(theaterRecord);
-      return updateNativeGenerationJob(jobId, {
+      return updateJob({
         status: "done",
         current_stage: "done",
         progress: 1,
@@ -1136,9 +1413,21 @@ export async function runNativeGenerationJob(jobId: string) {
     if (!part2) throw new Error("part2_not_found");
     if (part2.part1_id !== part1.part1_id) throw new Error("part2_part1_mismatch");
 
+    const behaviorProfile = buildBehaviorProfileV2(part1, part2);
+    await ensureBehaviorProfileSnapshot(part1, part2, behaviorProfile);
+    const constellationProfileCheckpoint = await updateJob({
+      behavior_profile_revision: behaviorProfile.revision,
+      shadow_archetype_diagnostic: behaviorProfile.shadow_archetype,
+    }, {
+      eventType: "checkpoint",
+      checkpoint: "behavior_profile_ready",
+      evidenceRevision: `${part1.updated_at}:${part2.created_at}`,
+    });
+    if (!constellationProfileCheckpoint) return getNativeGenerationJob(jobId);
+
     const existingConstellation = findConstellationForPart2(await readBenyuanV3Store(), part1.part1_id, part2.part2_id);
     if (existingConstellation) {
-      return updateNativeGenerationJob(jobId, {
+      return updateJob({
         status: "done",
         current_stage: "done",
         progress: 1,
@@ -1149,7 +1438,9 @@ export async function runNativeGenerationJob(jobId: string) {
     }
 
     const constellationStartedAt = Date.now();
-    const result = await generateConstellationWithAgent(part1, part2);
+    const result = await generateConstellationWithAgent(part1, part2, undefined, behaviorProfile);
+    const constellationLease = await updateJob({ stage_progress: 0.98 });
+    if (!constellationLease) return getNativeGenerationJob(jobId);
     await recordBenyuanAgentTiming({
       stage: "constellation",
       duration_ms: Date.now() - constellationStartedAt,
@@ -1169,10 +1460,11 @@ export async function runNativeGenerationJob(jobId: string) {
       data_environment: part1.data_environment,
       created_at: new Date().toISOString(),
       runtime: result.runtime,
+      behavior_profile_revision: behaviorProfile.revision,
       psyche_constellation: result.constellation,
     };
     await saveConstellationRecord(constellationRecord);
-    return updateNativeGenerationJob(jobId, {
+    return updateJob({
       status: "done",
       current_stage: "done",
       progress: 1,
@@ -1181,6 +1473,7 @@ export async function runNativeGenerationJob(jobId: string) {
       finished_at: new Date().toISOString(),
     });
   } catch (error) {
+    if (!leaseOwner) throw error;
     return updateNativeGenerationJob(jobId, {
       status: "failed",
       current_stage: "failed",
@@ -1188,8 +1481,9 @@ export async function runNativeGenerationJob(jobId: string) {
       message: jobMessage("failed"),
       error: error instanceof Error ? error.message : "native_generation_failed",
       finished_at: new Date().toISOString(),
-    });
+    }, undefined, leaseOwner);
   } finally {
+    if (leaseOwner) await releaseNativeGenerationJobRun(jobId, leaseOwner);
     activeNativeGenerationJobRuns.delete(jobId);
   }
 }
@@ -1213,7 +1507,7 @@ export async function getConstellationRecord(constellationId: string) {
 
   let normalized = normalizePsycheConstellation(record.psyche_constellation);
   const part1 = store.part1_records[record.part1_id];
-  const part2 = store.part2_records[record.part2_id];
+  const part2 = restoreStoredPart2Semantics(store, store.part2_records[record.part2_id]);
 
   if (part1) {
     const fallback = generateDeterministicConstellation(part1, part2);
@@ -1226,7 +1520,7 @@ export async function getConstellationRecord(constellationId: string) {
 
     normalized = normalizePsycheConstellation({
       ...normalized,
-      archetype: isSuspiciousArchetypeName(normalized.archetype.name) ? fallback.archetype : normalized.archetype,
+      archetype: !isCanonicalBenyuanArchetypeName(normalized.archetype.name) ? fallback.archetype : normalized.archetype,
       narrative_overview: normalized.narrative_overview.trim().length < 420 || narrativeParagraphs.length < 4
         ? fallback.narrative_overview
         : normalized.narrative_overview,

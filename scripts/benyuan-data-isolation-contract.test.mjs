@@ -58,6 +58,7 @@ test("records carry structured cohort/environment boundaries and clear helper", 
     "Part2Record",
     "ConstellationRecord",
     "BenyuanNativeGenerationJob",
+    "BenyuanBehaviorProfileSnapshotRecord",
     "BenyuanFeedbackRecord",
   ]) {
     assert.match(
@@ -80,6 +81,7 @@ test("records carry structured cohort/environment boundaries and clear helper", 
   assert.match(sources.store, /store\.theater_scripts[\s\S]*cohortForClear/, "cohort clearing must remove theater scripts");
   assert.match(sources.store, /store\.part2_records[\s\S]*cohortForClear/, "cohort clearing must remove theater choices");
   assert.match(sources.store, /store\.constellations[\s\S]*cohortForClear/, "cohort clearing must remove constellation records");
+  assert.match(sources.store, /store\.behavior_profile_snapshots[\s\S]*cohortForClear/, "cohort clearing must remove internal behavior profile snapshots");
   assert.match(sources.store, /store\.feedback_records[\s\S]*cohortForClear/, "cohort clearing must remove feedback records");
   assert.match(sources.part1SubmitRoute, /resolveBenyuanDataScope/, "part1 submit must stamp data scope");
   assert.match(sources.feedbackRoute, /resolveBenyuanDataScope/, "feedback submit must stamp data scope");

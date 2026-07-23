@@ -3,9 +3,11 @@ import process from 'node:process';
 
 const baseUrl = (process.env.BENYUAN_BASE_URL ?? 'http://127.0.0.1:3001').replace(/\/$/, '');
 const expectLive = process.env.BENYUAN_EXPECT_LIVE === '1';
+const internalAccessToken = process.env.BENYUAN_INTERNAL_ACCESS_TOKEN?.trim();
+const internalHeaders = internalAccessToken ? { authorization: `Bearer ${internalAccessToken}` } : {};
 
 async function main() {
-  const response = await fetch(`${baseUrl}/api/agent/runtime`);
+  const response = await fetch(`${baseUrl}/api/agent/runtime`, { headers: internalHeaders });
   const payload = await response.json();
 
   if (!response.ok) {

@@ -86,7 +86,7 @@ export function readAnalysisRuntimeConfig(
     customKeyConfigured: Boolean(process.env.OPENAI_API_KEY),
     openAIModel: process.env.BENYUAN_OPENAI_MODEL ?? "gpt-4.1-mini",
     anthropicModel: process.env.BENYUAN_ANTHROPIC_MODEL ?? "claude-3-5-sonnet-latest",
-    customModel: process.env.BENYUAN_CUSTOM_MODEL ?? process.env.BENYUAN_OPENAI_MODEL ?? "gpt-5.4",
+    customModel: process.env.BENYUAN_CUSTOM_MODEL ?? process.env.BENYUAN_OPENAI_MODEL ?? "gpt-5.6-terra",
     customBaseUrl: process.env.BENYUAN_CUSTOM_BASE_URL ?? process.env.BENYUAN_OPENAI_BASE_URL ?? undefined,
     customProviderName: process.env.BENYUAN_CUSTOM_PROVIDER_NAME ?? process.env.BENYUAN_MODEL_PROVIDER ?? undefined,
     liveProviderEnabled,

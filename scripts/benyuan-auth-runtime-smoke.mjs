@@ -7,11 +7,14 @@ const phoneFixtureEnabled = process.env.BENYUAN_AUTH_ALLOW_PHONE_FIXTURE === "1"
 const wechatFixtureEnabled = process.env.BENYUAN_AUTH_ALLOW_WECHAT_FIXTURE === "1";
 const smsProviderEnabled = Boolean(process.env.BENYUAN_SMS_PROVIDER);
 const rateLimitLimit = Number(process.env.BENYUAN_AUTH_RATE_LIMIT_MAX ?? 5);
+const internalAccessToken = process.env.BENYUAN_INTERNAL_ACCESS_TOKEN?.trim();
+const internalHeaders = internalAccessToken ? { authorization: `Bearer ${internalAccessToken}` } : {};
 const runDigits = `${Date.now()}${Math.floor(Math.random() * 1_000_000)
   .toString()
   .padStart(6, "0")}`.slice(-8);
 const primaryPhone = `+86139${runDigits}`;
 const duplicatePhoneNumber = `+86138${runDigits}`;
+const bindPhoneNumber = `+86136${runDigits}`;
 const rateLimitPhone = `+86137${runDigits}`;
 
 async function request(path, options = {}) {
@@ -114,6 +117,59 @@ assert.equal(currentAnonymous.response.status, 200, "me route should return the 
 assert.equal(currentAnonymous.data.user.user_id, anonymous.data.user.user_id);
 assert.equal(currentAnonymous.data.session.token, anonymous.data.session.token);
 
+const profileUpdate = await patch(
+  "/api/auth/me",
+  {
+    display_name: "内测用户",
+    avatar_symbol: "moon.stars.fill",
+    birth_year: 1994,
+    gender: "undisclosed",
+    profile_bio: "把夜色和选择收进同一份档案。",
+  },
+  { authorization: `Bearer ${anonymous.data.session.token}` },
+);
+assert.equal(profileUpdate.response.status, 200, "me route should accept complete registration profile edits");
+assert.equal(profileUpdate.data.user.display_name, "内测用户");
+assert.equal(profileUpdate.data.user.avatar_symbol, "moon.stars.fill");
+assert.equal(profileUpdate.data.user.birth_year, 1994);
+assert.equal(profileUpdate.data.user.gender, "undisclosed");
+assert.equal(profileUpdate.data.user.profile_bio, "把夜色和选择收进同一份档案。");
+assert.equal(profileUpdate.data.user.profile_status, "complete");
+
+const profileBirthYearClear = await patch(
+  "/api/auth/me",
+  { birth_year: null },
+  { authorization: `Bearer ${anonymous.data.session.token}` },
+);
+assert.equal(profileBirthYearClear.response.status, 200, "me route should allow clearing an optional birth year");
+assert.equal(profileBirthYearClear.data.user.birth_year, undefined);
+
+const invalidProfileUpdate = await patch(
+  "/api/auth/me",
+  {
+    display_name: "Apple 用户",
+    avatar_symbol: "unsupported.symbol",
+    birth_year: 1888,
+  },
+  { authorization: `Bearer ${anonymous.data.session.token}` },
+);
+assert.equal(invalidProfileUpdate.response.status, 400, "me route should reject invalid registration profile fields");
+assert.equal(invalidProfileUpdate.data.error, "invalid_profile_payload");
+
+const bindPhoneRequest = await post("/api/auth/phone/request-code", { phone: bindPhoneNumber });
+if (phoneFixtureEnabled) {
+  assert.equal(bindPhoneRequest.response.status, 200, "phone fixture mode should issue a code for account binding");
+  const bindPhone = await post(
+    "/api/auth/phone/verify-code",
+    { phone: bindPhoneNumber, code: "246810" },
+    { authorization: `Bearer ${anonymous.data.session.token}` },
+  );
+  assert.equal(bindPhone.response.status, 200, "phone verify should bind to the bearer account when one is present");
+  assert.equal(bindPhone.data.user.user_id, anonymous.data.user.user_id, "phone binding must not create a second user for the same signed-in person");
+  assert.equal(bindPhone.data.user.phone_bound, true);
+  assert.equal(bindPhone.data.session.provider, "phone");
+}
+
 const initialHistory = await request("/api/account/history", {
   headers: { authorization: `Bearer ${anonymous.data.session.token}` },
 });
@@ -147,7 +203,9 @@ assert.equal(accountFeedback.data.ok, true);
 assert.match(accountFeedback.data.feedback_id, /^feedback_/, "feedback route should return a persisted feedback id");
 assert.ok(accountFeedback.data.created_at, "feedback route should return created_at");
 
-const internalFeedbackList = await request("/api/internal/feedback?kind=issue&stage=constellation&status=new&limit=20");
+const internalFeedbackList = await request("/api/internal/feedback?kind=issue&stage=constellation&status=new&limit=20", {
+  headers: internalHeaders,
+});
 assert.equal(internalFeedbackList.response.status, 200, "internal feedback route should list persisted feedback");
 assert.equal(internalFeedbackList.data.status, "ok");
 assert.ok(
@@ -155,15 +213,21 @@ assert.ok(
   "internal feedback route should return the submitted feedback id",
 );
 
-const feedbackStatusUpdate = await patch("/api/internal/feedback", {
-  feedback_id: accountFeedback.data.feedback_id,
-  status: "processing",
-});
+const feedbackStatusUpdate = await patch(
+  "/api/internal/feedback",
+  {
+    feedback_id: accountFeedback.data.feedback_id,
+    status: "processing",
+  },
+  internalHeaders,
+);
 assert.equal(feedbackStatusUpdate.response.status, 200, "internal feedback route should update feedback status");
 assert.equal(feedbackStatusUpdate.data.status, "ok");
 assert.equal(feedbackStatusUpdate.data.record.status, "processing");
 
-const processingFeedbackList = await request("/api/internal/feedback?status=processing&limit=20");
+const processingFeedbackList = await request("/api/internal/feedback?status=processing&limit=20", {
+  headers: internalHeaders,
+});
 assert.equal(processingFeedbackList.response.status, 200, "internal feedback route should filter by updated status");
 assert.ok(
   processingFeedbackList.data.records.some((record) => record.feedback_id === accountFeedback.data.feedback_id && record.status === "processing"),
@@ -185,6 +249,19 @@ if (wechatFixtureEnabled) {
   const duplicateWechat = await post("/api/auth/wechat", { code: "fixture.wechat.code", display_name: "微信测试" });
   assert.equal(duplicateWechat.response.status, 200, "duplicate WeChat subject should reuse the existing user");
   assert.equal(duplicateWechat.data.user.user_id, anonymous.data.user.user_id);
+
+  const conflictingWechatAccount = await post("/api/auth/anonymous", {});
+  const conflictingWechatBind = await post(
+    "/api/auth/wechat",
+    { code: "fixture.wechat.code", display_name: "微信测试" },
+    { authorization: `Bearer ${conflictingWechatAccount.data.session.token}` },
+  );
+  assert.equal(conflictingWechatBind.response.status, 409, "a WeChat subject must not be silently moved to another account");
+  assert.equal(conflictingWechatBind.data.error, "provider_already_bound");
+
+  const wechatAfterConflict = await post("/api/auth/wechat", { code: "fixture.wechat.code", display_name: "微信测试" });
+  assert.equal(wechatAfterConflict.response.status, 200, "a rejected bind must preserve the original WeChat account mapping");
+  assert.equal(wechatAfterConflict.data.user.user_id, anonymous.data.user.user_id);
 } else {
   assert.equal(fixtureWechat.response.status, 503, "unconfigured WeChat auth should be rejected by default");
   assert.equal(fixtureWechat.data.error, "wechat_not_configured");
@@ -195,6 +272,8 @@ if (phoneFixtureEnabled) {
   assert.equal(phoneVerify.response.status, 200, "phone fixture mode should create a phone session");
   assert.equal(phoneVerify.data.user.primary_provider, "phone");
   assert.equal(phoneVerify.data.user.phone_bound, true);
+  assert.notEqual(phoneVerify.data.user.display_name, primaryPhone, "phone numbers must never become public display names");
+  assert.equal(phoneVerify.data.user.display_name, undefined, "new phone users should complete a display name explicitly");
   assert.match(phoneVerify.data.session.token, /^bya_phone_/);
 
   const duplicatePhoneRequest = await post("/api/auth/phone/request-code", { phone: duplicatePhoneNumber });
@@ -206,6 +285,17 @@ if (phoneFixtureEnabled) {
   const duplicatePhoneAgain = await post("/api/auth/phone/verify-code", { phone: duplicatePhoneNumber, code: "246810" });
   assert.equal(duplicatePhoneAgain.response.status, 200, "duplicate phone subject should login to the same user");
   assert.equal(duplicatePhoneAgain.data.user.user_id, duplicatePhone.data.user.user_id);
+
+  const conflictingPhoneAccount = await post("/api/auth/anonymous", {});
+  const conflictingPhoneRequest = await post("/api/auth/phone/request-code", { phone: duplicatePhoneNumber });
+  assert.equal(conflictingPhoneRequest.response.status, 200, "phone fixture should issue a code before a binding conflict check");
+  const conflictingPhoneBind = await post(
+    "/api/auth/phone/verify-code",
+    { phone: duplicatePhoneNumber, code: "246810" },
+    { authorization: `Bearer ${conflictingPhoneAccount.data.session.token}` },
+  );
+  assert.equal(conflictingPhoneBind.response.status, 409, "a phone subject must not be silently moved to another account");
+  assert.equal(conflictingPhoneBind.data.error, "provider_already_bound");
 } else {
   assert.equal(phoneVerify.response.status, 401, "phone verify should reject missing/unissued codes");
   assert.equal(phoneVerify.data.error, "invalid_phone_code");

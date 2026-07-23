@@ -19,7 +19,8 @@ export async function GET(request: Request, context: { params: Promise<{ theater
       return NextResponse.json({ error: "part1_forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(record);
+    const { behavior_profile_revision: _behaviorProfileRevision, ...publicRecord } = record;
+    return NextResponse.json(publicRecord);
   } catch (error) {
     if (error instanceof BenyuanAuthError) {
       return NextResponse.json({ error: error.code }, { status: error.status });

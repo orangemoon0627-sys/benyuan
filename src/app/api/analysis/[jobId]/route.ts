@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { toPublicAnalysisJob } from "@/lib/benyuan-public-analysis";
 import { getJob } from "@/lib/store";
 
 export async function GET(_: Request, { params }: { params: Promise<{ jobId: string }> }) {
@@ -9,5 +10,5 @@ export async function GET(_: Request, { params }: { params: Promise<{ jobId: str
     return NextResponse.json({ error: "job_not_found" }, { status: 404 });
   }
 
-  return NextResponse.json(job);
+  return NextResponse.json(toPublicAnalysisJob(job));
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { BenyuanAuthError, getCurrentAuthSession } from "@/lib/benyuan-auth";
-import { getPart1Record, getPart2Record, runNativeGenerationJob, shouldResumeNativeGenerationJob, startNativeGenerationJob } from "@/lib/benyuan-v3-store";
+import { getPart1Record, getPart2Record, presentNativeGenerationJob, runNativeGenerationJob, shouldResumeNativeGenerationJob, startNativeGenerationJob } from "@/lib/benyuan-v3-store";
 import type { BenyuanNativeGenerationJobKind } from "@/lib/benyuan-v3-types";
 
 type NativeGenerationJobStartBody = {
@@ -63,5 +63,5 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json(job);
+  return NextResponse.json(presentNativeGenerationJob(job));
 }

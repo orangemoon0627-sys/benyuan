@@ -18,7 +18,7 @@ registerHooks({
 });
 
 const { aggregateTraitsFromPart1, generateDeterministicTheaterScript } = await import("../src/lib/benyuan-v3-engine.ts");
-const { normalizeTheaterScript } = await import("../src/lib/benyuan-v3-agent.ts");
+const { mergeFastTheaterSeed, normalizeFastTheaterSeed, normalizeTheaterScript } = await import("../src/lib/benyuan-v3-agent.ts");
 const { getBenyuanArchetypeProfile } = await import("../src/lib/benyuan-v3-report-profile.ts");
 
 const visibleLeakPattern =
@@ -66,6 +66,8 @@ function createPart1Record() {
         cinema: "A4-1",
         inspiration_scene: "A5-1",
         music_analysis: {
+          analysis_status: "analyzed",
+          evidence_quality: "medium",
           primary_genres: ["ambient"],
           emotional_tone: "quiet",
           era_distribution: {},
@@ -83,11 +85,15 @@ function createPart1Record() {
       narrative: {
         social_posts_analysis: [],
         social_posts_overall_pattern: {
+          analysis_status: "analyzed",
+          evidence_quality: "medium",
           dominant_emotion: "quiet",
           core_themes: ["moon"],
           expression_authenticity: "medium",
         },
         precious_photo_analysis: {
+          analysis_status: "analyzed",
+          evidence_quality: "medium",
           visual_content: "moon over sea",
           composition: "centered",
           lighting: "low light",
@@ -113,7 +119,7 @@ function createPart1Record() {
         neuroticism: 52,
       },
       core_themes: ["solitude", "moon"],
-      archetype_hints: ["observer"],
+      archetype_hints: ["lone_seeker"],
     },
   };
 }
@@ -121,6 +127,8 @@ function createPart1Record() {
 test("generateDeterministicTheaterScript renders music motif as readable Chinese fallback", () => {
   const record = createPart1Record();
   record.part1_data.aesthetics.music_analysis = {
+    analysis_status: "analyzed",
+    evidence_quality: "medium",
     primary_genres: ["post-rock raw", "ambient", "undetermined_no_visible_music_playlist_or_music_screenshot"],
     emotional_tone: "melancholic_introspective",
     era_distribution: {},
@@ -191,7 +199,7 @@ test("normalizeTheaterScript pads short live act2 into the required four-round t
   assert.equal(normalized.act2.choices.length, 4);
   assert.equal(normalized.act2.choices[0].scene, "第一轮来自模型。");
   assert.equal(normalized.act2.choices[1].scene, "第二轮来自模型。");
-  assert.match(normalized.act2.choices[3].scene, /星图|最后一道门|先看见哪一层/);
+  assert.match(normalized.act2.choices[3].scene, /清运车|最后五分钟|明确的收尾/);
   assert(normalized.act2.choices.every((choice) => choice.options.length === 4), "short live choices must be padded to four options per round");
 });
 
@@ -211,7 +219,7 @@ test("normalizeTheaterScript repairs saved legacy three-round theater scripts", 
   assert.equal(normalized.act2.choices[3].options.length, 4);
 });
 
-test("fast theater seed cannot overwrite legacy act3 mirror compatibility copy", () => {
+test("full theater normalizer rejects compact seeds instead of treating fallback copy as live output", () => {
   const fallback = generateDeterministicTheaterScript(createPart1Record());
   const normalized = normalizeTheaterScript(
     {
@@ -229,21 +237,72 @@ test("fast theater seed cannot overwrite legacy act3 mirror compatibility copy",
     fallback,
   );
 
-  assert.ok(normalized);
-  assert.deepEqual(normalized.act3.mirror_questions, fallback.act3.mirror_questions);
-  assert.equal(normalized.act3.mirror_final_words, fallback.act3.mirror_final_words);
-  assert.doesNotMatch(collectVisibleTheaterText(normalized), /旧镜面试图回来|让镜面停在哪个方向/u);
+  assert.equal(normalized, null);
+});
+
+test("fast theater seed replaces all four fixed option sets with adaptive behavior vectors", () => {
+  const fallback = generateDeterministicTheaterScript(createPart1Record());
+  const targets = ["action_entry", "object_distance", "desire_structure", "defense_style"];
+  const seed = normalizeFastTheaterSeed({
+    theater_seed: {
+      core_archetype: "安静观测者",
+      motifs: ["低光", "潮声"],
+      act1_lens: `${"你在雨夜赶到一间即将关闭的旧店，柜台上留着一只写有你名字的纸袋。".repeat(8)}\n\n门外有人等待，清运车将在二十分钟后抵达。`,
+      act2_rounds: targets.map((target, roundIndex) => ({
+        lens: `第 ${roundIndex + 1} 轮继续同一间旧店里的事件。新的来电改变了现场，主人公必须在清运人员抵达前完成一个具体动作。`,
+        options: Array.from({ length: 4 }, (_, optionIndex) => ({
+          text: `方向${roundIndex + 1}-${optionIndex + 1}`,
+          trait_signal: `${target} + behavior_${roundIndex + 1}_${optionIndex + 1}`,
+          response: `空间回应了方向${optionIndex + 1}`,
+        })),
+      })),
+      mirror_questions: [],
+      closing_line: "星图开始显影。",
+    },
+  });
+
+  assert.ok(seed);
+  const merged = mergeFastTheaterSeed(fallback, seed);
+  assert.equal(merged.act2.choices.length, 4);
+  for (const [roundIndex, choice] of merged.act2.choices.entries()) {
+    assert.match(choice.scene, new RegExp(`第 ${roundIndex + 1} 轮继续同一间旧店`));
+    assert.equal(choice.options.length, 4);
+    assert.equal(choice.options[0].text, `方向${roundIndex + 1}-1`);
+    assert.match(choice.options[0].trait_signal, new RegExp(`^${targets[roundIndex]} \\+`));
+    assert.match(choice.options[0].response, /空间回应/u);
+  }
+  assert.doesNotMatch(merged.act1.scene_description, /第一处微光|黑色天体/u);
+  assert.doesNotMatch(merged.act2.choices[0].scene, /\n\n/u, "adaptive story scenes must replace rather than concatenate fallback prose");
+});
+
+test("deterministic theater translates source answers before they become visible prose", () => {
+  const record = createPart1Record();
+  record.part1_data.aesthetics.cinema = "A4-2";
+  record.part1_data.philosophy.emotion_pattern = "B3-2";
+  const script = generateDeterministicTheaterScript(record);
+  const visibleText = collectVisibleTheaterText(script);
+
+  assert.doesNotMatch(visibleText, /大卫·林奇《穆赫兰道》：梦里有门/u);
+  assert.doesNotMatch(visibleText, /我会努力维持平静，但底下已经快要撑不住/u);
+  assert.match(script.act1.scene_description, /即将清空|清运人员/u);
+  assert.match(script.act2.choices[0].scene, /必须先决定从哪里弄清这件事/u);
+  assert.doesNotMatch(visibleText, /梦与现实彼此渗入|被平静压在水下的潮汐/u);
 });
 
 test("part2 submit rejects incomplete four-round theater choice logs", () => {
   const route = readFileSync("src/app/api/part2/submit/route.ts", "utf8");
+  const validation = readFileSync("src/lib/benyuan-v3-validation.ts", "utf8");
 
   assert.match(route, /requiredAct2Choices/, "part2 route must compute the visible theater choice requirement");
-  assert.match(route, /incomplete_theater_act2_choices/, "part2 route must reject incomplete theater choice logs");
+  assert.match(route, /validateAndSnapshotPart2Choices/, "part2 route must validate choices against the generated theater");
+  assert.match(validation, /incomplete_theater_act2_choices/, "part2 validation must reject incomplete theater choice logs");
+  assert.match(validation, /duplicate_theater_act2_choice/, "part2 validation must reject duplicate rounds");
+  assert.match(validation, /invalid_theater_act2_option/, "part2 validation must reject options outside their generated round");
+  assert.match(validation, /option_text:[\s\S]*?trait_signal:[\s\S]*?option_response:/, "part2 validation must snapshot adaptive option semantics");
   assert.match(route, /status:\s*422/, "incomplete theater choices should be a validation failure");
 });
 
-test("normalizeTheaterScript cleans visible slug and OCR noise without rewriting internal signals", () => {
+test("normalizeTheaterScript cleans visible noise and adds the canonical round sampling target", () => {
   const fallback = generateDeterministicTheaterScript(createPart1Record());
   const normalized = normalizeTheaterScript(
     {
@@ -306,7 +365,7 @@ test("normalizeTheaterScript cleans visible slug and OCR noise without rewriting
 
   assert.doesNotMatch(visibleText, visibleLeakPattern);
   assert.equal(normalized.act2.choices[0].options[0].id, "1A");
-  assert.equal(normalized.act2.choices[0].options[0].trait_signal, "internal_signal + melancholic_introspective");
+  assert.equal(normalized.act2.choices[0].options[0].trait_signal, "action_entry + internal_signal + melancholic_introspective");
   assert.equal(normalized.epilogue.transition_animation, "stars_converging");
 });
 

@@ -8,7 +8,7 @@
 
 - Provider Name: `xiaoye`
 - Base URL: `https://subapi.xiaoye.lol`
-- Model: `gpt-5.5`
+- Model: `gpt-5.6-terra`
 - Reasoning Effort: `xhigh`
 
 ## 推荐操作

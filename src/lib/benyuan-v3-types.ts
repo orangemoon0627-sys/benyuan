@@ -1,3 +1,6 @@
+import type { BenyuanPsycheSignalKey, TraitSignalPolarity } from "@/lib/benyuan-v3-trait-signals";
+import type { BenyuanBehaviorProfileV2 } from "@/lib/benyuan-v3-behavior-profile";
+
 export type BenyuanModuleKey = "A" | "B" | "C";
 export type BenyuanQuestionKind = "single" | "multi" | "upload" | "distribution";
 export type BenyuanDataCohort = "beta" | "public" | "local";
@@ -11,6 +14,18 @@ export type SevenDimensionKey =
   | "aesthetic_sensitivity"
   | "action_tendency"
   | "relationship_need";
+
+export type MultimodalAnalysisStatus = "analyzed" | "insufficient_evidence";
+export type MultimodalEvidenceQuality = "high" | "medium" | "low" | "none";
+
+export type MultimodalBehaviorSignal = {
+  signal: BenyuanPsycheSignalKey;
+  polarity: TraitSignalPolarity;
+  confidence: number;
+  temporal_scope: "current_state" | "long_term_preference" | "historical_pattern" | "symbolic_material" | "unknown";
+  evidence: string[];
+  alternative_explanation?: string;
+};
 
 export type BenyuanQuestionOption = {
   id: string;
@@ -37,11 +52,14 @@ export type BenyuanQuestion = {
 };
 
 export type MusicAnalysis = {
+  analysis_status?: MultimodalAnalysisStatus;
+  evidence_quality?: MultimodalEvidenceQuality;
   primary_genres: string[];
   emotional_tone: string;
   era_distribution: Record<string, number>;
   language_diversity: string[];
   personality_signals: Record<string, string>;
+  behavioral_signals?: MultimodalBehaviorSignal[];
   recognized_tracks?: Array<{
     title: string;
     artist?: string;
@@ -67,20 +85,27 @@ export type SocialPostAnalysis = {
   self_presentation: string;
   time_clue: string;
   psychological_signals: string[];
+  behavioral_signals?: MultimodalBehaviorSignal[];
 };
 
 export type SocialPostOverallPattern = {
+  analysis_status?: MultimodalAnalysisStatus;
+  evidence_quality?: MultimodalEvidenceQuality;
   dominant_emotion: string;
   core_themes: string[];
   expression_authenticity: string;
+  behavioral_signals?: MultimodalBehaviorSignal[];
 };
 
 export type PreciousPhotoAnalysis = {
+  analysis_status?: MultimodalAnalysisStatus;
+  evidence_quality?: MultimodalEvidenceQuality;
   visual_content: string;
   composition: string;
   lighting: string;
   color_mood: string;
   symbolic_elements: string[];
+  behavioral_signals?: MultimodalBehaviorSignal[];
   psychological_interpretation: {
     core_themes: string[];
     emotional_tone: string;
@@ -239,12 +264,16 @@ export type TheaterScriptRecord = {
   data_environment: BenyuanDataEnvironment;
   created_at: string;
   runtime: AgentRuntimeResult;
+  behavior_profile_revision?: string;
   theater_script: TheaterScript;
 };
 
 export type Part2ChoiceRecord = {
   choice_id: number;
   selected: string;
+  option_text?: string;
+  trait_signal?: string;
+  option_response?: string;
   hesitation_time?: number;
   hover_sequence?: string[];
   timestamp: string;
@@ -327,6 +356,7 @@ export type ConstellationRecord = {
   data_environment: BenyuanDataEnvironment;
   created_at: string;
   runtime: AgentRuntimeResult;
+  behavior_profile_revision?: string;
   psyche_constellation: PsycheConstellation;
   archetype_image_url?: string;
 };
@@ -357,6 +387,48 @@ export type BenyuanNativeGenerationJobStageTiming = {
   asset_count?: number;
 };
 
+export type BenyuanNativeGenerationEventType = "created" | "stage_started" | "checkpoint" | "resumed" | "completed" | "failed";
+
+export type BenyuanNativeGenerationEvent = {
+  schema_version: "native-generation-event.v1";
+  event_id: string;
+  sequence: number;
+  job_id: string;
+  kind: BenyuanNativeGenerationJobKind;
+  event_type: BenyuanNativeGenerationEventType;
+  status: BenyuanNativeGenerationJobStatus;
+  stage: BenyuanNativeGenerationJobStage;
+  occurred_at: string;
+  message: string;
+  checkpoint?: string;
+  behavior_profile_revision?: string;
+  evidence_revision?: string;
+};
+
+export type BenyuanShadowArchetypeDiagnostic = {
+  mode: "shadow_only";
+  primary: string;
+  secondary: string;
+  margin: number;
+  confidence: number;
+  decisive_signals: BenyuanPsycheSignalKey[];
+  conflicting_signals: BenyuanPsycheSignalKey[];
+  scores: Array<{ archetype: string; score: number }>;
+};
+
+export type BenyuanBehaviorProfileSnapshotRecord = {
+  profile_revision: string;
+  schema_version: "behavior-profile.v2";
+  source_revision: string;
+  user_id: string;
+  part1_id: string;
+  part2_id?: string;
+  data_cohort: BenyuanDataCohort;
+  data_environment: BenyuanDataEnvironment;
+  created_at: string;
+  profile: BenyuanBehaviorProfileV2;
+};
+
 export type BenyuanNativeGenerationJob = {
   job_id: string;
   user_id: string;
@@ -376,6 +448,15 @@ export type BenyuanNativeGenerationJob = {
   stage_updated_at?: string;
   stage_detail?: BenyuanNativeGenerationJobStageDetail;
   stage_timings?: Partial<Record<BenyuanNativeGenerationJobStage, BenyuanNativeGenerationJobStageTiming>>;
+  event_schema_version?: "native-generation-event.v1";
+  event_sequence?: number;
+  events?: BenyuanNativeGenerationEvent[];
+  behavior_profile_revision?: string;
+  shadow_archetype_diagnostic?: BenyuanShadowArchetypeDiagnostic;
+  run_attempt?: number;
+  lease_owner?: string;
+  lease_expires_at?: string;
+  last_heartbeat_at?: string;
   message: string;
   can_resume_in_background: true;
   error?: string;
@@ -405,6 +486,16 @@ export type AgentRuntimeResult = {
 };
 
 export type BenyuanAuthProvider = "anonymous" | "apple" | "wechat" | "phone";
+export type BenyuanUserProfileStatus = "incomplete" | "complete";
+export type BenyuanUserGender = "female" | "male" | "nonbinary" | "undisclosed";
+
+export type BenyuanUserProfilePatch = {
+  display_name?: string;
+  avatar_symbol?: string;
+  birth_year?: number | null;
+  gender?: BenyuanUserGender;
+  profile_bio?: string;
+};
 
 export type BenyuanUser = {
   user_id: string;
@@ -413,6 +504,12 @@ export type BenyuanUser = {
   created_at: string;
   updated_at: string;
   display_name?: string;
+  avatar_symbol?: string;
+  profile_status?: BenyuanUserProfileStatus;
+  birth_year?: number;
+  gender?: BenyuanUserGender;
+  profile_bio?: string;
+  registered_at?: string;
   primary_provider: BenyuanAuthProvider;
   providers: Partial<Record<BenyuanAuthProvider, string>>;
   phone_bound?: boolean;
@@ -546,6 +643,7 @@ export type BenyuanV3Store = {
   part2_records: Record<string, Part2Record>;
   constellations: Record<string, ConstellationRecord>;
   native_generation_jobs: Record<string, BenyuanNativeGenerationJob>;
+  behavior_profile_snapshots: Record<string, BenyuanBehaviorProfileSnapshotRecord>;
   feedback_records: Record<string, BenyuanFeedbackRecord>;
   test_plan_items: Record<string, BenyuanTestPlanItem>;
 };

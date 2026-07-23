@@ -1,5 +1,5 @@
 import { benyuanPart1Questions, benyuanQuestionsById } from "@/lib/benyuan-v3-schema";
-import type { Part1AnswerMap } from "@/lib/benyuan-v3-types";
+import type { Part1AnswerMap, Part2ChoiceRecord, TheaterScript } from "@/lib/benyuan-v3-types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -78,4 +78,78 @@ export function summarizeSelectedOptions(answers: Part1AnswerMap) {
       return [questionId, value];
     }),
   );
+}
+
+export function validateAndSnapshotPart2Choices(theaterScript: TheaterScript, submitted: unknown) {
+  if (!Array.isArray(submitted)) {
+    return { ok: false as const, error: "act2_choices_must_be_array" };
+  }
+
+  const expectedChoices = theaterScript.act2.choices.slice(0, 4);
+  if (submitted.length < expectedChoices.length) {
+    return {
+      ok: false as const,
+      error: "incomplete_theater_act2_choices",
+      required: expectedChoices.length,
+      received: submitted.length,
+    };
+  }
+  if (submitted.length !== expectedChoices.length) {
+    return {
+      ok: false as const,
+      error: "invalid_theater_act2_choice_count",
+      required: expectedChoices.length,
+      received: submitted.length,
+    };
+  }
+
+  const byChoiceId = new Map<number, Record<string, unknown>>();
+  for (const raw of submitted) {
+    if (!isRecord(raw) || typeof raw.choice_id !== "number" || !Number.isInteger(raw.choice_id)) {
+      return { ok: false as const, error: "invalid_theater_act2_choice" };
+    }
+    if (byChoiceId.has(raw.choice_id)) {
+      return { ok: false as const, error: "duplicate_theater_act2_choice", choice_id: raw.choice_id };
+    }
+    byChoiceId.set(raw.choice_id, raw);
+  }
+
+  const choices: Part2ChoiceRecord[] = [];
+  for (const expected of expectedChoices) {
+    const raw = byChoiceId.get(expected.choice_id);
+    if (!raw) {
+      return { ok: false as const, error: "missing_theater_act2_round", choice_id: expected.choice_id };
+    }
+    if (typeof raw.selected !== "string" || typeof raw.timestamp !== "string" || raw.timestamp.trim().length === 0) {
+      return { ok: false as const, error: "invalid_theater_act2_choice", choice_id: expected.choice_id };
+    }
+    const option = expected.options.find((item) => item.id === raw.selected);
+    if (!option) {
+      return {
+        ok: false as const,
+        error: "invalid_theater_act2_option",
+        choice_id: expected.choice_id,
+        selected: raw.selected,
+      };
+    }
+    if (raw.hesitation_time != null && (typeof raw.hesitation_time !== "number" || !Number.isFinite(raw.hesitation_time) || raw.hesitation_time < 0)) {
+      return { ok: false as const, error: "invalid_theater_hesitation_time", choice_id: expected.choice_id };
+    }
+    if (raw.hover_sequence != null && (!Array.isArray(raw.hover_sequence) || raw.hover_sequence.some((item) => typeof item !== "string"))) {
+      return { ok: false as const, error: "invalid_theater_hover_sequence", choice_id: expected.choice_id };
+    }
+
+    choices.push({
+      choice_id: expected.choice_id,
+      selected: option.id,
+      option_text: option.text,
+      trait_signal: option.trait_signal,
+      option_response: option.response,
+      hesitation_time: typeof raw.hesitation_time === "number" ? raw.hesitation_time : undefined,
+      hover_sequence: Array.isArray(raw.hover_sequence) ? raw.hover_sequence as string[] : undefined,
+      timestamp: raw.timestamp,
+    });
+  }
+
+  return { ok: true as const, choices };
 }

@@ -246,7 +246,7 @@ extension BenyuanNativeFlowModel {
                     keyThemes: ["边界", "凝视", "未寄出的信"]
                 ),
                 act1: TheaterScript.Act1(
-                    sceneDescription: "你醒来时，站在一片很深的月场边缘。远处的黑色天体缓慢转动，边缘有一圈暗金色的光。脚下不是地面，而是一层半透明的潮水；潮水下压着一张被银光擦亮的照片轮廓，像有人把你交出的某个画面折进了这里。\n\n空气里有那段旧音乐，低得像从月背传来。它不是背景乐，更像这个空间自己的呼吸。某处传来一句很轻的话：那封没有寄出的信，还没有离开你。这句话没有被解释，只是在你身边绕了一圈，落成一条通向前方的细线。\n\n一封没有署名的信浮在潮水上，信封背面有照片里的光。旁边几颗暗金粒子沿着同一个位置反复靠近，像在复现你刚才某一次停顿。更远处有一条窄桥，桥另一端的银白光线忽明忽暗，像在等你决定要不要把这段距离继续往前推。\n\n你意识到，这不是为了让你回答问题而临时搭出来的场景。它更像前面那些画面、声音、句子和停顿，被折成了一段只能由你继续往下走的小说。你只需要沿着第一条细线靠近，看看它会把你带到哪里。",
+                    sceneDescription: "晚上十点四十分，你赶到临海旧城区一间即将清空的照相馆。店主半小时前发来消息：整理最后一批物件时，他找到一只写着你名字的纸袋，只能替你保管到清运人员到达。\n\n门虚掩着，雨水把街灯映在地面上。后屋的旧音箱循环一段没有人声的音乐。柜台便条写着：纸袋里有两样东西，其中一件不该由店主替你决定。\n\n手机在这时亮起。那个很久没有联系、却曾和你共同保管这些东西的人发来一句：“我在街对面。你先看，决定要不要见我。”后巷已经传来推车撞上铁门的声音。\n\n你只剩二十分钟。门、电话和柜台登记簿都在伸手可及的地方，故事从你的第一个动作开始。",
                     visualPrompt: "deep lunar theater entrance, realistic black moon, restrained silver light",
                     ambientSound: "低频潮声与远处钢琴",
                     duration: 35
@@ -254,42 +254,42 @@ extension BenyuanNativeFlowModel {
                 act2: TheaterScript.Act2(choices: [
                     TheaterChoice(
                         choiceId: 1,
-                        scene: "入口打开后，那封没有寄出的信浮在黑潮上。信封没有署名，背面却压着照片里的银白光线。旧音乐在剧场深处重复同一个小节，像在问你：要不要先承认自己已经听见了它？",
+                        scene: "店主去后屋找封存单，门口只剩你和纸袋。街对面的人影没有移动，后巷的推车声却越来越近。你必须先决定从哪里弄清这件事。",
                         options: [
-                            TheaterChoiceOption(id: "letter_open", text: "靠近信封，让第一行字自己浮出来。", traitSignal: "direct_truth", response: "纸面没有完全展开，只露出一句很轻的话，像真相先试探了你一下。"),
-                            TheaterChoiceOption(id: "letter_hold", text: "先把信收进掌心，等潮声变慢。", traitSignal: "deferred_intimacy", response: "信封变得很重，但重量并不压迫你，反而像给了你一个可以停留的位置。"),
-                            TheaterChoiceOption(id: "letter_reflect", text: "把信举向银光，看背面的照片轮廓。", traitSignal: "observational_boundary", response: "银光沿着纸背游动，你发现自己不是不想知道，只是不愿被太快命名。"),
-                            TheaterChoiceOption(id: "letter_avoid", text: "绕过信封，先听清那段旧音乐。", traitSignal: "aesthetic_deferral", response: "音乐替你保留了答案。它没有催促，只把你带向剧场更深处。")
+                            TheaterChoiceOption(id: "letter_open", text: "先回电话，确认是谁留下了纸袋。", traitSignal: "action_entry + direct_approach", response: "店主接起电话，告诉你寄存人没有留姓名，只确认你会亲自来取。"),
+                            TheaterChoiceOption(id: "letter_hold", text: "推门进去，查看柜台上的登记簿。", traitSignal: "action_entry + information_first", response: "登记簿最后一页有两种笔迹，其中一行被划掉，却还看得出日期。"),
+                            TheaterChoiceOption(id: "letter_reflect", text: "把地址发给朋友，请他在门外等你。", traitSignal: "action_entry + relational_support", response: "朋友回了一个定位，说十分钟后到。你不再需要独自处理现场。"),
+                            TheaterChoiceOption(id: "letter_avoid", text: "绕到侧门，确认屋里是否还有人。", traitSignal: "action_entry + cautious_scan", response: "侧门没有上锁，门后放着一把湿伞，说明有人比你更早进过这里。")
                         ]
                     ),
                     TheaterChoice(
                         choiceId: 2,
-                        scene: "你带着信往里走，走廊变成一条窄桥。桥的一侧是熟悉的声音，另一侧是完全安静的银光。桥中央摆着那张照片，画面里被保存下来的距离，正在变成你和某个人之间的距离。",
+                        scene: "纸袋里有一张旧照片和一把小钥匙。街对面的人发来消息：“照片是我放进去的，钥匙不是。”TA 已经走到门外，却停在雨棚边，没有自行进来。",
                         options: [
-                            TheaterChoiceOption(id: "voice_door", text: "推开有声音的门，确认那是谁的回声。", traitSignal: "relationship_return", response: "声音停顿了一下，像终于被你认出，但还没有要求你回答。"),
-                            TheaterChoiceOption(id: "silver_door", text: "走向安静的银光，先保留解释。", traitSignal: "inner_boundary", response: "银光落在你的肩上，像一层新的边界，让靠近不必立刻变成暴露。"),
-                            TheaterChoiceOption(id: "photo_bridge", text: "停在桥中央，看照片如何被两边照亮。", traitSignal: "tension_tolerance", response: "照片没有选边。它把声音和银光同时留住，像承认你也可以暂时不二选一。"),
-                            TheaterChoiceOption(id: "step_back", text: "后退半步，让对方的声音先靠近。", traitSignal: "relational_caution", response: "桥没有因为你的后退而断开。你只是想确认，靠近的人是否懂得放轻脚步。")
+                            TheaterChoiceOption(id: "voice_door", text: "请对方进来，当面把事情说清。", traitSignal: "object_distance + direct_contact", response: "TA 进门后先放下湿伞，没有碰桌上的东西，只解释了照片的来处。"),
+                            TheaterChoiceOption(id: "silver_door", text: "走到街对面，只先问一个问题。", traitSignal: "object_distance + bounded_contact", response: "你们隔着一张空桌坐下。对方回答了那个问题，没有顺势要求更多。"),
+                            TheaterChoiceOption(id: "photo_bridge", text: "发一张现场照片，等对方先开口。", traitSignal: "relationship_mirror_need + reciprocal_signal", response: "对方看完照片，发来一段短语音，先说了自己隐瞒的部分。"),
+                            TheaterChoiceOption(id: "step_back", text: "暂时不回复，先看完纸袋里的东西。", traitSignal: "object_distance + delayed_contact", response: "门外的人没有催促。纸袋底部还有一张折过两次的收据。")
                         ]
                     ),
                     TheaterChoice(
                         choiceId: 3,
-                        scene: "桥尽头出现一枚小小的黑色星体。它没有吞没信、照片或声音，只把它们拉进同一圈暗金轨道。你终于看见：剧场一直不是在逼你选择答案，而是在显影你保存自己的方式。",
+                        scene: "钥匙打开了柜台抽屉。里面有两只盒子：一只贴着你的名字，另一只属于门外的人。清运人员开始敲后门，店主说只能再留十分钟。",
                         options: [
-                            TheaterChoiceOption(id: "orbit_stabilize", text: "把信贴近胸口，先让轨道稳定下来。", traitSignal: "security_need", response: "星体的转速慢了一点。你把稳定当成容器，而不是退路。"),
-                            TheaterChoiceOption(id: "edge_touch", text: "伸手触碰星体边缘，允许未知靠近。", traitSignal: "exploration_desire", response: "你的指尖没有被吞没，只沾上一层冷银色的光。未知没有回答你，却承认你已经抵达。"),
-                            TheaterChoiceOption(id: "dual_gravity", text: "留在两股引力之间，听它们同时说话。", traitSignal: "ambiguity_capacity", response: "两股引力没有互相抵消。它们像两条潮线，让你知道矛盾也可以形成轨道。"),
-                            TheaterChoiceOption(id: "hidden_exit", text: "沿着暗金轨道，寻找没有标出的出口。", traitSignal: "creative_reframing", response: "轨道在脚下分出第三条细线，很窄，却贴合你的步子，像给不愿二选一的人留下的路。")
+                            TheaterChoiceOption(id: "orbit_stabilize", text: "带走两只盒子，明天再逐一归还。", traitSignal: "desire_structure + temporary_control", response: "店主把两只盒子装进同一个袋子。门外的人看见了，但没有阻止你。"),
+                            TheaterChoiceOption(id: "edge_touch", text: "只拿属于你的，把另一只留在柜台。", traitSignal: "boundary_integrity + separate_ownership", response: "你的盒子比想象中轻。另一只留在原处，等它的主人自己伸手。"),
+                            TheaterChoiceOption(id: "dual_gravity", text: "请对方进来，你们一起决定归属。", traitSignal: "desire_structure + joint_decision", response: "你们同时站到抽屉前。店主把清单推过来，让两个人各自签名。"),
+                            TheaterChoiceOption(id: "hidden_exit", text: "拍下现状后全部放回，今晚先离开。", traitSignal: "boundary_integrity + defer_commitment", response: "照片保存了盒子的位置和封条。店主同意把抽屉单独锁到明早。")
                         ]
                     ),
                     TheaterChoice(
                         choiceId: 4,
-                        scene: "黑色星体把信、照片、旧音乐和桥上的回声压成一枚很小的月。星图还没有开始命名你，它先停在最后一道门前：如果要把这些线索交给它，你更愿意让它先看见哪一层？",
+                        scene: "清运车的灯照进门口，最后五分钟开始倒数。对方终于说，盒子里真正需要处理的是一份当年没有共同签下的决定。你必须给今晚一个明确的收尾。",
                         options: [
-                            TheaterChoiceOption(id: "final_origin", text: "把那些总会回来的旧画面交给星图。", traitSignal: "self_narrative_time", response: "旧画面没有把你困住，它只是把你反复回望的方向照亮。"),
-                            TheaterChoiceOption(id: "final_desire", text: "把迟迟没有说出口的靠近放进月光里。", traitSignal: "desire_structure", response: "那件事没有立刻变亮，却在暗处多了一圈清晰的边。"),
-                            TheaterChoiceOption(id: "final_boundary", text: "把保护自己的边界放到暗金轨道上。", traitSignal: "object_distance_boundary", response: "暗金轨道贴近了一点，像承认边界也是一种靠近的方式。"),
-                            TheaterChoiceOption(id: "final_action", text: "把犹豫之后仍会前行的那一步交给桥。", traitSignal: "action_after_hesitation", response: "桥的尽头出现了下一步台阶，不宽，但足够让你带着迟疑继续前行。")
+                            TheaterChoiceOption(id: "final_origin", text: "把那份决定交给对方，当面说出实情。", traitSignal: "defense_style + direct_expression", response: "对方接过文件，没有立即回答。事情终于停在两个人都看得见的地方。"),
+                            TheaterChoiceOption(id: "final_desire", text: "带走自己的部分，约定明晚再谈。", traitSignal: "time_gravity + planned_reentry", response: "你们在同一张便条上写下时间。延期不再是消失，而是有尽头的等待。"),
+                            TheaterChoiceOption(id: "final_boundary", text: "请店主继续保管，并写下回复日期。", traitSignal: "defense_style + structured_delay", response: "店主封好抽屉，把日期写在两张收据上。决定被推迟，但没有被抹去。"),
+                            TheaterChoiceOption(id: "final_action", text: "先把所有物品转到安全处，停止争论。", traitSignal: "meaning_orientation + practical_containment", response: "你们一起把箱子搬离门口。今晚先保住事实，剩下的话留到之后。")
                         ]
                     )
                 ]),

@@ -1,12 +1,12 @@
 import { randomBytes, createHash, createHmac, webcrypto } from "node:crypto";
+import { resolveBenyuanClientIp } from "@/lib/benyuan-client-ip";
 import {
   createBenyuanAuthId,
+  consumeAuthRateLimit,
   findUserByProviderSubject,
-  getAuthRateLimit,
   getAuthSessionByToken,
   getPhoneOtp,
   revokeAuthSession,
-  saveAuthRateLimit,
   saveAuthUserAndSession,
   savePhoneOtp,
   resolveBenyuanDataScope,
@@ -79,12 +79,16 @@ function nowIso() {
 }
 
 function clientIpFromRequest(request?: Request) {
-  if (!request) return "server";
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    "unknown"
-  );
+  return request ? resolveBenyuanClientIp(request.headers) : "server";
+}
+
+function rateLimitClientKey(request?: Request) {
+  return createHash("sha256").update(clientIpFromRequest(request)).digest("hex").slice(0, 24);
+}
+
+function positiveIntegerEnv(name: string, fallback: number) {
+  const value = Number(process.env[name]);
+  return Number.isSafeInteger(value) && value > 0 ? value : fallback;
 }
 
 function createSessionToken(provider: BenyuanAuthProvider) {
@@ -98,13 +102,18 @@ function providerSubject(provider: BenyuanAuthProvider, source?: string) {
 
 function normalizeBenyuanDisplayName(displayName?: string) {
   const value = displayName?.trim();
-  if (!value || value === "Apple 用户") return undefined;
+  if (!value || ["Apple 用户", "微信用户", "手机用户", "访客", "我的本源档案"].includes(value)) return undefined;
   return value;
+}
+
+function deriveBenyuanProfileStatus(user: BenyuanUser): BenyuanUser["profile_status"] {
+  const name = normalizeBenyuanDisplayName(user.display_name);
+  return name && user.avatar_symbol?.trim() ? "complete" : "incomplete";
 }
 
 function updateUserProvider(user: BenyuanUser, provider: BenyuanAuthProvider, providerSubjectValue: string, options?: { displayName?: string }) {
   const displayName = normalizeBenyuanDisplayName(options?.displayName);
-  return {
+  const updated = {
     ...user,
     updated_at: nowIso(),
     display_name: displayName ?? normalizeBenyuanDisplayName(user.display_name),
@@ -114,6 +123,10 @@ function updateUserProvider(user: BenyuanUser, provider: BenyuanAuthProvider, pr
     },
     phone_bound: provider === "phone" ? true : user.phone_bound,
     wechat_bound: provider === "wechat" ? true : user.wechat_bound,
+  };
+  return {
+    ...updated,
+    profile_status: deriveBenyuanProfileStatus(updated),
   };
 }
 
@@ -272,18 +285,33 @@ export async function checkAuthRateLimit(input: { key: string; limit?: number; w
   const limit = input.limit ?? Number(process.env.BENYUAN_AUTH_RATE_LIMIT_MAX ?? 5);
   const windowMs = input.windowMs ?? Number(process.env.BENYUAN_AUTH_RATE_LIMIT_WINDOW_MS ?? 10 * 60 * 1000);
   const timestamp = nowIso();
-  const existing = await getAuthRateLimit(input.key);
-  const resetAt = existing ? new Date(existing.reset_at).getTime() : 0;
-  const next =
-    !existing || resetAt <= Date.now()
-      ? { key: input.key, ...resolveBenyuanDataScope(), count: 1, reset_at: new Date(Date.now() + windowMs).toISOString(), updated_at: timestamp }
-      : { ...existing, count: existing.count + 1, updated_at: timestamp };
-
-  await saveAuthRateLimit(next);
+  const next = await consumeAuthRateLimit({ key: input.key, windowMs, timestamp });
   if (next.count > limit) {
     throw new BenyuanAuthError("rate_limited", 429);
   }
   return next;
+}
+
+export async function checkAnonymousSessionRateLimit(request: Request) {
+  return checkAuthRateLimit({
+    key: `anonymous_session_ip:${rateLimitClientKey(request)}`,
+    limit: positiveIntegerEnv("BENYUAN_ANONYMOUS_SESSION_RATE_LIMIT_MAX", 12),
+    windowMs: positiveIntegerEnv("BENYUAN_ANONYMOUS_SESSION_RATE_LIMIT_WINDOW_MS", 60 * 60 * 1000),
+  });
+}
+
+export async function checkUploadRateLimit(request: Request, userId: string) {
+  const windowMs = positiveIntegerEnv("BENYUAN_UPLOAD_RATE_LIMIT_WINDOW_MS", 60 * 60 * 1000);
+  await checkAuthRateLimit({
+    key: `upload_user:${userId}`,
+    limit: positiveIntegerEnv("BENYUAN_UPLOAD_USER_RATE_LIMIT_MAX", 12),
+    windowMs,
+  });
+  return checkAuthRateLimit({
+    key: `upload_ip:${rateLimitClientKey(request)}`,
+    limit: positiveIntegerEnv("BENYUAN_UPLOAD_IP_RATE_LIMIT_MAX", 24),
+    windowMs,
+  });
 }
 
 function appleClientIds() {
@@ -392,6 +420,7 @@ async function createAuthSession(provider: BenyuanAuthProvider, options?: { subj
     created_at: timestamp,
     updated_at: timestamp,
     display_name: displayName,
+    profile_status: "incomplete",
     primary_provider: provider,
     providers: {
       [provider]: providerSubject(provider, options?.subject),
@@ -416,12 +445,15 @@ async function createAuthSession(provider: BenyuanAuthProvider, options?: { subj
 
 async function createOrReuseAuthSession(provider: BenyuanAuthProvider, options?: { subject?: string; displayName?: string; existingAuth?: BenyuanAuthContext | null }) {
   const providerSubjectValue = providerSubject(provider, options?.subject);
+  const existingUser = await findUserByProviderSubject(provider, providerSubjectValue);
   if (options?.existingAuth) {
+    if (existingUser && existingUser.user_id !== options.existingAuth.user.user_id) {
+      throw new BenyuanAuthError("provider_already_bound", 409);
+    }
     const user = updateUserProvider(options.existingAuth.user, provider, providerSubjectValue, { displayName: options.displayName });
     return createBoundAuthSession(user, provider);
   }
 
-  const existingUser = await findUserByProviderSubject(provider, providerSubjectValue);
   if (existingUser) {
     const user = updateUserProvider(existingUser, provider, providerSubjectValue, { displayName: options?.displayName });
     return createBoundAuthSession(user, provider);
@@ -436,10 +468,11 @@ async function createOrReuseAuthSession(provider: BenyuanAuthProvider, options?:
   return { user, session: auth.session };
 }
 
-async function createPhoneAuthSession(phone: string) {
+async function createPhoneAuthSession(phone: string, existingAuth?: BenyuanAuthContext | null) {
   const auth = await createOrReuseAuthSession("phone", {
     subject: phone,
-    displayName: phone,
+    displayName: undefined,
+    existingAuth,
   });
   return auth;
 }
@@ -460,7 +493,8 @@ async function createBoundAuthSession(user: BenyuanUser, provider: BenyuanAuthPr
   return { user, session };
 }
 
-export async function createAnonymousAuthSession() {
+export async function createAnonymousAuthSession(request?: Request) {
+  if (request) await checkAnonymousSessionRateLimit(request);
   return createAuthSession("anonymous", { displayName: "访客" });
 }
 
@@ -541,7 +575,7 @@ export async function requestPhoneOtp(input: { phone?: string; request?: Request
   return { phone, expires_at: expiresAt, fixture_code: allowPhoneFixtureAuth() ? code : undefined };
 }
 
-export async function verifyPhoneOtpAndCreateSession(input: { phone?: string; code?: string }) {
+export async function verifyPhoneOtpAndCreateSession(input: { phone?: string; code?: string; existingAuth?: BenyuanAuthContext | null }) {
   const phone = normalizePhone(input.phone ?? "");
   const code = (input.code ?? "").trim();
   if (!validatePhone(phone)) {
@@ -564,7 +598,7 @@ export async function verifyPhoneOtpAndCreateSession(input: { phone?: string; co
   }
 
   await savePhoneOtp({ ...otp, consumed_at: nowIso(), attempts: otp.attempts + 1 });
-  return createPhoneAuthSession(phone);
+  return createPhoneAuthSession(phone, input.existingAuth);
 }
 
 export async function readAuthFromRequest(request: Request): Promise<BenyuanAuthContext | null> {
@@ -596,6 +630,9 @@ function createLocalAuthFallbackContext(): BenyuanAuthContext {
       created_at: timestamp,
       updated_at: timestamp,
       display_name: "本地用户",
+      avatar_symbol: "moon.stars.fill",
+      profile_status: "complete",
+      registered_at: timestamp,
       primary_provider: "anonymous",
       providers: {
         anonymous: "local:fallback",

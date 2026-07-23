@@ -2091,6 +2091,58 @@ final class BenyuanCoreNativeTests: XCTestCase {
     }
 
     @MainActor
+    func testSingleChoiceWaitsForExplicitNextQuestion() throws {
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
+        model.questions = [
+            BenyuanQuestion(
+                id: "single_one",
+                module: .a,
+                title: "single one",
+                prompt: "第一题",
+                kind: .single,
+                minSelections: 1,
+                maxSelections: 1,
+                options: [BenyuanQuestionOption(id: "one_a", text: "选择 A", psychologicalSignal: nil, tags: nil)],
+                outputKey: "single_one",
+                helperText: nil,
+                distributionKeys: nil,
+                analysisDimensions: nil,
+                acceptedFiles: nil,
+                uploadRange: nil
+            ),
+            BenyuanQuestion(
+                id: "single_two",
+                module: .a,
+                title: "single two",
+                prompt: "第二题",
+                kind: .single,
+                minSelections: 1,
+                maxSelections: 1,
+                options: [BenyuanQuestionOption(id: "two_a", text: "选择 B", psychologicalSignal: nil, tags: nil)],
+                outputKey: "single_two",
+                helperText: nil,
+                distributionKeys: nil,
+                analysisDimensions: nil,
+                acceptedFiles: nil,
+                uploadRange: nil
+            ),
+        ]
+        model.activeQuestionIndex = 0
+
+        model.setSingleAnswer("one_a")
+
+        XCTAssertEqual(model.activeQuestionIndex, 0)
+        XCTAssertEqual(model.session.answers["single_one"]?.stringValue, "one_a")
+
+        model.nextQuestion()
+        XCTAssertEqual(model.activeQuestionIndex, 1)
+
+        model.previousQuestion()
+        XCTAssertEqual(model.activeQuestionIndex, 0)
+        XCTAssertEqual(model.session.answers["single_one"]?.stringValue, "one_a")
+    }
+
+    @MainActor
     func testNativePreviewUploadSeedsManageableAssets() throws {
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
 
@@ -2144,13 +2196,14 @@ final class BenyuanCoreNativeTests: XCTestCase {
             let option = try XCTUnwrap(model.currentTheaterChoice?.options.first)
 
             model.chooseAct2(option)
-            try await Task.sleep(nanoseconds: 640_000_000)
 
             XCTAssertEqual(model.stage, .theater)
             XCTAssertEqual(model.theaterPhase, .act2)
+            XCTAssertEqual(model.theaterChoiceIndex, round)
             XCTAssertEqual(model.choiceLogCount, round + 1)
             XCTAssertEqual(model.canEnterConstellationGenerationFromTheater, round == 3)
             if round < 3 {
+                model.nextTheaterChoice()
                 XCTAssertEqual(model.theaterChoiceIndex, round + 1)
             } else {
                 XCTAssertEqual(model.theaterChoiceIndex, 3)
@@ -2162,6 +2215,31 @@ final class BenyuanCoreNativeTests: XCTestCase {
     }
 
     @MainActor
+    func testNativeTheaterAllowsBacktrackingAndReplacingAChoice() throws {
+        let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
+        model.applyNativePreview(.theaterAct2)
+        let firstChoice = try XCTUnwrap(model.currentTheaterChoice)
+        let firstOption = try XCTUnwrap(firstChoice.options.first)
+        let replacement = try XCTUnwrap(firstChoice.options.dropFirst().first)
+
+        model.chooseAct2(firstOption)
+        model.chooseAct2(replacement)
+
+        XCTAssertEqual(model.theaterChoiceIndex, 0)
+        XCTAssertEqual(model.choiceLogCount, 1)
+        XCTAssertEqual(model.selectedTheaterOptionId, replacement.id)
+
+        model.nextTheaterChoice()
+        XCTAssertEqual(model.theaterChoiceIndex, 1)
+        XCTAssertNil(model.selectedTheaterOptionId)
+
+        model.previousTheaterChoice()
+        XCTAssertEqual(model.theaterChoiceIndex, 0)
+        XCTAssertEqual(model.selectedTheaterOptionId, replacement.id)
+        XCTAssertEqual(model.choiceLogs.first?.selected, replacement.id)
+    }
+
+    @MainActor
     func testNativePreviewTheaterEntryButtonOpensLocalConstellation() async throws {
         let model = BenyuanNativeFlowModel(client: BenyuanAPIClient())
         model.applyNativePreview(.theaterAct2)
@@ -2169,7 +2247,9 @@ final class BenyuanCoreNativeTests: XCTestCase {
         for _ in 0..<4 {
             let option = try XCTUnwrap(model.currentTheaterChoice?.options.first)
             model.chooseAct2(option)
-            try await Task.sleep(nanoseconds: 640_000_000)
+            if model.canAdvanceFromCurrentTheaterChoice {
+                model.nextTheaterChoice()
+            }
         }
 
         await model.enterConstellationGenerationFromTheater()

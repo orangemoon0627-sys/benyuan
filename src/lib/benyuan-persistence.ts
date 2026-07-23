@@ -49,7 +49,7 @@ export function readBenyuanPersistenceReadiness() {
 }
 
 export function getBenyuanDataRoot() {
-  return path.resolve(configuredDataRoot() || path.join(process.cwd(), "data"));
+  return path.resolve(configuredDataRoot() || path.join(/* turbopackIgnore: true */ process.cwd(), "data"));
 }
 
 export function getBenyuanV3StorePath() {
@@ -78,6 +78,8 @@ export function summarizeBenyuanStoreCounts(store: BenyuanV3Store) {
     theaterScripts: Object.keys(store.theater_scripts).length,
     part2Records: Object.keys(store.part2_records).length,
     constellations: Object.keys(store.constellations).length,
+    nativeGenerationJobs: Object.keys(store.native_generation_jobs).length,
+    behaviorProfileSnapshots: Object.keys(store.behavior_profile_snapshots).length,
     feedbackRecords: Object.keys(store.feedback_records).length,
   };
 }

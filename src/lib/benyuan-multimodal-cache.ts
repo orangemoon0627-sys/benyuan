@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getBenyuanDataRoot } from "@/lib/benyuan-persistence";
-import type { AgentRuntimeResult } from "@/lib/benyuan-v3-types";
+import type { AgentRuntimeResult, BenyuanDataCohort } from "@/lib/benyuan-v3-types";
 
 export type BenyuanMultimodalStageKind = "music" | "social" | "photo";
 
@@ -12,6 +12,7 @@ type CachedMultimodalAnalysis = {
   prompt_version: string;
   provider: string;
   model: string;
+  data_cohort?: BenyuanDataCohort;
   result: unknown;
   runtime: AgentRuntimeResult;
   created_at: string;
@@ -24,9 +25,14 @@ type MultimodalCacheFile = {
 };
 
 const CACHE_VERSION = 1;
-export const MULTIMODAL_STAGE_PROMPT_VERSION = "v1-parallel-stage-2026-05-12";
+export const MULTIMODAL_STAGE_PROMPT_VERSION = "v4-behavioral-evidence-2026-07-17";
 
 let writeQueue = Promise.resolve();
+
+function currentDataCohort(): BenyuanDataCohort {
+  const value = process.env.BENYUAN_DATA_COHORT;
+  return value === "public" || value === "local" ? value : "beta";
+}
 
 export function getBenyuanMultimodalCachePath() {
   return path.join(getBenyuanDataRoot(), "benyuan-multimodal-cache.json");
@@ -37,9 +43,11 @@ export function makeMultimodalCacheKey(params: {
   assetHash: string;
   provider: string;
   model: string;
+  dataCohort?: BenyuanDataCohort;
   promptVersion?: string;
 }) {
   return [
+    params.dataCohort ?? currentDataCohort(),
     params.kind,
     params.assetHash,
     params.provider,
@@ -73,7 +81,7 @@ async function writeCacheFile(cache: MultimodalCacheFile) {
 export async function readCachedMultimodalAnalysis<T>(cacheKey: string) {
   const cache = await readCacheFile();
   const entry = cache.entries[cacheKey];
-  if (!entry) return null;
+  if (!entry || entry.prompt_version !== MULTIMODAL_STAGE_PROMPT_VERSION) return null;
   return entry as CachedMultimodalAnalysis & { result: T };
 }
 
@@ -83,6 +91,7 @@ export async function writeCachedMultimodalAnalysis(params: {
   assetHash: string;
   provider: string;
   model: string;
+  dataCohort?: BenyuanDataCohort;
   result: unknown;
   runtime: AgentRuntimeResult;
 }) {
@@ -97,6 +106,7 @@ export async function writeCachedMultimodalAnalysis(params: {
       prompt_version: MULTIMODAL_STAGE_PROMPT_VERSION,
       provider: params.provider,
       model: params.model,
+      data_cohort: params.dataCohort ?? currentDataCohort(),
       result: params.result,
       runtime: params.runtime,
       created_at: existing?.created_at ?? now,
@@ -105,4 +115,19 @@ export async function writeCachedMultimodalAnalysis(params: {
     await writeCacheFile(cache);
   });
   await writeQueue;
+}
+
+export async function clearCachedMultimodalAnalysisForCohort(cohort: BenyuanDataCohort) {
+  let deletedEntries = 0;
+  writeQueue = writeQueue.then(async () => {
+    const cache = await readCacheFile();
+    for (const [key, entry] of Object.entries(cache.entries)) {
+      if ((entry.data_cohort ?? "beta") !== cohort) continue;
+      delete cache.entries[key];
+      deletedEntries += 1;
+    }
+    await writeCacheFile(cache);
+  });
+  await writeQueue;
+  return deletedEntries;
 }

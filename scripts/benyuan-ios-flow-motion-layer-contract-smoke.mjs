@@ -86,18 +86,21 @@ for (const removed of ["入场", "测试", "追问", "星图"]) {
   assert.doesNotMatch(theater, new RegExp(`TheaterStage\\(label:\\s*"${removed}"`), `theater top stage rail must not expose ${removed} stage`);
 }
 assert.doesNotMatch(theater, /TheaterStage\(label:\s*"镜面"/, "theater act rail must not expose the old 镜面 stage label");
-assert.match(theater, /selectedTheaterResponse/, "act2 selection should surface the selected option response as immediate story feedback");
+assert.match(theater, /currentTheaterResponse/, "act2 selection should restore the selected option response when revisiting a round");
 assert.doesNotMatch(theater, /selectedMirrorResponse/, "native theater should not keep the removed Act3 follow-up state");
 assert.doesNotMatch(theater, /BenyuanNearFieldWarpBurst|BenyuanConstellationWarpTunnel|BenyuanWarpApproachField/, "native theater should skip removed Act3 and epilogue warp pages");
 assert.doesNotMatch(actions, /func chooseAct3|theaterPhase = \.epilogue|markPhaseDuration\("act3"\)/, "native theater actions should not retain a user-visible Act3 or epilogue route");
 assert.match(model, /var requiredTheaterChoiceCount:\s*Int[\s\S]*?min\(4,\s*theater\?\.theaterScript\.act2\.choices\.count \?\? 0\)/, "native theater must require four visible Act2 rounds when available");
-assert.match(actions, /if choiceLogs\.count < requiredTheaterChoiceCount[\s\S]*?theaterChoiceIndex = choiceLogs\.count/, "native theater should advance through the first three Act2 rounds and stop after the fourth");
+assert.match(actions, /func nextTheaterChoice\(\)[\s\S]*?theaterChoiceIndex \+= 1/, "native theater should only advance through an explicit next action");
+assert.match(actions, /func previousTheaterChoice\(\)[\s\S]*?theaterChoiceIndex -= 1/, "native theater should allow revisiting the previous round");
+assert.match(actions, /choiceLogs\[theaterChoiceIndex\] = record/, "reselecting a theater option must replace the current round instead of duplicating it");
 assert.match(theater, /choice\.options\.prefix\(4\)/, "native theater must render exactly four visible theater options");
 assert.match(theater, /BenyuanNativePrimaryButton\([\s\S]*?进入生成星图[\s\S]*?model\.enterConstellationGenerationFromTheater\(\)/, "act2 final choice should reveal an explicit constellation generation button");
 assert.match(actions, /func enterConstellationGenerationFromTheater\(\) async/, "native theater actions must expose a separate explicit constellation entry");
 const chooseAct2Body = actions.match(/func chooseAct2\(_ option: TheaterChoiceOption\) \{[\s\S]*?\n    \}/)?.[0] ?? "";
 assert.ok(chooseAct2Body, "native theater actions must keep chooseAct2");
 assert.doesNotMatch(chooseAct2Body, /finishTheaterAndGenerateConstellation\(\)|enterConstellationGenerationFromTheater\(\)/, "act2 option tap must not automatically start constellation generation");
+assert.doesNotMatch(chooseAct2Body, /theaterChoiceIndex \+= 1|theaterChoiceIndex = choiceLogs\.count/, "act2 option tap must not automatically advance the theater");
 
 assert.match(constellation, /BenyuanFlowOrbitTrail/, "constellation result must preserve the same flow-motion layer");
 assert.match(constellation, /leadingConstellationProgress/, "constellation orbit trail must be driven by real constellation dimensions");

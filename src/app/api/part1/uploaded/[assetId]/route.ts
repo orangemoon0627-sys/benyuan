@@ -23,6 +23,8 @@ export async function GET(request: Request, context: { params: Promise<{ assetId
       "Content-Type": loaded.stored.mime_type,
       "Cache-Control": "private, max-age=3600",
       "Content-Length": String(loaded.buffer.byteLength),
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

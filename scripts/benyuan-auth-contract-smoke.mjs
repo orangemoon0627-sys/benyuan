@@ -57,6 +57,10 @@ assert.match(types, /BenyuanAuthProvider/, "types must define auth provider name
 assert.match(types, /wechat/, "types should reserve wechat login");
 assert.match(types, /phone/, "types should reserve phone binding/login");
 assert.match(types, /BenyuanUser/, "types must define user records");
+assert.match(types, /avatar_symbol/, "user records must persist a native avatar symbol");
+assert.match(types, /profile_status/, "user records must expose registration profile completion status");
+assert.match(types, /birth_year/, "user records must persist birth-year profile metadata");
+assert.match(types, /profile_bio/, "user records must persist a short profile bio");
 assert.match(types, /BenyuanAuthSession/, "types must define auth sessions");
 assert.match(types, /BenyuanPhoneOtp/, "types must define phone OTP records");
 assert.match(types, /BenyuanAuthProviderIndex/, "types must define provider index records");
@@ -72,6 +76,7 @@ assert.match(store, /auth_provider_index:\s*raw\?\.auth_provider_index/, "store 
 assert.match(store, /auth_rate_limits:\s*raw\?\.auth_rate_limits/, "store merge must preserve auth rate limit buckets");
 assert.match(persistence, /BENYUAN_V3_STORE_PATH/, "persistence must support an isolated test/runtime store path");
 assert.match(store, /saveAuthUserAndSession/, "store must expose auth persistence");
+assert.match(store, /updateAuthUserProfile/, "store must persist complete registration profile edits");
 assert.match(store, /findUserByProviderSubject/, "store must look up existing users by provider subject");
 assert.match(store, /revokeAuthSession/, "store must revoke sessions for logout");
 assert.match(store, /saveAuthRateLimit/, "store must persist auth rate limit buckets");
@@ -88,6 +93,9 @@ assert.match(auth, /verifyPhoneOtpAndCreateSession/, "auth lib must verify phone
 assert.match(auth, /getCurrentAuthSession/, "auth lib must expose current account lookup");
 assert.match(auth, /logoutAuthSession/, "auth lib must support logout session revocation");
 assert.match(auth, /checkAuthRateLimit/, "auth lib must rate limit auth-sensitive routes");
+assert.match(auth, /checkAnonymousSessionRateLimit/, "anonymous identity creation must have a persistent rate-limit bucket");
+assert.match(auth, /checkUploadRateLimit/, "authenticated uploads must have user and client rate-limit buckets");
+assert.match(anonymousRoute, /createAnonymousAuthSession\(request\)/, "anonymous route must pass request context into rate limiting");
 assert.match(auth, /rate_limited/, "auth lib must surface auth rate limits");
 assert.match(auth, /BENYUAN_AUTH_ALLOW_PHONE_FIXTURE/, "phone fixture auth must stay behind an explicit dev switch");
 assert.match(auth, /resolveSmsProvider/, "auth lib must resolve configured SMS providers before enabling phone login");
@@ -101,6 +109,7 @@ assert.match(auth, /ACS3-HMAC-SHA256/, "Aliyun SMS sender must use signed OpenAP
 assert.match(auth, /sms_provider_failed/, "auth lib must surface SMS delivery failures distinctly");
 assert.match(auth, /createWechatAuthSession/, "auth lib must create or bind WeChat auth sessions");
 assert.match(auth, /BENYUAN_AUTH_ALLOW_WECHAT_FIXTURE/, "WeChat fixture auth must stay behind an explicit dev switch");
+assert.match(auth, /provider_already_bound/, "provider binding must reject credentials that belong to another account");
 assert.match(auth, /WECHAT_ACCESS_TOKEN_URL/, "WeChat auth must use the official OAuth token endpoint");
 assert.match(auth, /verifyAppleIdentityToken/, "auth lib must verify Apple identity tokens");
 assert.match(auth, /appleid\.apple\.com/, "auth lib must verify Apple issuer/JWKS against Apple");
@@ -116,12 +125,18 @@ assert.match(appleRoute, /createAppleAuthSession/, "apple route must use auth li
 assert.match(appleRoute, /missing_apple_credential/, "apple route must reject empty Apple credentials");
 assert.match(phoneRequestRoute, /requestPhoneOtp/, "phone request route must use auth lib");
 assert.match(phoneVerifyRoute, /verifyPhoneOtpAndCreateSession/, "phone verify route must use auth lib");
+assert.match(phoneVerifyRoute, /readAuthFromRequest/, "phone verify route must support binding a phone to the current bearer session");
+assert.match(phoneVerifyRoute, /existingAuth/, "phone verify route must pass the current auth context into phone verification");
 assert.match(wechatRoute, /createWechatAuthSession/, "wechat route must use auth lib");
 assert.match(wechatRoute, /readAuthFromRequest/, "wechat route must support binding to an existing bearer session");
 assert.match(wechatRoute, /missing_wechat_code/, "wechat route must reject missing authorization codes");
 assert.match(providersRoute, /listBenyuanAuthProviders/, "providers route must list supported providers");
 assert.match(meRoute, /getCurrentAuthSession/, "me route must return the current authenticated account");
 assert.match(meRoute, /export async function PATCH/, "me route must support updating the account display name");
+assert.match(meRoute, /avatar_symbol/, "me route must support updating avatar symbols");
+assert.match(meRoute, /birth_year/, "me route must support updating birth year");
+assert.match(meRoute, /profile_bio/, "me route must support updating the profile bio");
+assert.match(meRoute, /invalid_profile_payload/, "me route must reject invalid registration profile payloads");
 assert.match(store, /updateAuthUserDisplayName/, "store must persist account display-name edits");
 assert.match(logoutRoute, /logoutAuthSession/, "logout route must revoke the bearer session");
 assert.match(accountHistoryRoute, /getCurrentAuthSession/, "account history route must require auth");
@@ -160,6 +175,10 @@ assert.match(part2Route, /theaterScript\.part1_id\s*!==\s*part1\.part1_id/, "par
 assert.match(constellationRoute, /part2\.part1_id\s*!==\s*part1\.part1_id/, "constellation generate must reject part2 records from a different part1");
 
 assert.match(nativeModels, /BenyuanAuthSession/, "native models must decode auth sessions");
+assert.match(nativeModels, /avatarSymbol/, "native user model must decode avatar symbols");
+assert.match(nativeModels, /profileStatus/, "native user model must decode profile completion status");
+assert.match(nativeModels, /birthYear/, "native user model must decode birth-year profile metadata");
+assert.match(nativeModels, /profileBio/, "native user model must decode profile bio");
 assert.match(nativeModels, /authSession/, "native session must persist authSession");
 assert.match(nativeModels, /BenyuanAccountHistoryItem/, "native models must decode account history items");
 assert.match(nativeModels, /BenyuanAccountHistoryResponse/, "native models must decode account history responses");
@@ -177,6 +196,7 @@ assert.match(nativeClient, /verifyPhoneCode/, "native API client must support ph
 assert.match(nativeClient, /createWechatSession/, "native API client must support WeChat auth handoff");
 assert.match(nativeClient, /fetchCurrentAccount/, "native API client must fetch the current account");
 assert.match(nativeClient, /updateDisplayName/, "native API client must update account display names");
+assert.match(nativeClient, /updateUserProfile/, "native API client must update complete registration profiles");
 assert.match(nativeClient, /fetchAccountHistory/, "native API client must fetch account history");
 assert.match(nativeClient, /deleteAccountHistoryItem/, "native API client must delete history items");
 assert.match(nativeClient, /fetchPart1HistoryRecord/, "native API client must fetch saved Part1 detail for draft restore");
@@ -201,10 +221,14 @@ assert.match(nativeFlow, /confirmDeleteHistoryItem/, "native flow must confirm h
 assert.match(nativeFlow, /deleteHistoryItem/, "native flow must delete a history item");
 assert.match(nativeFlow, /logout/, "native flow must clear auth locally after logout");
 assert.match(nativeFlow, /updateDisplayName/, "native flow must let users customize the account display name");
+assert.match(nativeFlow, /completeUserProfile/, "native flow must save the registration profile");
+assert.match(nativeFlow, /requiresProfileCompletion/, "native flow must decide whether a signed-in user still needs profile completion");
 assert.match(nativeFlow, /continueAsGuest/, "native flow must support guest entry");
 assert.match(nativeFlow, /requestPhoneCode/, "native flow must request phone codes");
 assert.match(nativeFlow, /continueWithPhone/, "native flow must continue with phone auth");
 assert.match(nativeFlow, /continueWithWechat/, "native flow must continue with WeChat auth");
+assert.match(nativeFlow, /bindPhoneToCurrentAccount/, "native flow must bind phone numbers from the account settings page");
+assert.match(nativeFlow, /bindWechatToCurrentAccount/, "native flow must bind WeChat from the account settings page");
 assert.match(nativeFlow, /identityToken/, "native flow must pass Apple identity tokens to the backend");
 assert.doesNotMatch(nativeFlow, /createAppleSession\(displayName:\s*"Apple 用户"\)/, "native Apple login must not be a display-name-only placeholder");
 assert.match(nativeRoot, /BenyuanNativeAuthView/, "native root must show auth view");
@@ -226,7 +250,7 @@ assert.match(nativeAuthView, /手机号码登录/, "native auth view should rese
 assert.match(nativeAuthView, /TextField\("手机号"/, "native auth view should include a phone input");
 assert.match(nativeAuthView, /TextField\("验证码"/, "native auth view should include a verification code input");
 assert.match(nativeAccountView, /档案设置/, "native account view must expose quiet account settings copy");
-assert.match(nativeAccountView, /管理恢复方式/, "native account view must describe account settings as recovery management");
+assert.doesNotMatch(nativeAccountView, /管理恢复方式和当前身份/, "native account view must not explain a self-evident settings control underneath its title");
 assert.match(nativeAccountView, /recoverySummaryLabel/, "native account settings entry must summarize recovery methods without expanding provider buttons on the home page");
 assert.match(nativeAccountView, /恢复 \\\(boundProviderCount\)\/4/, "native account settings entry should show compact recovery coverage");
 assert.doesNotMatch(nativeAccountView, /Apple、微信、手机号统一放在这里，不占用主页面。/, "native account home should not stack provider names in the main binding entry");
@@ -234,8 +258,14 @@ assert.match(nativeAccountView, /探索历史/, "native account view must show e
 assert.match(nativeAccountView, /accountIdentityPanel/, "native account view must keep account identity as a dedicated visual panel");
 assert.match(nativeAccountView, /accountDisplayName/, "native account view must use a sanitized editable account display name");
 assert.match(nativeAccountView, /displayNameEditor/, "native account view must expose a display-name editor sheet");
+assert.match(nativeAccountView, /注册资料/, "native account view must expose a registration profile section");
+assert.match(nativeAccountView, /profileEditor/, "native account view must expose a complete profile editor sheet");
+assert.match(nativeAccountView, /头像/, "native account profile editor must let users choose an avatar symbol");
 assert.match(nativeAccountView, /latestAccountCelestialMode/, "native account identity icon must use the latest constellation archetype when available");
 assert.match(nativeAccountView, /bindingOrbitSection/, "native account view must present provider binding as a clear orbit section");
+assert.match(nativeAccountView, /phoneBindingPanel/, "native account view must expose a phone binding panel inside account settings");
+assert.match(nativeAccountView, /绑定微信/, "native account view must expose a WeChat binding action inside account settings");
+assert.match(nativeAccountView, /绑定手机号/, "native account view must expose a phone binding action inside account settings");
 assert.match(nativeAccountView, /historyTimelineSection/, "native account view must present exploration history as a timeline section");
 assert.match(nativeAccountView, /historyMetaStrip/, "native account history cards must expose stage, assets, and updated metadata");
 assert.match(nativeAccountView, /正在接回/, "native account history cards must show restore loading feedback");
@@ -247,7 +277,7 @@ assert.match(nativeAccountView, /知道了/, "native account binding detail shee
 assert.match(nativeAccountView, /退出登录/, "native account view must expose logout");
 assert.match(nativeAccountView, /微信/, "native account view must show WeChat binding status");
 assert.match(nativeAccountView, /手机号/, "native account view must show phone binding status");
-assert.match(nativeAccountView, /当前可恢复方式/, "native account binding detail should read like a settings page");
+assert.doesNotMatch(nativeAccountView, /当前可恢复方式/, "native account settings should not explain provider rows that already expose their state");
 assert.match(nativeShellApp, /BenyuanWechatAuthClient\.shared\.configure/, "native app must configure WeChat SDK at launch");
 assert.match(nativeShellApp, /\.onOpenURL/, "native app must handle legacy WeChat URL callbacks");
 assert.match(nativeShellApp, /onContinueUserActivity/, "native app must handle WeChat Universal Link callbacks");

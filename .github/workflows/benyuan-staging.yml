@@ -55,8 +55,14 @@ jobs:
       - name: Install runner dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Lint
         run: npm run lint
+
+      - name: Contract and behavior tests
+        run: npm run test:contracts:ci
 
       - name: Build prebuilt .next artifact
         run: npm run build

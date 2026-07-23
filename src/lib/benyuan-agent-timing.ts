@@ -1,8 +1,9 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { AgentRuntimeResult } from "@/lib/benyuan-v3-types";
+import { getBenyuanDataRoot } from "@/lib/benyuan-persistence";
 
-const TIMING_PATH = path.join(process.cwd(), "data", "benyuan-agent-timings.jsonl");
+const TIMING_PATH = path.join(getBenyuanDataRoot(), "benyuan-agent-timings.jsonl");
 
 export type BenyuanAgentStage = "multimodal" | "theater" | "constellation";
 export type BenyuanMultimodalTimingStage = "music" | "social" | "photo";
@@ -19,7 +20,7 @@ export type BenyuanMultimodalCacheTiming = {
 export type BenyuanAgentTimingEvent = {
   stage: BenyuanAgentStage;
   duration_ms: number;
-  runtime_mode: AgentRuntimeResult["mode"];
+  runtime_mode: AgentRuntimeResult["mode"] | "failure";
   provider: string;
   model: string;
   error?: string;
@@ -146,6 +147,7 @@ export async function summarizeBenyuanAgentTimings(limit = 200) {
             cache_status_counts: cacheStatusCounts,
             live_count: stageEvents.filter((event) => event.runtime_mode === "live").length,
             fallback_count: stageEvents.filter((event) => event.runtime_mode === "fallback").length,
+            failure_count: stageEvents.filter((event) => event.runtime_mode === "failure").length,
             latest: stageEvents.at(-1) ?? null,
           },
         ];

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentAuthSession, BenyuanAuthError } from "@/lib/benyuan-auth";
 import { getNativeGenerationJob, getPart1Record, presentNativeGenerationJob, runNativeGenerationJob, shouldResumeNativeGenerationJob } from "@/lib/benyuan-v3-store";
+import { eventsAfterSequence } from "@/lib/benyuan-native-generation-events";
 
 export async function GET(request: Request, context: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await context.params;
@@ -33,9 +34,13 @@ export async function GET(request: Request, context: { params: Promise<{ jobId: 
   }
 
   const presentedJob = presentNativeGenerationJob(job);
+  const afterValue = new URL(request.url).searchParams.get("after");
+  const afterSequence = afterValue ? Number.parseInt(afterValue, 10) : 0;
 
   return NextResponse.json({
     ...presentedJob,
+    events: eventsAfterSequence(presentedJob, afterSequence),
+    event_cursor: presentedJob.event_sequence ?? 0,
     progress: Math.max(0, Math.min(1, presentedJob.progress)),
     constellation_id: job.constellation_id,
   });

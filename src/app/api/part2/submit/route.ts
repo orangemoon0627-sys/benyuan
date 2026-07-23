@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { assertPart1Owner } from "@/lib/benyuan-auth";
 import { createBenyuanV3Id, getPart1Record, getTheaterScriptRecord, savePart2Record } from "@/lib/benyuan-v3-store";
 import type { Part2ChoiceRecord, Part2Metadata, Part2MirrorRecord } from "@/lib/benyuan-v3-types";
+import { validateAndSnapshotPart2Choices } from "@/lib/benyuan-v3-validation";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
@@ -28,17 +29,19 @@ export async function POST(request: Request) {
   }
 
   const requiredAct2Choices = Math.min(4, theaterScript.theater_script.act2.choices.length);
-  const submittedAct2Choices = body.act2_choices ?? [];
-  if (requiredAct2Choices >= 4 && submittedAct2Choices.length < requiredAct2Choices) {
+  const choiceValidation = validateAndSnapshotPart2Choices(theaterScript.theater_script, body.act2_choices ?? []);
+  if (!choiceValidation.ok) {
     return NextResponse.json(
       {
-        error: "incomplete_theater_act2_choices",
-        required_act2_choice_count: requiredAct2Choices,
-        received_act2_choice_count: submittedAct2Choices.length,
+        error: choiceValidation.error,
+        required_act2_choice_count: "required" in choiceValidation ? choiceValidation.required : requiredAct2Choices,
+        received_act2_choice_count: "received" in choiceValidation ? choiceValidation.received : body.act2_choices?.length ?? 0,
+        choice_id: "choice_id" in choiceValidation ? choiceValidation.choice_id : undefined,
       },
       { status: 422 },
     );
   }
+  const submittedAct2Choices = choiceValidation.choices;
 
   const record = {
     part2_id: createBenyuanV3Id("part2"),

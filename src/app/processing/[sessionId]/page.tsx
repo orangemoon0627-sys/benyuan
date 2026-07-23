@@ -67,9 +67,6 @@ type ProcessingRuntime = {
   status: AnalysisJob["status"];
   currentStageKey?: AnalysisJob["currentStageKey"];
   pipelineStages?: AnalysisJob["pipelineStages"];
-  providerId?: AnalysisJob["providerId"];
-  providerModel?: AnalysisJob["providerModel"];
-  effectiveRuntime?: AnalysisJob["effectiveRuntime"];
 };
 
 type AnalysisSessionResponse = {
@@ -307,8 +304,8 @@ export default function ProcessingPage() {
 
               <div className="mt-8 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.2em] text-stone-400">
                 <span className="rounded-full bg-white/[0.03] px-4 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">job · {jobState.jobId ?? "pending"}</span>
-                <span className="rounded-full bg-white/[0.03] px-4 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">runtime · {jobState.effectiveRuntime ?? "booting"}</span>
-                <span className="rounded-full bg-white/[0.03] px-4 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">provider · {jobState.providerModel ?? jobState.providerId ?? "deterministic"}</span>
+                <span className="rounded-full bg-white/[0.03] px-4 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">status · {jobState.status}</span>
+                <span className="rounded-full bg-white/[0.03] px-4 py-2 shadow-[0_0_0_1px_rgba(255,255,255,0.06)]">stage · {activeStage?.title ?? "等待开始"}</span>
               </div>
             </div>
 

@@ -30,7 +30,8 @@ if (!allowed.has(cohort)) {
 function resolveStorePath() {
   const configured = process.env.BENYUAN_V3_STORE_PATH?.trim();
   if (configured) return configured;
-  return `${process.cwd()}/data/benyuan-v3-store.json`;
+  const dataRoot = process.env.BENYUAN_DATA_ROOT?.trim();
+  return path.join(dataRoot || path.join(process.cwd(), "data"), "benyuan-v3-store.json");
 }
 
 function recordCohort(record) {
@@ -63,6 +64,7 @@ const preview = {
     part2Records: countMatching(store, "part2_records"),
     constellations: countMatching(store, "constellations"),
     nativeGenerationJobs: countMatching(store, "native_generation_jobs"),
+    behaviorProfileSnapshots: countMatching(store, "behavior_profile_snapshots"),
     feedbackRecords: countMatching(store, "feedback_records"),
   },
 };
@@ -76,4 +78,6 @@ if (!confirmed) {
 
 const { clearBenyuanCohortData } = await import(pathToFileURL(`${process.cwd()}/src/lib/benyuan-v3-store.ts`));
 const result = await clearBenyuanCohortData(cohort);
-console.log(JSON.stringify({ ok: true, result }, null, 2));
+const ok = result.upload_file_delete_failures === 0 && result.rejected_upload_paths === 0;
+console.log(JSON.stringify({ ok, result }, null, 2));
+if (!ok) process.exitCode = 1;

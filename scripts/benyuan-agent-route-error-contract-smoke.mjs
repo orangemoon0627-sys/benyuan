@@ -19,6 +19,9 @@ for (const [label, source] of [
 
 assert.match(routeErrors, /agent_generation_failed/, "agent route error helper must emit a stable JSON error code");
 assert.match(routeErrors, /NextResponse\.json/, "agent route error helper must return JSON instead of a blank 500");
+assert.match(routeErrors, /recordBenyuanAgentTiming/, "agent route failures must be included in timing telemetry");
+assert.match(routeErrors, /runtime_mode:\s*"failure"/, "agent route failures must use a distinct timing outcome");
+assert.doesNotMatch(routeErrors, /detail:\s*message/, "raw provider errors must not be returned to clients");
 assert.match(nativeClient, /请求失败（HTTP \\?\(status\\?\)）/, "native API errors must include HTTP status");
 assert.match(nativeClient, /bodyPreview/, "native API errors must include a response body preview");
 

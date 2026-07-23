@@ -70,7 +70,7 @@ function createInitialAnswers(): Part1AnswerMap {
 function createInitialRuntime(): AgentRuntimeOverride {
   return {
     provider_name: "xiaoye",
-    model: "gpt-5.5",
+    model: "gpt-5.6-terra",
     reasoning_effort: "xhigh",
     disable_response_storage: true,
   };
@@ -1133,7 +1133,7 @@ export function BenyuanPart1Workflow({
                   <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">正常体验不需要改 provider / model / base url；这里只为排查 live provider 或多模态问题保留。</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <MetaPill>{runtimeOverride.provider_name ?? runtimeStatus?.provider ?? "custom"}</MetaPill>
-                    <MetaPill>{runtimeOverride.model ?? runtimeStatus?.model ?? "gpt-5.5"}</MetaPill>
+                    <MetaPill>{runtimeOverride.model ?? runtimeStatus?.model ?? "gpt-5.6-terra"}</MetaPill>
                     <MetaPill>{runtimeStatus?.wireApi ?? "responses"}</MetaPill>
                     <MetaPill>{runtimeAvailabilityLabel}</MetaPill>
                     {runtimeStatus?.apiKeyConfigured && runtimeStatus?.liveProviderEnabled ? <MetaPill>api ready</MetaPill> : null}

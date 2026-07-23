@@ -314,16 +314,35 @@ curl -fsS 'http://127.0.0.1/' >/tmp/benyuan-nginx-root.html
 pm2 describe '$process_name' | sed -n '1,60p'
 wc -c /tmp/benyuan-next-root.html /tmp/benyuan-nginx-root.html"
 
-log "Public smoke checks"
+log "Protected runtime smoke checks on the server loopback"
 if [ "$dry_run" = "0" ]; then
   expected_live="$(detect_expected_live)"
-  BENYUAN_BASE_URL="$public_base_url" BENYUAN_EXPECT_LIVE="$expected_live" npm run smoke:runtime:gate
-  BENYUAN_BASE_URL="$public_base_url" npm run smoke:runtime:page
-  BENYUAN_BASE_URL="$public_base_url" node --input-type=module -e "const base=process.env.BENYUAN_BASE_URL; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid'); if(!res.ok) throw new Error('runtime API failed: ' + res.status); const data=await res.json(); console.log(JSON.stringify(data.runtime ?? data).slice(0, 500));"
+  remote_run "set -euo pipefail
+cd '$release_dir'
+if [ -f '$runtime_env_file' ]; then
+  set -a
+  . '$runtime_env_file'
+  set +a
+fi
+if [ -z \"\${BENYUAN_INTERNAL_ACCESS_TOKEN:-}\" ]; then
+  echo 'BENYUAN_INTERNAL_ACCESS_TOKEN is required for protected deployment smoke checks' >&2
+  exit 1
+fi
+export BENYUAN_BASE_URL='http://127.0.0.1:$app_port'
+export BENYUAN_EXPECT_LIVE='$expected_live'
+npm run smoke:runtime:gate
+npm run smoke:runtime:page
+node --input-type=module -e \"const base=process.env.BENYUAN_BASE_URL; const token=process.env.BENYUAN_INTERNAL_ACCESS_TOKEN; const res=await fetch(base + '/api/analysis/runtime?mode=deep&engine=hybrid', {headers:{authorization:'Bearer ' + token}}); if(!res.ok) throw new Error('runtime API failed: ' + res.status); const data=await res.json(); console.log(JSON.stringify(data.runtime ?? data).slice(0, 500));\""
 else
-  echo "+ BENYUAN_BASE_URL=$public_base_url BENYUAN_EXPECT_LIVE=<from BENYUAN_EXPECT_LIVE or server BENYUAN_LLM_LIVE> npm run smoke:runtime:gate"
-  echo "+ BENYUAN_BASE_URL=$public_base_url npm run smoke:runtime:page"
-  echo "+ BENYUAN_BASE_URL=$public_base_url node --input-type=module -e <runtime-api-smoke>"
+  echo "+ ssh $ssh_target <source private runtime env and run authenticated loopback runtime smokes>"
+fi
+
+log "Public root smoke check"
+if [ "$dry_run" = "0" ]; then
+  curl -fsS "$public_base_url/" >/tmp/benyuan-public-root.html
+  wc -c /tmp/benyuan-public-root.html
+else
+  echo "+ curl -fsS $public_base_url/"
 fi
 
 log "Deployed $release_id"

@@ -5,7 +5,6 @@ import {
   analyzeSocialPostInputs,
   generateDeterministicConstellation,
   generateDeterministicTheaterScript,
-  personalizeConstellationRecommendations,
 } from "@/lib/benyuan-v3-engine";
 import { enrichMusicAnalysisWithPublicMetadata } from "@/lib/benyuan-music-metadata";
 import {
@@ -17,6 +16,7 @@ import {
   FAST_DIRECTOR_SYSTEM_PROMPT,
   buildFastAnalystUserPrompt,
   FAST_ANALYST_SYSTEM_PROMPT,
+  MULTIMODAL_EVIDENCE_GATE_PROMPT,
 } from "@/lib/benyuan-v3-prompts";
 import { readUploadedAssetDataUrl } from "@/lib/benyuan-v3-assets";
 import {
@@ -30,12 +30,15 @@ import { isSuspiciousGeneratedLabel, sanitizeGeneratedPersonalizedLabel } from "
 import { dedupeMirrorQuestions } from "@/lib/benyuan-v3-theater-normalization";
 import { isSuspiciousArchetypeName } from "@/lib/benyuan-v3-report-profile";
 import { readBenyuanAgentRuntime } from "@/lib/benyuan-server-runtime";
-import { parseProviderJsonOrSsePayload } from "@/lib/benyuan-agent-response-parser";
+import { extractJsonObject, parseProviderJsonOrSsePayload } from "@/lib/benyuan-agent-response-parser";
+import { isBenyuanPsycheSignalKey, parseTraitSignalComponents } from "@/lib/benyuan-v3-trait-signals";
+import { buildBehaviorProfileV2, type BenyuanBehaviorProfileV2 } from "@/lib/benyuan-v3-behavior-profile";
 import type {
   AgentRuntimeOverride,
   AgentReasoningEffort,
   AgentRuntimeResult,
   MultimodalInputItem,
+  MultimodalBehaviorSignal,
   MusicAnalysis,
   Part1Record,
   Part2Record,
@@ -49,21 +52,6 @@ import type {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function extractJsonObject(rawText: string) {
-  const fencedMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fencedMatch?.[1] ?? rawText;
-  const trimmed = candidate.trim();
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace < 0 || lastBrace < 0 || lastBrace <= firstBrace) return null;
-
-  try {
-    return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1)) as unknown;
-  } catch {
-    return null;
-  }
 }
 
 function joinBaseUrl(baseUrl: string, pathname: string) {
@@ -119,6 +107,7 @@ function collectSseTextFragments(value: unknown): string[] {
     }
 
     if (Array.isArray(node.content)) visit(node.content);
+    if (Array.isArray(node.output)) visit(node.output);
     if (Array.isArray(node.contents)) visit(node.contents);
     if (Array.isArray(node.parts)) visit(node.parts);
     if (isRecord(node.part)) visit(node.part);
@@ -158,22 +147,24 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const STREAM_ONLY_MULTIMODAL_SYSTEM_PROMPT = [
+export const STREAM_ONLY_MULTIMODAL_SYSTEM_PROMPT = [
   "Return JSON only.",
   "Top-level keys must be music_analysis, social_posts_analysis, social_posts_overall_pattern, precious_photo_analysis.",
+  MULTIMODAL_EVIDENCE_GATE_PROMPT,
   "Never use null; keep every required array/object present.",
   "Infer conservatively from visible evidence and keep wording compact.",
   "Use standardized psyche signals where possible: desire_structure, defense_style, projection_symbolic_sensitivity, object_distance, boundary_integrity, meaning_orientation, relationship_mirror_need, repression_container, repetition_loop, solitude_capacity, transitional_space.",
+  "For analyzed objects, add behavioral_signals[] with canonical signal, support/counter polarity, 0-1 confidence, temporal_scope, 1-3 visible evidence anchors, and alternative_explanation when plausible.",
   "Do not browse or identify private social accounts or private photo sources.",
 ].join(" ");
 
 const STREAM_ONLY_MULTIMODAL_USER_PROMPT = [
   "Analyze the labeled playlist screenshot, social post screenshot, and precious photo.",
-  "music_analysis => primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}, recognized_tracks[].",
+  "music_analysis => analysis_status, evidence_quality, primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}, behavioral_signals[], recognized_tracks[].",
   "recognized_tracks should list visible public song/artist candidates for later public music metadata lookup; do not lookup private social/photo sources.",
-  "social_posts_analysis => array of {post_id,text_content,emotional_tone,themes[],expression_style,self_presentation,time_clue,psychological_signals[]}.",
-  "social_posts_overall_pattern => {dominant_emotion,core_themes[],expression_authenticity}.",
-  "precious_photo_analysis => {visual_content,composition,lighting,color_mood,symbolic_elements[],psychological_interpretation:{core_themes[],emotional_tone,self_concept,existential_stance,traits[]}}.",
+  "social_posts_analysis => array of {post_id,text_content,emotional_tone,themes[],expression_style,self_presentation,time_clue,psychological_signals[],behavioral_signals[]}.",
+  "social_posts_overall_pattern => {analysis_status,evidence_quality,dominant_emotion,core_themes[],expression_authenticity,behavioral_signals[]}.",
+  "precious_photo_analysis => {analysis_status,evidence_quality,visual_content,composition,lighting,color_mood,symbolic_elements[],behavioral_signals[],psychological_interpretation:{core_themes[],emotional_tone,self_concept,existential_stance,traits[]}}.",
 ].join(" ");
 
 const STREAM_ONLY_MULTIMODAL_RESCUE_PROMPT = [
@@ -181,22 +172,24 @@ const STREAM_ONLY_MULTIMODAL_RESCUE_PROMPT = [
   "Prioritize valid JSON and complete keys over stylistic detail.",
 ].join(" ");
 
-const MULTIMODAL_STAGE_SYSTEM_PROMPTS: Record<BenyuanMultimodalStageKind, string> = {
+export const MULTIMODAL_STAGE_SYSTEM_PROMPTS: Record<BenyuanMultimodalStageKind, string> = {
   music: [
     "Return JSON only.",
     "Analyze only the playlist or music screenshot.",
     "Top-level key must be music_analysis.",
-    "music_analysis => primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}, recognized_tracks[].",
+    MULTIMODAL_EVIDENCE_GATE_PROMPT,
+    "music_analysis => analysis_status, evidence_quality, primary_genres[], emotional_tone, era_distribution{}, language_diversity[], personality_signals{}, behavioral_signals[], recognized_tracks[].",
     "recognized_tracks should extract visible song title/artist candidates for later public music metadata lookup; do not fabricate.",
-    "Use standardized psyche signals in personality_signals: desire_structure, defense_style, projection_symbolic_sensitivity, object_distance, boundary_integrity, meaning_orientation, relationship_mirror_need, repression_container, repetition_loop, solitude_capacity, transitional_space.",
+    "Use standardized psyche signals in personality_signals and behavioral_signals. Behavioral signals require visible evidence anchors, temporal scope, confidence, polarity, and a plausible alternative explanation when ambiguous.",
     "Never use null; infer conservatively from visible evidence.",
   ].join(" "),
   social: [
     "Return JSON only.",
     "Analyze only the social post screenshot(s).",
     "Top-level keys must be social_posts_analysis and social_posts_overall_pattern.",
-    "social_posts_analysis => array of {post_id,text_content,emotional_tone,themes[],expression_style,self_presentation,time_clue,psychological_signals[]}.",
-    "social_posts_overall_pattern => {dominant_emotion,core_themes[],expression_authenticity}.",
+    MULTIMODAL_EVIDENCE_GATE_PROMPT,
+    "social_posts_analysis => array of {post_id,text_content,emotional_tone,themes[],expression_style,self_presentation,time_clue,psychological_signals[],behavioral_signals[]}.",
+    "social_posts_overall_pattern => {analysis_status,evidence_quality,dominant_emotion,core_themes[],expression_authenticity,behavioral_signals[]}.",
     "Use standardized psyche signals in psychological_signals. Do not browse, identify social accounts, or search private text online.",
     "Never use null; infer conservatively from visible evidence.",
   ].join(" "),
@@ -204,7 +197,8 @@ const MULTIMODAL_STAGE_SYSTEM_PROMPTS: Record<BenyuanMultimodalStageKind, string
     "Return JSON only.",
     "Analyze only the precious photo.",
     "Top-level key must be precious_photo_analysis.",
-    "precious_photo_analysis => {visual_content,composition,lighting,color_mood,symbolic_elements[],psychological_interpretation:{core_themes[],emotional_tone,self_concept,existential_stance,traits[]}}.",
+    MULTIMODAL_EVIDENCE_GATE_PROMPT,
+    "precious_photo_analysis => {analysis_status,evidence_quality,visual_content,composition,lighting,color_mood,symbolic_elements[],behavioral_signals[],psychological_interpretation:{core_themes[],emotional_tone,self_concept,existential_stance,traits[]}}.",
     "Use standardized psyche signals in traits/core_themes where possible. Do not reverse-image-search or identify private photo sources.",
     "Never use null; infer conservatively from visible evidence.",
   ].join(" "),
@@ -223,6 +217,8 @@ function buildMultimodalStageUserPrompt(kind: BenyuanMultimodalStageKind, input:
         : { precious_photo_input: input.precious_photo_input };
   return `请严格根据以下 ${kind} 多模态输入输出 JSON。
 
+${MULTIMODAL_EVIDENCE_GATE_PROMPT}
+
 输入数据：
 ${JSON.stringify(payload)}
 
@@ -231,6 +227,8 @@ ${JSON.stringify(payload)}
 - music 阶段要尽量输出 recognized_tracks，后端会用歌曲/艺术家这种公开作品信息做联网补全。
 - social/photo 阶段禁止联网搜索、禁止反向搜图、禁止识别账号或私人图片来源，只能基于可见内容保守分析。
 - 标准化精神信号优先使用 desire_structure、defense_style、projection_symbolic_sensitivity、object_distance、boundary_integrity、meaning_orientation、relationship_mirror_need、repression_container、repetition_loop、solitude_capacity、transitional_space。
+- 只有至少两个相互一致的可见线索支撑当前阶段时才可使用 analysis_status=analyzed；否则必须使用 analysis_status=insufficient_evidence 与 evidence_quality=none。
+- analyzed 对象必须尽量输出 behavioral_signals（最多 5 条）。每条包含标准 signal、support/counter、0-1 confidence、temporal_scope、1-3 个可见证据锚点；有其他合理解释时写 alternative_explanation。单一偶然线索不能升级为稳定人格。
 
 只输出最终 JSON 对象。`;
 }
@@ -276,6 +274,10 @@ async function readSsePayload(response: Response) {
         return true;
       }
       if (type === "response.completed") {
+        if (!outputText.trim() && isRecord(payload.response)) {
+          const completedText = collectSseTextFragments(payload.response).join("");
+          if (completedText.trim()) outputText = completedText;
+        }
         return true;
       }
     } catch {
@@ -342,14 +344,21 @@ type ProviderAttemptResult = {
 const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentStageProfile>> = {
   quality: {
     multimodal: {},
-    theater: {},
-    constellation: {
-      maxOutputTokens: 1100,
+    theater: {
+      maxOutputTokens: 6400,
       reasoningEffort: "high",
-      timeoutMs: 90000,
+      timeoutMs: 180000,
       transport: "json_first",
       allowSecondaryAttempts: false,
-      maxProviderAttempts: 2,
+      maxProviderAttempts: 1,
+    },
+    constellation: {
+      maxOutputTokens: 6400,
+      reasoningEffort: "high",
+      timeoutMs: 120000,
+      transport: "json_first",
+      allowSecondaryAttempts: false,
+      maxProviderAttempts: 1,
       compactPrompt: true,
     },
   },
@@ -363,9 +372,9 @@ const AGENT_STAGE_PROFILES: Record<AgentSpeedProfile, Record<AgentStage, AgentSt
       maxProviderAttempts: 1,
     },
     theater: {
-      maxOutputTokens: 900,
+      maxOutputTokens: 1600,
       reasoningEffort: "medium",
-      timeoutMs: 45000,
+      timeoutMs: 65000,
       transport: "json_first",
       allowSecondaryAttempts: false,
       maxProviderAttempts: 1,
@@ -1212,6 +1221,22 @@ async function requestMultimodalJson(params: {
 }
 
 
+const THEATER_ROUND_SAMPLING_TARGETS = [
+  ["action_entry"],
+  ["object_distance", "relationship_mirror_need"],
+  ["desire_structure", "boundary_integrity"],
+  ["defense_style", "time_gravity", "meaning_orientation"],
+] as const;
+
+function ensureTheaterSamplingTarget(value: string | undefined, fallback: string, roundIndex: number) {
+  const signal = value?.trim() || fallback;
+  const components = parseTraitSignalComponents(signal);
+  const targets = THEATER_ROUND_SAMPLING_TARGETS[roundIndex] ?? THEATER_ROUND_SAMPLING_TARGETS[3];
+  if (components.some((component) => targets.some((target) => target === component.semantic))) return signal;
+  const retained = components.slice(0, 2).map((component) => component.raw);
+  return [targets[0], ...retained].filter(Boolean).join(" + ");
+}
+
 export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScript): TheaterScript | null {
   const source = isRecord(candidate) && isRecord(candidate.theater_script) ? candidate.theater_script : candidate;
   if (!isRecord(source)) return null;
@@ -1221,6 +1246,13 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
   const liveChoices = Array.isArray(act2.choices) ? act2.choices : [];
   const liveQuestions = Array.isArray(act3.mirror_questions) ? act3.mirror_questions : [];
   const personalizationSummary = isRecord(source.personalization_summary) ? source.personalization_summary : {};
+  const hasSupportedContent =
+    (isRecord(source.act1) && typeof source.act1.scene_description === "string") ||
+    liveChoices.length > 0 ||
+    liveQuestions.length > 0 ||
+    Object.keys(personalizationSummary).length > 0 ||
+    (isRecord(source.epilogue) && (typeof source.epilogue.closing_text === "string" || typeof source.epilogue.text === "string"));
+  if (!hasSupportedContent) return null;
   const sourceCoreArchetype =
     typeof personalizationSummary.core_archetype === "string"
       ? personalizationSummary.core_archetype
@@ -1279,7 +1311,11 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
                     ? `${index + 1}${option.option_id}`
                     : fallbackOption.id,
               text: cleanVisibleText(typeof option.text === "string" ? option.text : undefined, fallbackOption.text),
-              trait_signal: typeof option.trait_signal === "string" ? option.trait_signal : fallbackOption.trait_signal,
+              trait_signal: ensureTheaterSamplingTarget(
+                typeof option.trait_signal === "string" ? option.trait_signal : undefined,
+                fallbackOption.trait_signal,
+                index,
+              ),
               response: cleanVisibleText(typeof option.response === "string" ? option.response : undefined, fallbackOption.response),
             };
           }),
@@ -1348,23 +1384,67 @@ export function normalizeTheaterScript(candidate: unknown, fallback: TheaterScri
 }
 
 type FastTheaterSeed = {
+  grounding: FastSeedGrounding;
   core_archetype?: string;
   motifs: string[];
   act1_lens?: string;
   act2_lenses: string[];
+  act2_rounds: Array<{
+    lens?: string;
+    options: Array<{ text: string; trait_signal: string; response: string }>;
+  }>;
   mirror_questions: Array<{ dialogue?: string; question?: string }>;
   closing_line?: string;
 };
 
-function normalizeFastTheaterSeed(candidate: unknown): FastTheaterSeed | null {
+type FastSeedGrounding = {
+  profile_revision: string;
+  evidence_ids: string[];
+};
+
+function behaviorProfileEvidenceIds(profile: BenyuanBehaviorProfileV2) {
+  return new Set(profile.signals.flatMap((signal) => [...signal.support_evidence_ids, ...signal.counter_evidence_ids]));
+}
+
+function normalizeFastSeedGrounding(value: unknown, profile?: BenyuanBehaviorProfileV2): FastSeedGrounding | null {
+  if (!profile) return { profile_revision: "legacy_unchecked", evidence_ids: [] };
+  if (!isRecord(value) || value.profile_revision !== profile.revision || !Array.isArray(value.evidence_ids)) return null;
+  const available = behaviorProfileEvidenceIds(profile);
+  const evidenceIds = [...new Set(value.evidence_ids.filter((item): item is string => typeof item === "string" && available.has(item)))].slice(0, 8);
+  const requiredCount = Math.min(2, available.size);
+  if (evidenceIds.length < requiredCount) return null;
+  return { profile_revision: profile.revision, evidence_ids: evidenceIds };
+}
+
+export function normalizeFastTheaterSeed(candidate: unknown, behaviorProfile?: BenyuanBehaviorProfileV2): FastTheaterSeed | null {
   const source = isRecord(candidate) && isRecord(candidate.theater_seed) ? candidate.theater_seed : candidate;
   if (!isRecord(source)) return null;
+  const grounding = normalizeFastSeedGrounding(source.grounding, behaviorProfile);
+  if (!grounding) return null;
 
   const motifs = Array.isArray(source.motifs)
     ? source.motifs.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 3)
     : [];
   const act2Lenses = Array.isArray(source.act2_lenses)
     ? source.act2_lenses.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 4)
+    : [];
+  const act2Rounds = Array.isArray(source.act2_rounds)
+    ? source.act2_rounds.slice(0, 4).flatMap((item, roundIndex) => {
+        if (!isRecord(item)) return [];
+        const rawOptions = Array.isArray(item.options) ? item.options.slice(0, 4) : [];
+        const options = rawOptions.flatMap((option) => {
+          if (!isRecord(option)) return [];
+          const text = cleanSeedText(option.text, 42);
+          const response = cleanSeedText(option.response, 80);
+          const traitSignal = typeof option.trait_signal === "string" ? option.trait_signal.trim() : "";
+          if (!text || !response || !traitSignal) return [];
+          return [{ text, trait_signal: ensureTheaterSamplingTarget(traitSignal, traitSignal, roundIndex), response }];
+        });
+        return [{
+          lens: cleanSeedText(item.lens, 180),
+          options: options.length === 4 ? options : [],
+        }];
+      })
     : [];
   const mirrorQuestions = Array.isArray(source.mirror_questions)
     ? source.mirror_questions
@@ -1379,25 +1459,32 @@ function normalizeFastTheaterSeed(candidate: unknown): FastTheaterSeed | null {
         .slice(0, 2)
     : [];
 
-  if (motifs.length === 0 && !source.act1_lens && act2Lenses.length === 0 && mirrorQuestions.length === 0 && !source.closing_line) {
+  if (motifs.length === 0 && !source.act1_lens && act2Lenses.length === 0 && act2Rounds.length === 0 && mirrorQuestions.length === 0 && !source.closing_line) {
     return null;
   }
 
   return {
+    grounding,
     core_archetype: typeof source.core_archetype === "string" && source.core_archetype.trim().length > 0 ? source.core_archetype.trim() : undefined,
     motifs,
-    act1_lens: typeof source.act1_lens === "string" && source.act1_lens.trim().length > 0 ? source.act1_lens.trim() : undefined,
+    act1_lens: cleanSeedNarrative(source.act1_lens, 900),
     act2_lenses: act2Lenses,
+    act2_rounds: act2Rounds,
     mirror_questions: mirrorQuestions,
     closing_line: typeof source.closing_line === "string" && source.closing_line.trim().length > 0 ? source.closing_line.trim() : undefined,
   };
 }
 
-function mergeFastTheaterSeed(fallback: TheaterScript, seed: FastTheaterSeed): TheaterScript {
-  const motifLine = seed.motifs.length > 0 ? "这些线索没有被逐一摆出来，只在同一处低光里变成了可进入的方向。" : "";
+export function mergeFastTheaterSeed(fallback: TheaterScript, seed: FastTheaterSeed): TheaterScript {
   const coreArchetype = seed.core_archetype && !isSuspiciousArchetypeName(seed.core_archetype)
     ? seed.core_archetype
     : fallback.personalization_summary.core_archetype;
+  const hasCompleteAdaptiveStory = Boolean(
+    seed.act1_lens
+      && seed.act1_lens.length >= 180
+      && seed.act2_rounds.length === 4
+      && seed.act2_rounds.every((round) => (round.lens?.length ?? 0) >= 40 && round.options.length === 4),
+  );
 
   return {
     ...fallback,
@@ -1408,13 +1495,29 @@ function mergeFastTheaterSeed(fallback: TheaterScript, seed: FastTheaterSeed): T
     },
     act1: {
       ...fallback.act1,
-      scene_description: [seed.act1_lens, motifLine, fallback.act1.scene_description].filter(Boolean).join("\n\n"),
+      scene_description: hasCompleteAdaptiveStory ? seed.act1_lens! : fallback.act1.scene_description,
     },
     act2: {
-      choices: fallback.act2.choices.map((choice, index) => ({
-        ...choice,
-        scene: [seed.act2_lenses[index], choice.scene].filter(Boolean).join("\n\n"),
-      })),
+      choices: fallback.act2.choices.map((choice, index) => {
+        const adaptiveRound = seed.act2_rounds[index];
+        const adaptiveOptions = hasCompleteAdaptiveStory ? adaptiveRound.options : null;
+        return {
+          ...choice,
+          scene: hasCompleteAdaptiveStory ? adaptiveRound.lens! : choice.scene,
+          options: adaptiveOptions
+            ? choice.options.map((fallbackOption, optionIndex) => ({
+                ...fallbackOption,
+                text: cleanVisibleText(adaptiveOptions[optionIndex]?.text, fallbackOption.text),
+                trait_signal: ensureTheaterSamplingTarget(
+                  adaptiveOptions[optionIndex]?.trait_signal,
+                  fallbackOption.trait_signal,
+                  index,
+                ),
+                response: cleanVisibleText(adaptiveOptions[optionIndex]?.response, fallbackOption.response),
+              }))
+            : choice.options,
+        };
+      }),
     },
     act3: {
       ...fallback.act3,
@@ -1514,6 +1617,7 @@ function normalizeMusicRecommendations(source: unknown, fallback: PsycheConstell
 }
 
 type FastConstellationSeed = {
+  grounding: FastSeedGrounding;
   archetype_name?: string;
   personalized_name?: string;
   personalized_subtitle?: string;
@@ -1534,6 +1638,19 @@ function cleanSeedText(value: unknown, maxLength = 180) {
   if (typeof value !== "string") return undefined;
   const cleaned = snippet(value, maxLength);
   return cleaned.length > 0 ? cleaned : undefined;
+}
+
+function cleanSeedNarrative(value: unknown, maxLength = 900) {
+  if (typeof value !== "string") return undefined;
+  const cleaned = value
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/u)
+    .map((paragraph) => paragraph.replace(/[ \t]+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+  if (!cleaned) return undefined;
+  return cleaned.length > maxLength ? cleaned.slice(0, maxLength).trim() : cleaned;
 }
 
 function isSuspiciousPersonalizedLabel(value: string | undefined) {
@@ -1581,11 +1698,14 @@ function normalizeRecommendationLenses(value: unknown): FastConstellationSeed["r
   };
 }
 
-function normalizeFastConstellationSeed(candidate: unknown): FastConstellationSeed | null {
+export function normalizeFastConstellationSeed(candidate: unknown, behaviorProfile?: BenyuanBehaviorProfileV2): FastConstellationSeed | null {
   const source = isRecord(candidate) && isRecord(candidate.constellation_seed) ? candidate.constellation_seed : candidate;
   if (!isRecord(source)) return null;
+  const grounding = normalizeFastSeedGrounding(source.grounding, behaviorProfile);
+  if (!grounding) return null;
 
   const seed: FastConstellationSeed = {
+    grounding,
     archetype_name: cleanSeedText(source.archetype_name, 24),
     personalized_name: cleanPersonalizedLabel(source.personalized_name ?? source.archetype_name, 24),
     personalized_subtitle: cleanPersonalizedLabel(source.personalized_subtitle, 80),
@@ -1639,9 +1759,7 @@ export function mergeFastConstellationSeed(
     }),
   ) as PsycheConstellation["seven_dimensions"];
 
-  const personalizedRecommendations = part1
-    ? personalizeConstellationRecommendations(fallback.recommendations, part1, part2)
-    : fallback.recommendations;
+  const personalizedRecommendations = fallback.recommendations;
   const recommendations: PsycheConstellation["recommendations"] = {
     books: personalizedRecommendations.books.map((item, index) => ({
       ...item,
@@ -1697,6 +1815,14 @@ export function normalizeConstellation(candidate: unknown, fallback: PsycheConst
   const sevenDimensions = isRecord(source.seven_dimensions) ? source.seven_dimensions : {};
   const recommendations = isRecord(source.recommendations) ? source.recommendations : {};
   const sourceArchetype = isRecord(source.archetype) ? source.archetype : {};
+  const hasSupportedContent =
+    Object.keys(sourceArchetype).length > 0 ||
+    Object.keys(sevenDimensions).length > 0 ||
+    typeof source.narrative_overview === "string" ||
+    Array.isArray(source.core_tensions) ||
+    Array.isArray(source.growth_suggestions) ||
+    Object.keys(recommendations).length > 0;
+  if (!hasSupportedContent) return null;
   const candidatePersonalizedName = cleanPersonalizedLabel(
     sourceArchetype.personalized_name ?? sourceArchetype.archetype_name ?? sourceArchetype.name,
     24,
@@ -1855,6 +1981,47 @@ function stringRecord(value: unknown, fallback: Record<string, string>) {
   return Object.keys(next).length > 0 ? next : fallback;
 }
 
+function normalizedEvidenceQuality(value: unknown, fallback: MusicAnalysis["evidence_quality"] = "medium") {
+  return value === "high" || value === "medium" || value === "low" || value === "none" ? value : fallback;
+}
+
+function normalizeBehavioralSignals(value: unknown, fallback: MultimodalBehaviorSignal[] = []): MultimodalBehaviorSignal[] {
+  if (!Array.isArray(value)) return fallback;
+  const seen = new Set<string>();
+  const signals: MultimodalBehaviorSignal[] = [];
+
+  for (const item of value) {
+    if (!isRecord(item) || !isBenyuanPsycheSignalKey(item.signal)) continue;
+    const evidence = stringArray(item.evidence, []).map((entry) => entry.trim()).filter(Boolean).slice(0, 3);
+    if (evidence.length === 0) continue;
+    const polarity = item.polarity === "counter" ? "counter" : "support";
+    const key = `${item.signal}:${polarity}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const rawConfidence = typeof item.confidence === "number" && Number.isFinite(item.confidence) ? item.confidence : 0.6;
+    const temporalScope =
+      item.temporal_scope === "current_state" ||
+      item.temporal_scope === "long_term_preference" ||
+      item.temporal_scope === "historical_pattern" ||
+      item.temporal_scope === "symbolic_material"
+        ? item.temporal_scope
+        : "unknown";
+    signals.push({
+      signal: item.signal,
+      polarity,
+      confidence: Math.max(0, Math.min(1, rawConfidence)),
+      temporal_scope: temporalScope,
+      evidence,
+      alternative_explanation:
+        typeof item.alternative_explanation === "string" && item.alternative_explanation.trim().length > 0
+          ? item.alternative_explanation.trim()
+          : undefined,
+    });
+  }
+
+  return signals.length > 0 ? signals.slice(0, 5) : fallback;
+}
+
 function normalizeMusicAnalysis(candidate: unknown, fallback: MusicAnalysis): MusicAnalysis {
   if (!isRecord(candidate)) return fallback;
   type RecognizedTrack = NonNullable<MusicAnalysis["recognized_tracks"]>[number];
@@ -1888,6 +2055,8 @@ function normalizeMusicAnalysis(candidate: unknown, fallback: MusicAnalysis): Mu
     : fallback.public_metadata;
 
   return {
+    analysis_status: candidate.analysis_status === "analyzed" ? "analyzed" : "insufficient_evidence",
+    evidence_quality: normalizedEvidenceQuality(candidate.evidence_quality, candidate.analysis_status === "analyzed" ? "medium" : "none"),
     primary_genres: stringArray(candidate.primary_genres, fallback.primary_genres),
     emotional_tone:
       typeof candidate.emotional_tone === "string"
@@ -1898,16 +2067,27 @@ function normalizeMusicAnalysis(candidate: unknown, fallback: MusicAnalysis): Mu
     era_distribution: numberRecord(candidate.era_distribution, fallback.era_distribution),
     language_diversity: stringArray(candidate.language_diversity, fallback.language_diversity),
     personality_signals: stringRecord(candidate.personality_signals, fallback.personality_signals),
+    behavioral_signals: normalizeBehavioralSignals(candidate.behavioral_signals, fallback.behavioral_signals),
     recognized_tracks: recognizedTracks,
     public_metadata: publicMetadata,
   };
 }
 
-function normalizeSocialPostItem(candidate: unknown, fallback: SocialPostAnalysis, index: number): SocialPostAnalysis {
-  if (!isRecord(candidate)) return { ...fallback, post_id: fallback.post_id ?? index + 1 };
+function normalizeSocialPostItem(candidate: unknown, fallback: SocialPostAnalysis | undefined, index: number): SocialPostAnalysis {
+  const base = fallback ?? {
+    post_id: index + 1,
+    text_content: "",
+    emotional_tone: "",
+    themes: [],
+    expression_style: "",
+    self_presentation: "",
+    time_clue: "",
+    psychological_signals: [],
+  };
+  if (!isRecord(candidate)) return base;
 
   return {
-    post_id: typeof candidate.post_id === "number" ? candidate.post_id : fallback.post_id ?? index + 1,
+    post_id: typeof candidate.post_id === "number" ? candidate.post_id : base.post_id,
     text_content:
       typeof candidate.text_content === "string"
         ? candidate.text_content
@@ -1917,33 +2097,34 @@ function normalizeSocialPostItem(candidate: unknown, fallback: SocialPostAnalysi
             ? candidate.caption
             : typeof candidate.visible_text === "string"
               ? candidate.visible_text
-              : fallback.text_content,
+              : base.text_content,
     emotional_tone:
       typeof candidate.emotional_tone === "string"
         ? candidate.emotional_tone
         : typeof candidate.sentiment === "string"
           ? candidate.sentiment
-          : fallback.emotional_tone,
-    themes: stringArray(candidate.themes, fallback.themes),
+          : base.emotional_tone,
+    themes: stringArray(candidate.themes, base.themes),
     expression_style:
       typeof candidate.expression_style === "string"
         ? candidate.expression_style
         : typeof candidate.writing_style === "string"
           ? candidate.writing_style
-          : fallback.expression_style,
+          : base.expression_style,
     self_presentation:
       typeof candidate.self_presentation === "string"
         ? candidate.self_presentation
         : typeof candidate.self_representation === "string"
           ? candidate.self_representation
-          : fallback.self_presentation,
+          : base.self_presentation,
     time_clue:
       typeof candidate.time_clue === "string"
         ? candidate.time_clue
         : typeof candidate.time_context === "string"
           ? candidate.time_context
-          : fallback.time_clue,
-    psychological_signals: stringArray(candidate.psychological_signals, fallback.psychological_signals),
+          : base.time_clue,
+    psychological_signals: stringArray(candidate.psychological_signals, base.psychological_signals),
+    behavioral_signals: normalizeBehavioralSignals(candidate.behavioral_signals, base.behavioral_signals),
   };
 }
 
@@ -1956,6 +2137,8 @@ function normalizeSocialOverallPattern(candidate: unknown, fallback: SocialPostO
   if (!isRecord(candidate)) return fallback;
 
   return {
+    analysis_status: candidate.analysis_status === "analyzed" ? "analyzed" : "insufficient_evidence",
+    evidence_quality: normalizedEvidenceQuality(candidate.evidence_quality, candidate.analysis_status === "analyzed" ? "medium" : "none"),
     dominant_emotion:
       typeof candidate.dominant_emotion === "string"
         ? candidate.dominant_emotion
@@ -1969,6 +2152,7 @@ function normalizeSocialOverallPattern(candidate: unknown, fallback: SocialPostO
         : typeof candidate.authenticity === "string"
           ? candidate.authenticity
           : fallback.expression_authenticity,
+    behavioral_signals: normalizeBehavioralSignals(candidate.behavioral_signals, fallback.behavioral_signals),
   };
 }
 
@@ -1984,6 +2168,8 @@ function normalizePreciousPhotoAnalysis(candidate: unknown, fallback: PreciousPh
         : candidate;
 
   return {
+    analysis_status: candidate.analysis_status === "analyzed" ? "analyzed" : "insufficient_evidence",
+    evidence_quality: normalizedEvidenceQuality(candidate.evidence_quality, candidate.analysis_status === "analyzed" ? "medium" : "none"),
     visual_content:
       typeof candidate.visual_content === "string"
         ? candidate.visual_content
@@ -1999,6 +2185,7 @@ function normalizePreciousPhotoAnalysis(candidate: unknown, fallback: PreciousPh
           ? candidate.color_palette
           : fallback.color_mood,
     symbolic_elements: stringArray(candidate.symbolic_elements, fallback.symbolic_elements),
+    behavioral_signals: normalizeBehavioralSignals(candidate.behavioral_signals, fallback.behavioral_signals),
     psychological_interpretation: {
       core_themes: stringArray(psychologicalInterpretation.core_themes, fallback.psychological_interpretation.core_themes),
       emotional_tone:
@@ -2024,7 +2211,7 @@ function normalizePreciousPhotoAnalysis(candidate: unknown, fallback: PreciousPh
   };
 }
 
-function normalizeMultimodalResult(
+export function normalizeMultimodalResult(
   candidate: unknown,
   fallback: {
     music_analysis: MusicAnalysis;
@@ -2083,6 +2270,34 @@ function normalizeMultimodalResult(
       fallback.precious_photo_analysis,
     ),
   };
+}
+
+function hasMeaningfulMusicAnalysis(value: MusicAnalysis) {
+  const categories = [
+    value.primary_genres.length > 0,
+    (value.recognized_tracks?.length ?? 0) > 0,
+    Object.keys(value.personality_signals).length > 0,
+    Boolean(value.emotional_tone && value.emotional_tone !== "insufficient_evidence"),
+  ].filter(Boolean).length;
+  return value.analysis_status === "analyzed" && categories >= 2;
+}
+
+function hasMeaningfulSocialAnalysis(posts: SocialPostAnalysis[], overall: SocialPostOverallPattern) {
+  const postEvidence = posts.some((post) =>
+    Boolean(post.text_content.trim()) &&
+    (post.themes.length > 0 || post.psychological_signals.length > 0 || post.emotional_tone !== "insufficient_evidence"),
+  );
+  return overall.analysis_status === "analyzed" && postEvidence;
+}
+
+function hasMeaningfulPhotoAnalysis(value: PreciousPhotoAnalysis) {
+  const categories = [
+    Boolean(value.visual_content && value.visual_content !== "insufficient_evidence"),
+    Boolean(value.composition && value.composition !== "insufficient_evidence"),
+    value.symbolic_elements.length > 0,
+    value.psychological_interpretation.core_themes.length > 0 || value.psychological_interpretation.traits.length > 0,
+  ].filter(Boolean).length;
+  return value.analysis_status === "analyzed" && categories >= 2;
 }
 
 type MultimodalFallbackBundle = {
@@ -2174,15 +2389,19 @@ function normalizeMultimodalStageResult(
   const normalized = normalizeMultimodalResult(candidate, fallback);
   if (!normalized) return null;
   if (kind === "music") {
-    return { music_analysis: normalized.music_analysis };
+    return hasMeaningfulMusicAnalysis(normalized.music_analysis) ? { music_analysis: normalized.music_analysis } : null;
   }
   if (kind === "social") {
-    return {
-      social_posts_analysis: normalized.social_posts_analysis,
-      social_posts_overall_pattern: normalized.social_posts_overall_pattern,
-    };
+    return hasMeaningfulSocialAnalysis(normalized.social_posts_analysis, normalized.social_posts_overall_pattern)
+      ? {
+          social_posts_analysis: normalized.social_posts_analysis,
+          social_posts_overall_pattern: normalized.social_posts_overall_pattern,
+        }
+      : null;
   }
-  return { precious_photo_analysis: normalized.precious_photo_analysis };
+  return hasMeaningfulPhotoAnalysis(normalized.precious_photo_analysis)
+    ? { precious_photo_analysis: normalized.precious_photo_analysis }
+    : null;
 }
 
 function stageFallbackResult(kind: BenyuanMultimodalStageKind, fallback: MultimodalFallbackBundle): MultimodalStageResult["result"] {
@@ -2233,10 +2452,11 @@ export async function runMultimodalStageAnalysis(
     : undefined;
   if (cacheKey) {
     const cached = await readCachedMultimodalAnalysis<MultimodalStageResult["result"]>(cacheKey);
-    if (cached?.result) {
+    const cachedResult = cached?.result ? normalizeMultimodalStageResult(kind, cached.result, fallback) : null;
+    if (cached && cachedResult) {
       return {
         kind,
-        result: cached.result,
+        result: cachedResult,
         runtime: {
           ...cached.runtime,
           mode: cached.runtime.mode === "live" ? "live" : "fallback",
@@ -2342,12 +2562,17 @@ export async function runMultimodalAnalysis(
   return runParallelMultimodalAnalysis(input, runtimeOverride);
 }
 
-export async function generateTheaterScriptWithAgent(record: Part1Record, runtimeOverride?: AgentRuntimeOverride): Promise<{ theaterScript: TheaterScript; runtime: AgentRuntimeResult }> {
+export async function generateTheaterScriptWithAgent(
+  record: Part1Record,
+  runtimeOverride?: AgentRuntimeOverride,
+  behaviorProfileOverride?: BenyuanBehaviorProfileV2,
+): Promise<{ theaterScript: TheaterScript; runtime: AgentRuntimeResult }> {
   const fallback = generateDeterministicTheaterScript(record);
   const profile = getAgentStageProfile("theater");
-  const request = await requestAgentJson({
+  const behaviorProfile = behaviorProfileOverride ?? buildBehaviorProfileV2(record);
+  const requestParams = {
     system: profile.compactPrompt ? FAST_DIRECTOR_SYSTEM_PROMPT : DIRECTOR_SYSTEM_PROMPT,
-    user: profile.compactPrompt ? buildFastDirectorUserPrompt(record, fallback) : buildDirectorUserPrompt(record),
+    user: profile.compactPrompt ? buildFastDirectorUserPrompt(record, fallback, behaviorProfile) : buildDirectorUserPrompt(record, behaviorProfile),
     runtimeOverride,
     maxOutputTokens: profile.maxOutputTokens ?? 4200,
     reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
@@ -2355,29 +2580,71 @@ export async function generateTheaterScriptWithAgent(record: Part1Record, runtim
     transport: profile.transport,
     allowSecondaryAttempts: profile.allowSecondaryAttempts,
     maxProviderAttempts: profile.maxProviderAttempts,
-  });
+  };
+  let request = await requestAgentJson(requestParams);
 
   if (profile.compactPrompt) {
-    const seed = normalizeFastTheaterSeed(request.data);
+    const seed = normalizeFastTheaterSeed(request.data, behaviorProfile);
     if (seed) {
-      return { theaterScript: mergeFastTheaterSeed(fallback, seed), runtime: request.runtime };
+      const theaterScript = mergeFastTheaterSeed(fallback, seed);
+      return { theaterScript: { ...theaterScript, act3: { ...theaterScript.act3, mirror_questions: [] } }, runtime: request.runtime };
     }
   }
 
   const normalized = normalizeTheaterScript(request.data, fallback);
-  if (!normalized) {
-    return { theaterScript: fallback, runtime: request.runtime };
+  if (normalized) {
+    return { theaterScript: { ...normalized, act3: { ...normalized.act3, mirror_questions: [] } }, runtime: request.runtime };
   }
 
-  return { theaterScript: normalized, runtime: request.runtime };
+  if (!profile.compactPrompt) {
+    await wait(600);
+    const repairRequest = await requestAgentJson({
+      ...requestParams,
+      system: FAST_DIRECTOR_SYSTEM_PROMPT,
+      user: buildFastDirectorUserPrompt(record, fallback, behaviorProfile),
+      maxOutputTokens: 1800,
+      reasoningEffort: "medium",
+      timeoutMs: 70_000,
+      transport: "json_first",
+      allowSecondaryAttempts: false,
+      maxProviderAttempts: 1,
+    });
+    const repairedSeed = normalizeFastTheaterSeed(repairRequest.data, behaviorProfile);
+    if (repairedSeed) {
+      const theaterScript = mergeFastTheaterSeed(fallback, repairedSeed);
+      return {
+        theaterScript: { ...theaterScript, act3: { ...theaterScript.act3, mirror_questions: [] } },
+        runtime: {
+          ...repairRequest.runtime,
+          error: appendError("error" in repairRequest.runtime ? repairRequest.runtime.error : undefined, "theater_full_response_repaired"),
+        },
+      };
+    }
+    request = repairRequest;
+  }
+
+  return {
+    theaterScript: { ...fallback, act3: { ...fallback.act3, mirror_questions: [] } },
+    runtime: {
+      ...request.runtime,
+      mode: "fallback",
+      error: appendError("error" in request.runtime ? request.runtime.error : undefined, "theater_normalization_failed"),
+    },
+  };
 }
 
-export async function generateConstellationWithAgent(part1: Part1Record, part2: Part2Record, runtimeOverride?: AgentRuntimeOverride): Promise<{ constellation: PsycheConstellation; runtime: AgentRuntimeResult }> {
+export async function generateConstellationWithAgent(
+  part1: Part1Record,
+  part2: Part2Record,
+  runtimeOverride?: AgentRuntimeOverride,
+  behaviorProfileOverride?: BenyuanBehaviorProfileV2,
+): Promise<{ constellation: PsycheConstellation; runtime: AgentRuntimeResult }> {
   const fallback = generateDeterministicConstellation(part1, part2);
   const profile = getAgentStageProfile("constellation");
-  const request = await requestAgentJson({
+  const behaviorProfile = behaviorProfileOverride ?? buildBehaviorProfileV2(part1, part2);
+  const requestParams = {
     system: profile.compactPrompt ? FAST_ANALYST_SYSTEM_PROMPT : ANALYST_SYSTEM_PROMPT,
-    user: profile.compactPrompt ? buildFastAnalystUserPrompt(part1, part2, fallback) : buildAnalystUserPrompt(part1, part2, fallback),
+    user: profile.compactPrompt ? buildFastAnalystUserPrompt(part1, part2, fallback, behaviorProfile) : buildAnalystUserPrompt(part1, part2, fallback, behaviorProfile),
     runtimeOverride,
     maxOutputTokens: profile.maxOutputTokens ?? 5600,
     reasoningEffort: runtimeOverride?.reasoning_effort ?? profile.reasoningEffort ?? "xhigh",
@@ -2385,18 +2652,42 @@ export async function generateConstellationWithAgent(part1: Part1Record, part2: 
     transport: profile.transport,
     allowSecondaryAttempts: profile.allowSecondaryAttempts,
     maxProviderAttempts: profile.maxProviderAttempts,
-  });
+  };
+  let request = await requestAgentJson(requestParams);
 
   if (profile.compactPrompt) {
-    const seed = normalizeFastConstellationSeed(request.data);
-    if (seed) {
-      return { constellation: mergeFastConstellationSeed(fallback, seed, part1, part2), runtime: request.runtime };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const seed = normalizeFastConstellationSeed(request.data, behaviorProfile);
+      if (seed) {
+        return { constellation: mergeFastConstellationSeed(fallback, seed, part1, part2), runtime: request.runtime };
+      }
+      const direct = normalizeConstellation(request.data, fallback);
+      if (direct) {
+        return { constellation: refineConstellationWithFallback(direct, fallback), runtime: request.runtime };
+      }
+      if (attempt === 0) {
+        await wait(800);
+        request = await requestAgentJson({
+          ...requestParams,
+          reasoningEffort: "low",
+          transport: "json_first",
+          allowSecondaryAttempts: false,
+          maxProviderAttempts: 1,
+        });
+      }
     }
   }
 
   const normalized = normalizeConstellation(request.data, fallback);
   if (!normalized) {
-    return { constellation: fallback, runtime: request.runtime };
+    return {
+      constellation: fallback,
+      runtime: {
+        ...request.runtime,
+        mode: "fallback",
+        error: appendError("error" in request.runtime ? request.runtime.error : undefined, "constellation_normalization_failed"),
+      },
+    };
   }
 
   return { constellation: refineConstellationWithFallback(normalized, fallback), runtime: request.runtime };

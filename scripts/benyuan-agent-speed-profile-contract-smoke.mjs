@@ -16,7 +16,7 @@ const configureScript = readRequired("scripts/configure-staging-llm.sh");
 const packageJson = readRequired("package.json");
 
 assert.match(agent, /BENYUAN_AGENT_SPEED_PROFILE/, "agent runtime must read BENYUAN_AGENT_SPEED_PROFILE");
-assert.match(agent, /fast[\s\S]*theater[\s\S]*maxOutputTokens:\s*900/, "fast theater profile should request a compact live seed");
+assert.match(agent, /fast[\s\S]*theater[\s\S]*maxOutputTokens:\s*1600/, "fast theater profile should request adaptive options in a compact live seed");
 assert.match(agent, /fast[\s\S]*theater[\s\S]*reasoningEffort:\s*"medium"/, "fast theater seed should use medium reasoning after latency A/B validation");
 assert.match(agent, /fast[\s\S]*constellation[\s\S]*maxOutputTokens:\s*900/, "fast constellation profile should request a compact live seed");
 assert.match(agent, /fast[\s\S]*constellation[\s\S]*reasoningEffort:\s*"high"/, "fast constellation seed should use high reasoning after latency A/B validation");
@@ -26,8 +26,8 @@ assert.match(agent, /transport:\s*"json_first"/, "fast text agents should avoid 
 assert.match(agent, /allowSecondaryAttempts:\s*false/, "fast text agents should not stack multiple long provider attempts");
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*timeoutMs:\s*120000/, "fast multimodal profile should have enough time for live visual analysis");
 assert.match(agent, /fast[\s\S]*multimodal:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast multimodal profile should run a single provider attempt inside the native E2E window");
-assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxOutputTokens:\s*900/, "fast theater profile should only request a compact live seed");
-assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*timeoutMs:\s*45000/, "fast theater seed should keep the live generation window bounded for native testing");
+assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxOutputTokens:\s*1600/, "fast theater profile should include adaptive four-round options");
+assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*timeoutMs:\s*65000/, "fast theater seed should keep adaptive option generation bounded");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*maxProviderAttempts:\s*1/, "fast theater profile should avoid retrying a full long-running provider call");
 assert.match(agent, /fast[\s\S]*theater:\s*\{[\s\S]*compactPrompt:\s*true/, "fast theater profile should use a compact director prompt");
 assert.match(agent, /normalizeFastTheaterSeed/, "fast theater generation should normalize a compact seed instead of requiring a full script");
@@ -50,7 +50,9 @@ assert.match(agent, /requestAgentJson\(\{[\s\S]*maxProviderAttempts:\s*profile\.
 assert.match(prompts, /FAST_DIRECTOR_SYSTEM_PROMPT/, "prompts module should expose a compact director system prompt");
 assert.match(prompts, /buildFastDirectorUserPrompt/, "prompts module should expose compact director prompt builder");
 assert.match(prompts, /theater_seed/, "compact director prompt should request a small theater seed object");
-assert.match(prompts, /不是完整剧本/, "compact director prompt should make clear the provider is not generating the full script");
+assert.match(prompts, /act2_rounds/, "compact director prompt should request adaptive four-round options");
+assert.match(prompts, /四轮[^\n]*(补采样|补足前 13 题)/, "compact director prompt should preserve the four-round sampling purpose");
+assert.match(prompts, /直接成为用户看到的故事|直接展示的完整短篇故事骨架/, "compact director prompt should make clear the seed is the complete visible story");
 assert.match(prompts, /FAST_ANALYST_SYSTEM_PROMPT/, "prompts module should expose a compact analyst system prompt");
 assert.match(prompts, /buildFastAnalystUserPrompt/, "prompts module should expose compact analyst prompt builder");
 assert.match(prompts, /constellation_seed/, "compact analyst prompt should request a small constellation seed object");

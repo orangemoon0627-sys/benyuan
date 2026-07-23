@@ -46,7 +46,7 @@ export function readBenyuanAgentRuntime(override?: AgentRuntimeOverride): Benyua
           ? "local-codex-config"
           : "missing";
   const baseUrl = (allowProviderOverride ? override?.base_url : undefined) ?? runtime.customBaseUrl ?? codexDefaults.baseUrl;
-  const model = (allowProviderOverride ? override?.model : undefined) ?? runtime.customModel ?? codexDefaults.model ?? "gpt-5.5";
+  const model = (allowProviderOverride ? override?.model : undefined) ?? runtime.customModel ?? codexDefaults.model ?? "gpt-5.6-terra";
   const providerName =
     (allowProviderOverride ? override?.provider_name : undefined) ?? runtime.customProviderName ?? codexDefaults.providerName ?? "custom";
   const reasoningEffort =

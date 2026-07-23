@@ -1,5 +1,6 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getBenyuanDataRoot } from "@/lib/benyuan-persistence";
 import { sampleReport } from "@/lib/fixtures/report";
 import { buildAnalysisInput, buildCompletedPipelineStages, buildFailedPipelineStages, buildQueuedPipelineStages, buildRunningPipelineStages, resolveAnalysisEngine, transitionPipelineStages, type AnalysisAdminImpactMatrixItem } from "@/lib/analysis";
 import type { AssessmentContentDraftBlueprint } from "@/features/assessment";
@@ -43,7 +44,7 @@ type SessionRuntimeSummary = {
   featureVectorReady: boolean;
 };
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getBenyuanDataRoot();
 const STORE_FILE = path.join(DATA_DIR, "benyuan-store.json");
 
 const defaultStore = (): PersistedStore => ({
@@ -60,9 +61,14 @@ async function ensureStoreFile() {
   await mkdir(DATA_DIR, { recursive: true });
 
   try {
-    await readFile(STORE_FILE, "utf8");
-  } catch {
-    await writeStore(defaultStore());
+    await stat(STORE_FILE);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    try {
+      await writeFile(STORE_FILE, JSON.stringify(defaultStore(), null, 2), { encoding: "utf8", flag: "wx" });
+    } catch (writeError) {
+      if ((writeError as NodeJS.ErrnoException).code !== "EEXIST") throw writeError;
+    }
   }
 }
 
@@ -70,11 +76,14 @@ async function readStore() {
   await ensureStoreFile();
   const raw = await readFile(STORE_FILE, "utf8");
   if (!raw.trim()) {
-    const store = defaultStore();
-    await writeStore(store);
-    return store;
+    throw new Error("benyuan_legacy_store_corrupt");
   }
-  const parsed = JSON.parse(raw) as Partial<PersistedStore>;
+  let parsed: Partial<PersistedStore>;
+  try {
+    parsed = JSON.parse(raw) as Partial<PersistedStore>;
+  } catch (error) {
+    throw new Error("benyuan_legacy_store_corrupt", { cause: error });
+  }
   return {
     ...defaultStore(),
     ...parsed,

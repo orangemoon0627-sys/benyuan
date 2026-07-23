@@ -1,5 +1,5 @@
 import { getQuestionOption, getQuestionOptionTags } from "@/lib/benyuan-v3-schema";
-import { getTheaterAct2ChoiceText } from "@/lib/benyuan-v3-theater-labels";
+import { getPart2ChoiceText, getPart2ChoiceTraitSignal } from "@/lib/benyuan-v3-theater-labels";
 import type { Part1Record, Part2Record } from "@/lib/benyuan-v3-types";
 
 export type PsychoanalyticConceptCard = {
@@ -18,6 +18,7 @@ export type SelectedPsychoanalyticConcept = {
   concept: PsychoanalyticConceptCard;
   strength: "strong_signal" | "medium_signal" | "weak_signal";
   evidence: string[];
+  evidenceBasis: "user_evidence" | "conceptual_lens";
 };
 
 export const BENYUAN_PSYCHOANALYTIC_CONCEPTS: PsychoanalyticConceptCard[] = [
@@ -317,7 +318,8 @@ function part2TextEvidence(part2?: Part2Record) {
   return [
     ...part2.act2_choices.flatMap((choice) => [
       choice.selected,
-      getTheaterAct2ChoiceText(choice.selected) ?? "",
+      getPart2ChoiceText(choice),
+      getPart2ChoiceTraitSignal(choice),
       choice.hesitation_time && choice.hesitation_time >= 6 ? "停留 迟疑 慢下来" : "",
     ]),
   ].filter(Boolean);
@@ -333,7 +335,7 @@ export function selectPsychoanalyticConceptsForPart1(part1: Part1Record, part2?:
   const haystackItems = [...part1TextEvidence(part1), ...part2TextEvidence(part2)];
   const haystack = normalize(haystackItems.join("\n"));
 
-  const selected = BENYUAN_PSYCHOANALYTIC_CONCEPTS.map((concept) => {
+  const selected: SelectedPsychoanalyticConcept[] = BENYUAN_PSYCHOANALYTIC_CONCEPTS.map((concept) => {
     const matches = concept.signalHints.filter((hint) => haystack.includes(normalize(hint)));
     const evidence = haystackItems
       .filter((item) => concept.signalHints.some((hint) => normalize(item).includes(normalize(hint))))
@@ -350,14 +352,15 @@ export function selectPsychoanalyticConceptsForPart1(part1: Part1Record, part2?:
     .map((item) => ({
       concept: item.concept,
       strength: strengthFromScore(item.matches),
-      evidence: item.evidence.length > 0 ? item.evidence : item.concept.useWhen.slice(0, 2),
+      evidence: item.evidence,
+      evidenceBasis: "user_evidence" as const,
     }));
 
   const requiredIds = ["object_distance", "boundary", "freud_defense", "meaning_orientation"];
   for (const id of requiredIds) {
     if (selected.some((item) => item.concept.id === id)) continue;
     const concept = BENYUAN_PSYCHOANALYTIC_CONCEPTS.find((item) => item.id === id);
-    if (concept) selected.push({ concept, strength: "weak_signal", evidence: concept.useWhen.slice(0, 2) });
+    if (concept) selected.push({ concept, strength: "weak_signal", evidence: [], evidenceBasis: "conceptual_lens" });
   }
 
   return selected.slice(0, limit);
@@ -369,16 +372,19 @@ export function buildPsychoanalyticConceptBrief(selected: SelectedPsychoanalytic
     : BENYUAN_PSYCHOANALYTIC_CONCEPTS.slice(0, 6).map((concept) => ({
         concept,
         strength: "weak_signal" as const,
-        evidence: concept.useWhen.slice(0, 2),
+        evidence: [],
+        evidenceBasis: "conceptual_lens" as const,
       }));
 
   return [
     "精神分析概念卡（供内部生成使用，不要逐字暴露给用户；这是精神分析启发，不是心理诊断）：",
-    ...concepts.map(({ concept, strength, evidence }) => [
+    ...concepts.map(({ concept, strength, evidence, evidenceBasis }) => [
       `- ${concept.zhName} / ${concept.school} / ${strength}`,
       `  核心含义：${concept.coreMeaning}`,
       `  适用信号：${concept.useWhen.join("；")}`,
-      `  用户输入证据：${evidence.join("；")}`,
+      evidenceBasis === "user_evidence"
+        ? `  用户输入证据：${evidence.join("；") || "暂无可独立核验的输入证据"}`
+        : "  证据边界：仅作为概念镜片，不是用户输入证据，不得据此形成强结论",
       `  星图转译：${concept.starMetaphors.join("、")}`,
       `  安全表达：${concept.safeLanguage.join("；")}`,
       `  禁止误用：${concept.avoid.join("；")}`,

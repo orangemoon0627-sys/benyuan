@@ -2,6 +2,34 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function appendMissingJsonClosers(value: string) {
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+  for (const character of value) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+    } else if (character === "{" || character === "[") {
+      stack.push(character);
+    } else if (character === "}" || character === "]") {
+      const expected = character === "}" ? "{" : "[";
+      if (stack.pop() !== expected) return null;
+    }
+  }
+  if (inString || stack.length === 0 || stack.length > 3) return null;
+  return value + stack.reverse().map((character) => (character === "{" ? "}" : "]")).join("");
+}
+
 export function extractJsonObject(rawText: string) {
   const fencedMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fencedMatch?.[1] ?? rawText;
@@ -13,7 +41,13 @@ export function extractJsonObject(rawText: string) {
   try {
     return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1)) as unknown;
   } catch {
-    return null;
+    const repaired = appendMissingJsonClosers(trimmed.slice(firstBrace, lastBrace + 1));
+    if (!repaired) return null;
+    try {
+      return JSON.parse(repaired) as unknown;
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -31,6 +65,34 @@ export function readChatText(value: unknown) {
   const first = value.choices[0];
   if (!isRecord(first) || !isRecord(first.message)) return "";
   return typeof first.message.content === "string" ? first.message.content.trim() : "";
+}
+
+function readResponsesEnvelopeError(value: unknown) {
+  if (!isRecord(value)) return undefined;
+  if (isRecord(value.error)) {
+    return [value.error.code, value.error.type, value.error.message]
+      .find((item): item is string => typeof item === "string" && item.trim().length > 0);
+  }
+  if (value.status === "incomplete" && isRecord(value.incomplete_details)) {
+    const reason = value.incomplete_details.reason;
+    return typeof reason === "string" && reason.trim() ? `response_incomplete:${reason.trim()}` : "response_incomplete";
+  }
+  if (Array.isArray(value.output)) {
+    const outputTypes = value.output
+      .map((item) => (isRecord(item) && typeof item.type === "string" ? item.type : "unknown"))
+      .join(",") || "none";
+    const contentTypes = value.output
+      .flatMap((item) => (isRecord(item) && Array.isArray(item.content) ? item.content : []))
+      .map((item) => (isRecord(item) && typeof item.type === "string" ? item.type : "unknown"))
+      .join(",") || "none";
+    const usage = isRecord(value.usage) ? value.usage : {};
+    const outputTokens = typeof usage.output_tokens === "number" ? usage.output_tokens : "unknown";
+    const reasoningTokens = isRecord(usage.output_tokens_details) && typeof usage.output_tokens_details.reasoning_tokens === "number"
+      ? usage.output_tokens_details.reasoning_tokens
+      : "unknown";
+    return `response_empty:status=${typeof value.status === "string" ? value.status : "unknown"};output=${outputTypes};content=${contentTypes};output_tokens=${outputTokens};reasoning_tokens=${reasoningTokens}`;
+  }
+  return undefined;
 }
 
 export function collectSseTextFragments(value: unknown): string[] {
@@ -55,6 +117,7 @@ export function collectSseTextFragments(value: unknown): string[] {
     }
 
     if (Array.isArray(node.content)) visit(node.content);
+    if (Array.isArray(node.output)) visit(node.output);
     if (Array.isArray(node.contents)) visit(node.contents);
     if (Array.isArray(node.parts)) visit(node.parts);
     if (isRecord(node.part)) visit(node.part);
@@ -120,6 +183,10 @@ export function parseSsePayloadText(rawText: string) {
       if (type === "error" || type === "response.failed") {
         errorDetail = readSseErrorDetail(payload) ?? errorDetail;
       }
+      if (type === "response.completed" && !outputText.trim() && isRecord(payload.response)) {
+        const completedText = collectSseTextFragments(payload.response).join("");
+        if (completedText.trim()) outputText = completedText;
+      }
     } catch {
       // Ignore malformed SSE chunks and keep scanning later data lines.
     }
@@ -147,16 +214,17 @@ export function parseProviderJsonOrSsePayload(rawText: string) {
   try {
     const payload = JSON.parse(trimmed) as unknown;
     const outputText = readResponsesText(payload) || readChatText(payload);
+    const providerEnvelope = isRecord(payload) && (Array.isArray(payload.output) || Array.isArray(payload.choices));
     const requestId = isRecord(payload) && typeof payload.id === "string"
       ? payload.id
       : isRecord(payload) && isRecord(payload.response) && typeof payload.response.id === "string"
         ? payload.response.id
         : undefined;
     return {
-      parsed: extractJsonObject(outputText) ?? (isRecord(payload) ? payload : null),
+      parsed: extractJsonObject(outputText) ?? (isRecord(payload) && !providerEnvelope ? payload : null),
       outputText,
       requestId,
-      errorDetail: undefined,
+      errorDetail: outputText ? undefined : readResponsesEnvelopeError(payload),
     };
   } catch {
     return {

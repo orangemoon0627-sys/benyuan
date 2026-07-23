@@ -5,6 +5,8 @@ extension BenyuanNativeFlowModel {
     func enterAct2() {
         markPhaseDuration("act1")
         theaterPhase = .act2
+        theaterChoiceIndex = 0
+        restoreTheaterSelectionForCurrentRound()
         resetInteractionTimer()
     }
 
@@ -19,32 +21,60 @@ extension BenyuanNativeFlowModel {
 
     func chooseAct2(_ option: TheaterChoiceOption) {
         guard let choice = currentTheaterChoice,
-              choiceLogs.count == theaterChoiceIndex,
-              choiceLogs.count < requiredTheaterChoiceCount,
+              theaterChoiceIndex < requiredTheaterChoiceCount,
+              theaterChoiceIndex <= choiceLogs.count,
               !isTheaterConstellationEntrySubmitting else { return }
         selectedTheaterOptionId = option.id
         isTheaterChoiceFeedbackVisible = true
         let hesitation = Date().timeIntervalSince(interactionStartedAt)
-        choiceLogs.append(Part2ChoiceRecord(
+        let record = Part2ChoiceRecord(
             choiceId: choice.choiceId,
             selected: option.id,
             hesitationTime: rounded(hesitation),
             hoverSequence: [],
             timestamp: Date().benyuanISOString
-        ))
+        )
+
+        if theaterChoiceIndex < choiceLogs.count {
+            choiceLogs[theaterChoiceIndex] = record
+        } else {
+            choiceLogs.append(record)
+        }
 
         Task {
-            try? await Task.sleep(nanoseconds: 520_000_000)
+            try? await Task.sleep(nanoseconds: 360_000_000)
             await MainActor.run {
-                markPhaseDuration("act2")
-                resetInteractionTimer()
                 isTheaterChoiceFeedbackVisible = false
-                if choiceLogs.count < requiredTheaterChoiceCount {
-                    selectedTheaterOptionId = nil
-                    theaterChoiceIndex = choiceLogs.count
-                }
             }
         }
+    }
+
+    func previousTheaterChoice() {
+        guard theaterChoiceIndex > 0, !isTheaterConstellationEntrySubmitting else { return }
+        theaterChoiceIndex -= 1
+        restoreTheaterSelectionForCurrentRound()
+        resetInteractionTimer()
+    }
+
+    func nextTheaterChoice() {
+        guard canAdvanceFromCurrentTheaterChoice else {
+            if !hasAnsweredCurrentTheaterChoice {
+                showToast("先选择这一幕里的行动。")
+            }
+            return
+        }
+        theaterChoiceIndex += 1
+        restoreTheaterSelectionForCurrentRound()
+        resetInteractionTimer()
+    }
+
+    private func restoreTheaterSelectionForCurrentRound() {
+        guard choiceLogs.indices.contains(theaterChoiceIndex),
+              choiceLogs[theaterChoiceIndex].choiceId == currentTheaterChoice?.choiceId else {
+            selectedTheaterOptionId = nil
+            return
+        }
+        selectedTheaterOptionId = choiceLogs[theaterChoiceIndex].selected
     }
 
     func enterConstellationGenerationFromTheater() async {

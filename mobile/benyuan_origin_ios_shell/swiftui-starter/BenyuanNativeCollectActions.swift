@@ -6,7 +6,6 @@ extension BenyuanNativeFlowModel {
         guard let question = currentQuestion else { return }
         session.answers[question.id] = .string(optionId)
         persist()
-        advanceAfterAnswer()
     }
 
     func toggleMultiAnswer(_ optionId: String) {
@@ -58,12 +57,9 @@ extension BenyuanNativeFlowModel {
             for (asset, image) in zip(response.assets, selectedImages) {
                 thumbnails[asset.assetId] = image
             }
-            let nextAssets = applyUploadedAssets(response.assets, to: question.id, mode: mode, maxCount: maxCount)
+            applyUploadedAssets(response.assets, to: question.id, mode: mode, maxCount: maxCount)
             persist()
             showToast("图片线索已归位。")
-            if nextAssets.count >= maxCount {
-                advanceAfterAnswer(delay: 0.25)
-            }
         } catch {
             if isExpiredAuthError(error) {
                 clearLocalAuthAfterLogout()

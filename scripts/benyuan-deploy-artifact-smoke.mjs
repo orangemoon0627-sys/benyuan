@@ -38,6 +38,25 @@ assert(
   deployScript.includes("npm ci --omit=dev --no-audit --no-fund"),
   "server install must use npm ci --omit=dev --no-audit --no-fund",
 );
+assert(
+  deployScript.includes("Protected runtime smoke checks on the server loopback"),
+  "protected runtime checks must run on the staging server instead of sending credentials over public HTTP",
+);
+assert(
+  deployScript.includes("BENYUAN_INTERNAL_ACCESS_TOKEN is required for protected deployment smoke checks"),
+  "deployment must fail closed when the server has no internal access token",
+);
+assert(
+  deployScript.includes("authorization:'Bearer ' + token"),
+  "the direct runtime API smoke must authenticate with the private server token",
+);
+const publicSmokeStart = deployScript.indexOf('log "Public root smoke check"');
+assert(publicSmokeStart !== -1, "missing public root smoke section");
+const publicSmokeSection = deployScript.slice(publicSmokeStart);
+assert(
+  !publicSmokeSection.includes("/api/analysis/runtime") && !publicSmokeSection.includes("/lab/runtime"),
+  "public smoke checks must not send internal credentials across the public staging URL",
+);
 
 const remoteInstallStart = deployScript.indexOf(
   'log "Installing production dependencies and restarting PM2"',

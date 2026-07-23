@@ -3,7 +3,7 @@ import { assertPart1Owner } from "@/lib/benyuan-auth";
 import { agentRouteErrorResponse } from "@/lib/benyuan-agent-route-errors";
 import { recordBenyuanAgentTiming } from "@/lib/benyuan-agent-timing";
 import { generateTheaterScriptWithAgent } from "@/lib/benyuan-v3-agent";
-import { createBenyuanV3Id, getPart1Record, saveTheaterScriptRecord } from "@/lib/benyuan-v3-store";
+import { createBenyuanV3Id, ensureBehaviorProfileSnapshot, getPart1Record, saveTheaterScriptRecord } from "@/lib/benyuan-v3-store";
 import type { AgentRuntimeOverride } from "@/lib/benyuan-v3-types";
 
 export async function POST(request: Request) {
@@ -23,7 +23,8 @@ export async function POST(request: Request) {
 
   const startedAt = Date.now();
   try {
-    const result = await generateTheaterScriptWithAgent(part1, body.runtime_override);
+    const behaviorSnapshot = await ensureBehaviorProfileSnapshot(part1);
+    const result = await generateTheaterScriptWithAgent(part1, body.runtime_override, behaviorSnapshot.profile);
     const timing = await recordBenyuanAgentTiming({
       stage: "theater",
       duration_ms: Date.now() - startedAt,
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
       data_environment: part1.data_environment,
       created_at: new Date().toISOString(),
       runtime: result.runtime,
+      behavior_profile_revision: behaviorSnapshot.profile_revision,
       theater_script: result.theaterScript,
     };
 

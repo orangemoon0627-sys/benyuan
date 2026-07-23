@@ -434,22 +434,31 @@ struct BenyuanNativeCollectView: View {
     private var bottomBar: some View {
         let canMoveForward = model.currentQuestionIsAnswered
         let isFirstQuestion = model.activeQuestionIndex == 0
+        let isLastQuestion = model.activeQuestionIndex == model.questions.count - 1
+        let canEnterTheater = isLastQuestion && model.allQuestionsAnswered
         return HStack(spacing: BenyuanSpacing.x3) {
-            Button("上一题") { model.previousQuestion() }
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(isFirstQuestion ? BenyuanColor.textTertiary : BenyuanColor.textSecondary)
-                .frame(width: 84, height: 54)
-                .background(Capsule().fill(isFirstQuestion ? BenyuanColor.glassFill.opacity(0.62) : BenyuanColor.glassFill))
+            Button { model.previousQuestion() } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(isFirstQuestion ? BenyuanColor.textTertiary : BenyuanColor.textSecondary)
+                    .frame(width: 54, height: 54)
+                    .background(Circle().fill(isFirstQuestion ? BenyuanColor.glassFill.opacity(0.62) : BenyuanColor.glassFill))
+            }
+                .accessibilityLabel("上一题")
+                .disabled(isFirstQuestion)
                 .buttonStyle(BenyuanPressableMotionStyle(scale: 0.96, glow: 0.08, haptic: .light))
-            Button("下一题") { model.nextQuestion() }
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(canMoveForward ? BenyuanColor.textSecondary : BenyuanColor.textTertiary)
-                .frame(width: 84, height: 54)
-                .background(Capsule().fill(canMoveForward ? BenyuanColor.glassFill : BenyuanColor.glassFill.opacity(0.62)))
-                .overlay(Capsule().stroke(canMoveForward ? Color.clear : BenyuanColor.glassStroke.opacity(0.72), lineWidth: 1))
-                .buttonStyle(BenyuanPressableMotionStyle(scale: 0.96, glow: 0.08, haptic: .light))
-            BenyuanNativePrimaryButton(title: primaryCollectTitle, disabled: model.uploadingQuestionId != nil) {
-                Task { await model.continueCollectOrSubmit() }
+
+            BenyuanNativePrimaryButton(
+                title: canEnterTheater ? "进入剧场" : isLastQuestion ? "检查全部线索" : "下一题",
+                disabled: !canMoveForward || model.uploadingQuestionId != nil
+            ) {
+                if canEnterTheater {
+                    Task { await model.submitPart1AndGenerateTheater() }
+                } else if isLastQuestion {
+                    Task { await model.continueCollectOrSubmit() }
+                } else {
+                    model.nextQuestion()
+                }
             }
         }
         .padding(.horizontal, BenyuanSpacing.x4)
@@ -495,12 +504,6 @@ struct BenyuanNativeCollectView: View {
 
     private func questionSignalBridgeHeight(_ question: BenyuanQuestion) -> CGFloat {
         question.kind == .distribution ? 18 : 24
-    }
-
-    private var primaryCollectTitle: String {
-        if model.allQuestionsAnswered { return "进入剧场生成" }
-        if model.currentQuestionIsAnswered { return "继续收集" }
-        return "完成当前线索"
     }
 
 }

@@ -33,6 +33,9 @@ assert.match(store, /getNativeGenerationJob/, "store must expose job status look
 assert.match(store, /runNativeGenerationJob/, "store must run cloud-side generation jobs");
 assert.match(store, /shouldResumeNativeGenerationJob/, "store must expose a stale-running recovery predicate for native jobs");
 assert.match(store, /activeNativeGenerationJobRuns/, "store must keep an in-process lock to avoid duplicate native job provider calls");
+assert.match(store, /claimNativeGenerationJobRun/, "store must atomically claim a durable cross-process generation lease");
+assert.match(store, /renewNativeGenerationLease/, "stage checkpoints must renew the durable generation lease");
+assert.match(store, /leaseOwner/, "generation updates must be fenced by the current lease owner");
 assert.match(store, /activeNativeGenerationJobRuns\.delete\(jobId\)/, "native job run lock must be released after completion or failure");
 assert.match(store, /NATIVE_GENERATION_JOB_STALE_MS\s*=\s*3\s*\*\s*60\s*\*\s*1000/, "native jobs must become recoverable within the iOS waiting window");
 assert.match(store, /buildNativeGenerationJobPresentation/, "job progress must be derived from stage-aware presentation metadata");
@@ -51,6 +54,7 @@ assert.match(startRoute, /BenyuanAuthError/, "native job start must return auth 
 assert.match(startRoute, /part1_forbidden/, "native job start must reject cross-account part1 access");
 assert.match(startRoute, /startNativeGenerationJob/, "native job start route must create or resume a server job");
 assert.match(startRoute, /runNativeGenerationJob/, "native job start route must trigger server-side generation work");
+assert.match(startRoute, /presentNativeGenerationJob\(job\)/, "native job start responses must strip server-only shadow diagnostics");
 assert.match(jobRoute, /getNativeGenerationJob/, "native job status route must read persisted job state");
 assert.match(jobRoute, /getCurrentAuthSession/, "native job status route must require authenticated ownership through the parent part1");
 assert.match(jobRoute, /BenyuanAuthError/, "native job status route must return auth errors without leaking internals");
@@ -59,6 +63,14 @@ assert.match(jobRoute, /shouldResumeNativeGenerationJob/, "native job status rou
 assert.match(jobRoute, /job\.status\s*===\s*"queued"[\s\S]*shouldResumeNativeGenerationJob\(job\)/, "native job status route must trigger jobs that are queued or stale-running");
 assert.match(jobRoute, /progress/, "native job status response must expose progress for iOS");
 assert.match(jobRoute, /constellation_id/, "native job status response must expose completed constellation id");
+assert.match(jobRoute, /eventsAfterSequence/, "native job status must expose cursor-based stage events without changing the snapshot contract");
+assert.match(jobRoute, /event_cursor/, "native job status must expose the latest event cursor");
+assert.match(store, /shadow_archetype_diagnostic:\s*_shadowDiagnostic/, "public native job snapshots must omit shadow archetype diagnostics");
+assert.match(store, /lease_owner:\s*_leaseOwner/, "public native job snapshots must omit server-only lease ownership");
+assert.match(store, /appendNativeGenerationEvent/, "native generation jobs must persist monotonic stage events");
+assert.match(store, /behavior_profile_ready/, "native generation jobs must checkpoint the behavior profile revision before downstream generation");
+assert.match(store, /ensureBehaviorProfileSnapshot/, "native generation jobs must persist an immutable behavior profile before downstream generation");
+assert.match(store, /behavior_profile_revision:\s*behaviorProfile\.revision/, "generated artifacts must retain behavior-profile lineage");
 
 assert.match(nativeModels, /BenyuanNativeGenerationJobResponse/, "iOS models must decode native generation job status");
 assert.match(nativeModels, /progress: Double/, "iOS job status must expose progress as a Double");
@@ -74,8 +86,8 @@ assert.match(nativeGenerationSources, /restoreActiveGenerationJobIfNeeded/, "nat
 assert.match(flowStore, /activeGenerationJobId/, "flow store session must persist active generation job id");
 
 assert.match(processingView, /processingPercentText/, "native processing page must show a numeric percent label");
-assert.match(processingView, /可以切出 App/, "native processing page must tell the user they can leave and return");
-assert.match(processingView, /Int\(round\(model\.processingProgress \* 100\)\)/, "native processing percent must be derived from real progress");
+assert.doesNotMatch(processingView, /可以切出 App|回来后会自动取回进度/, "native processing page must not repeat background-job implementation details as visible helper copy");
+assert.match(processingView, /Int\(round\(displayedProgress \* 100\)\)/, "native processing percent must stay synchronized with the animated progress track");
 assert.match(processingView, /generationPhases:\s*\[GenerationPhase\]/, "native processing page must define visible cloud generation phases");
 assert.match(processingView, /generationPhaseRail/, "native processing page must render a cloud generation phase rail");
 for (const label of ["接收线索", "多模态读取", "剧场折射", "星图显影"]) {

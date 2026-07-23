@@ -203,6 +203,14 @@ final class BenyuanNativeFlowModel: ObservableObject {
         choiceLogs.count > theaterChoiceIndex
     }
 
+    var isLastTheaterChoice: Bool {
+        requiredTheaterChoiceCount > 0 && theaterChoiceIndex == requiredTheaterChoiceCount - 1
+    }
+
+    var canAdvanceFromCurrentTheaterChoice: Bool {
+        hasAnsweredCurrentTheaterChoice && !isLastTheaterChoice && !isTheaterConstellationEntrySubmitting
+    }
+
     var canEnterConstellationGenerationFromTheater: Bool {
         stage == .theater
             && theaterPhase == .act2
@@ -560,7 +568,9 @@ final class BenyuanNativeFlowModel: ObservableObject {
         while choiceLogs.count < requiredTheaterChoiceCount {
             guard let option = currentTheaterChoice?.options.first else { break }
             chooseAct2(option)
-            try? await Task.sleep(nanoseconds: 640_000_000)
+            if canAdvanceFromCurrentTheaterChoice {
+                nextTheaterChoice()
+            }
         }
         logNativeE2E("theater_autocomplete_finished choices=\(choiceLogs.count) mirrors=\(mirrorLogs.count) phase=\(theaterPhase)")
     }
@@ -632,7 +642,7 @@ final class BenyuanNativeFlowModel: ObservableObject {
         }
         choiceLogs = record.act2Choices
         mirrorLogs = record.act3Responses
-        selectedTheaterOptionId = nil
+        selectedTheaterOptionId = record.act2Choices.first?.selected
         isTheaterChoiceFeedbackVisible = false
         isTheaterConstellationEntrySubmitting = false
 
@@ -676,19 +686,6 @@ final class BenyuanNativeFlowModel: ObservableObject {
     func recordQuestionMotion(direction: BenyuanQuestionMotionDirection) {
         questionMotionDirection = direction
         questionMotionToken = UUID()
-    }
-
-    func advanceAfterAnswer(delay: TimeInterval = 0.18) {
-        Task {
-            let nanoseconds = UInt64(delay * 1_000_000_000)
-            try? await Task.sleep(nanoseconds: nanoseconds)
-            await MainActor.run {
-                if activeQuestionIndex < questions.count - 1 {
-                    recordQuestionMotion(direction: .forward)
-                    activeQuestionIndex += 1
-                }
-            }
-        }
     }
 
     func resetTheaterState() {

@@ -5,7 +5,6 @@ struct BenyuanNativeTheaterView: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var novaBurstToken = 0
     @State private var novaBurstOptionId: String?
-    @State private var selectedTheaterResponse: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,6 +63,11 @@ struct BenyuanNativeTheaterView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if model.theaterPhase == .act2 {
+                theaterChoiceBottomBar
+            }
+        }
     }
 
     private var theaterScrollTopAnchor: String { "benyuan-theater-scroll-top" }
@@ -84,7 +88,9 @@ struct BenyuanNativeTheaterView: View {
     private var theaterProgress: Double {
         switch model.theaterPhase {
         case .act1: return 0.18
-        case .act2: return 0.76
+        case .act2:
+            let count = max(model.requiredTheaterChoiceCount, 1)
+            return 0.24 + (Double(model.theaterChoiceIndex + 1) / Double(count)) * 0.60
         }
     }
 
@@ -142,20 +148,18 @@ struct BenyuanNativeTheaterView: View {
             BenyuanRevealedStack(spacing: BenyuanSpacing.x4) {
                 theaterLensCard(
                     title: displayText(choice.scene, fallback: "这一幕正在显影。"),
-                    detail: selectedTheaterResponse,
+                    detail: currentTheaterResponse,
                     mode: .deepSpace,
                     progress: theaterProgress
                 )
                 VStack(spacing: BenyuanSpacing.x3) {
                     ForEach(Array(choice.options.prefix(4).enumerated()), id: \.element.id) { index, option in
                         BenyuanNativeOptionButton(index: index, title: displayText(option.text, fallback: "沿着这条轨道靠近"), active: model.selectedTheaterOptionId == option.id, pressScale: 1) {
-                            guard !model.hasAnsweredCurrentTheaterChoice else { return }
-                            selectedTheaterResponse = displayText(option.response, fallback: "剧场记下了这一次靠近。")
                             novaBurstOptionId = option.id
                             novaBurstToken += 1
                             model.chooseAct2(option)
                         }
-                        .disabled(model.hasAnsweredCurrentTheaterChoice || model.isTheaterConstellationEntrySubmitting)
+                        .disabled(model.isTheaterConstellationEntrySubmitting)
                         .overlay(BenyuanSelectionPulseLayer(isActive: model.selectedTheaterOptionId == option.id, cornerRadius: 24))
                         .overlay(BenyuanNovaSelectionBurst(trigger: novaBurstOptionId == option.id ? novaBurstToken : 0))
                         .transition(theaterTransition)
@@ -163,26 +167,48 @@ struct BenyuanNativeTheaterView: View {
                 }
                 .padding(.top, BenyuanSpacing.x1)
 
-                if model.canEnterConstellationGenerationFromTheater {
-                    BenyuanNativePrimaryButton(
-                        title: model.isTheaterConstellationEntrySubmitting ? "正在进入星图" : "进入生成星图",
-                        disabled: model.isTheaterConstellationEntrySubmitting
-                    ) {
-                        Task {
-                            await model.enterConstellationGenerationFromTheater()
-                        }
-                    }
-                    .padding(.top, BenyuanSpacing.x2)
-                    .transition(theaterTransition)
-                }
-
                 Spacer()
             }
             .id("act2-\(model.theaterChoiceIndex)")
-            .onChange(of: model.theaterChoiceIndex) { _, _ in
-                selectedTheaterResponse = nil
+        }
+    }
+
+    private var currentTheaterResponse: String? {
+        guard let choice = model.currentTheaterChoice,
+              let selectedId = model.selectedTheaterOptionId,
+              let option = choice.options.first(where: { $0.id == selectedId }) else { return nil }
+        return displayText(option.response, fallback: "这一幕记下了你的选择。")
+    }
+
+    private var theaterChoiceBottomBar: some View {
+        let isFirstChoice = model.theaterChoiceIndex == 0
+        let canContinue = model.hasAnsweredCurrentTheaterChoice && !model.isTheaterConstellationEntrySubmitting
+        return HStack(spacing: BenyuanSpacing.x3) {
+            Button { model.previousTheaterChoice() } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(isFirstChoice ? BenyuanColor.textTertiary : BenyuanColor.textSecondary)
+                    .frame(width: 54, height: 54)
+                    .background(Circle().fill(isFirstChoice ? BenyuanColor.glassFill.opacity(0.62) : BenyuanColor.glassFill))
+            }
+            .accessibilityLabel("上一幕")
+            .disabled(isFirstChoice || model.isTheaterConstellationEntrySubmitting)
+            .buttonStyle(BenyuanPressableMotionStyle(scale: 0.96, glow: 0.08, haptic: .light))
+
+            BenyuanNativePrimaryButton(
+                title: model.isLastTheaterChoice ? "进入生成星图" : "下一幕",
+                disabled: !canContinue
+            ) {
+                if model.isLastTheaterChoice {
+                    Task { await model.enterConstellationGenerationFromTheater() }
+                } else {
+                    model.nextTheaterChoice()
+                }
             }
         }
+        .padding(.horizontal, BenyuanSpacing.x4)
+        .padding(.vertical, BenyuanSpacing.x4)
+        .background(BenyuanColor.bgVoid.opacity(0.82).ignoresSafeArea())
     }
 
     private func theaterLensCard(
@@ -258,13 +284,12 @@ struct BenyuanNativeTheaterView: View {
                 .font(.system(size: 14, weight: .regular))
                 .lineSpacing(5)
                 .foregroundStyle(BenyuanColor.textSecondary)
-                .lineLimit(2)
                 .minimumScaleFactor(0.86)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(BenyuanSpacing.x4)
-        .frame(height: 76, alignment: .top)
+        .frame(minHeight: 76, alignment: .top)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(BenyuanColor.glassFill.opacity(0.82))

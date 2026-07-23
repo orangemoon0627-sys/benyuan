@@ -29,6 +29,7 @@ assert.match(persistence, /getBenyuanV3UploadsDir/, "persistence module must exp
 assert.match(persistence, /getBenyuanPersistenceHealth/, "persistence module must expose storage health");
 assert.match(persistence, /readBenyuanPersistenceReadiness/, "persistence module must expose production migration readiness");
 assert.match(persistence, /summarizeBenyuanStoreCounts/, "persistence health must summarize user/history counts without returning raw records");
+assert.match(persistence, /behaviorProfileSnapshots/, "persistence health must count immutable behavior-profile snapshots");
 
 assert.match(store, /getBenyuanV3StorePath/, "store must use the shared persistence path resolver");
 assert.match(store, /getBenyuanV3StoreHealth/, "store must expose user/history storage health");
